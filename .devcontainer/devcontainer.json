@@ -15,9 +15,12 @@
       ],
       "settings": {
         "terminal.integrated.shell.linux": "/bin/bash",
-        "python.analysis.extraPaths": ["src/py"]
+        "python.analysis.extraPaths": ["src"]
       }
     }
+  },
+  "containerEnv": {
+    "PYTHONPATH": "src"
   },
   "postCreateCommand": "npm install && pip install -r requirements.txt",
   "remoteUser": "vscode"
