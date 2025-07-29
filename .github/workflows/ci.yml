@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+        python-version: [3.11]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install TS dependencies
+      run: npm install
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    - name: Lint TS
+      run: npm run lint
+
+    - name: Run TS tests
+      run: npm test
+
+    - name: Run Python tests
+      run: pytest --maxfail=1 --disable-warnings -q
+
+    - name: Build TS
+      run: npm run build
