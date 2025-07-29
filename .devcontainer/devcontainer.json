@@ -14,7 +14,8 @@
         "eamodio.gitlens"
       ],
       "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash"
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "python.analysis.extraPaths": ["src/py"]
       }
     }
   },
