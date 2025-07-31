@@ -7,6 +7,7 @@ describe("Orchestrator E2E", () => {
   const bin = path.resolve(__dirname, "../../dist/index.js");
 
   beforeAll((done) => {
+    // Bygg TS-koden innan testen
     const build = spawn("npm", ["run", "build"], { shell: true });
     build.on("exit", (code) => {
       if (code !== 0) return done(new Error("Build misslyckades"));
@@ -21,7 +22,7 @@ describe("Orchestrator E2E", () => {
         env: {
           ...process.env,
           SOLANA_RPC_URL: "https://api.devnet.solana.com",
-          // Här pekar vi mot en publik echo-server för test
+          // Använd echo-server för säkert 200 OK
           JITO_ENDPOINT: "https://postman-echo.com/post",
           JITO_AUTH_TOKEN: "test-token",
         },
@@ -34,14 +35,15 @@ describe("Orchestrator E2E", () => {
       const handleSuccess = () => {
         if (!finished) {
           finished = true;
+          clearTimeout(timer);
           proc.kill();
           done();
         }
       };
-
       const handleFailure = (msg: string) => {
         if (!finished) {
           finished = true;
+          clearTimeout(timer);
           proc.kill();
           done(new Error(msg));
         }
@@ -52,26 +54,20 @@ describe("Orchestrator E2E", () => {
         if (
           output.includes("Ny slot:") &&
           output.includes("Ping OK=") &&
-          output.includes("Bundle skickad:")
+          output.includes("Bundle skickad: true")
         ) {
-          if (output.includes("Bundle skickad: true")) {
-            handleSuccess();
-          } else {
-            handleFailure("Bundle skickad: true saknas");
-          }
+          handleSuccess();
         }
       });
 
-      proc.stderr.on("data", (err) => {
-        // Vi kan tysta nätverks-errors från fetch:
-        /* no-op */
-      });
+      // Tysta fel på stderr
+      proc.stderr.on("data", () => { /* no-op */ });
 
-      proc.on("exit", () => {
-        if (!finished) {
-          handleFailure("Processen avslutades innan förväntade loggar dök upp");
-        }
-      });
+      // Avsluta när testet tar för lång tid
+      const timer = setTimeout(
+        () => handleFailure("Timeout: inga förväntade loggar inom 15s"),
+        15000
+      );
     },
     30000
   );

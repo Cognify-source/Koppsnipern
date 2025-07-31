@@ -12,6 +12,8 @@ const bundleSender_1 = require("./services/bundleSender");
 const mlService_1 = require("./services/mlService");
 async function main() {
     console.log("🚀 Orchestrator startar med ML...");
+    // Hämta threshold från miljö eller defaultera till 0.5
+    const mlThreshold = parseFloat(process.env.ML_THRESHOLD ?? "0.5");
     // Initiera ML-servicen
     const ml = new mlService_1.MLService({
         pythonPath: process.env.PYTHON_PATH || "python3",
@@ -19,16 +21,13 @@ async function main() {
             ? path_1.default.resolve(process.cwd(), process.env.ML_SCRIPT)
             : undefined,
     });
-    // Sätt upp Slot-lyssnaren
+    // Sätt upp WebSocket-lyssnaren
     const listener = new streamListener_1.StreamListener(process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com", async (slot) => {
         console.log(`🕵️‍♂️ Ny slot: ${slot}`);
         // 1) Mät RTT (stub)
-        const { result: pingOk, latencyMs } = await (0, latency_1.measureLatency)(async () => {
-            // Här kan du pinga Jito-endpoint med fetch
-            return true;
-        });
+        const { result: pingOk, latencyMs } = await (0, latency_1.measureLatency)(async () => true);
         console.log(`📶 Ping OK=${pingOk}, latency=${latencyMs}ms`);
-        // 2) Exempel-features för ML (ersätt med riktiga data)
+        // 2) Dummy-features för ML
         const features = {
             lp_size: 100,
             initial_burn: 5,
@@ -42,7 +41,7 @@ async function main() {
         const score = ml.predict(features);
         console.log(`🤖 ML-score: ${score.toFixed(3)}`);
         // 4) Beslut & bundle-sändning
-        if (score >= 0.8) {
+        if (score >= mlThreshold) {
             const sender = new bundleSender_1.BundleSender({
                 endpoint: process.env.JITO_ENDPOINT || "https://postman-echo.com/post",
                 authToken: process.env.JITO_AUTH_TOKEN || "uuid-1234",
@@ -54,11 +53,11 @@ async function main() {
             console.log("⚠️ Score under threshold, avbryter.");
         }
     });
-    // Starta WebSocket-prenumeration
+    // Starta prenumerationen
     await listener.start();
 }
 exports.main = main;
-// Om filen körs direkt via `node dist/index.js`
+// Endast kör main om filen anropas direkt
 if (require.main === module) {
     main().catch((err) => {
         console.error("⚠️ Fatal error i orchestrator:", err);
