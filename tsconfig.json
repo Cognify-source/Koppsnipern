@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["es2020"],
-    "rootDir": ".",
+    "rootDir": "src/ts",
     "outDir": "dist",
     "moduleResolution": "node",
     "baseUrl": ".",
@@ -15,6 +15,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/ts/**/*.ts"],
   "exclude": ["node_modules", "tests"]
 }

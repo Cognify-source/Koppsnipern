@@ -2,15 +2,15 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests/unit/ts'],
+  roots: ['<rootDir>/tests'],              // Kör både unit & integration
   moduleFileExtensions: ['ts', 'js', 'json'],
-  testMatch: ['**/*.test.ts'],
+  testMatch: ['**/*.test.ts'],             // Alla .test.ts
   moduleNameMapper: {
     '^src/(.*)$': '<rootDir>/src/$1'
   },
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    }
-  }
+  transform: {
+    // Använd ts-jest för .ts-filer, med config i tsconfig.json
+    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
+  },
+  forceExit: true                          // Tvinga Jest att avsluta även om handles är öppna
 };
