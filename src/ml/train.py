@@ -1,12 +1,10 @@
-# src/py/train.py
-
-"""
-En enkel stub för ML-pipelinens träningsskript.
-Kör `python src/py/train.py` för att verifiera att Python-delens grund fungerar.
-"""
+# src/ml/train.py
 
 def main():
-    # Här kommer vi senare ladda features och träna modellen.
+    """
+    Enkel stub för ML-pipelinens tränings-/testscript.
+    Kör `python src/ml/train.py` för att verifiera att Python-delens grund fungerar.
+    """
     print("✅ ML-pipeline OK")
     return True
 

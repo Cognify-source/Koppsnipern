@@ -3,12 +3,13 @@
 import { Connection } from "@solana/web3.js";
 
 /**
- * StreamListener-klass som ansluter mot en Solana RPC via gRPC-plugin
- * (t.ex. Chainstack Yellowstone) och anropar callback för varje slot.
+ * StreamListener-klass som ansluter mot en Solana RPC via WebSocket
+ * och anropar callback för varje nytt slot.
  */
 export class StreamListener {
   private connection: Connection;
   private onSlot: (slot: number) => void;
+  private subscriptionId?: number;
 
   constructor(rpcUrl: string, onSlot: (slot: number) => void) {
     this.connection = new Connection(rpcUrl, { commitment: "confirmed" });
@@ -16,25 +17,24 @@ export class StreamListener {
   }
 
   /**
-   * Startar en enkel polling av senaste slot var X ms.
-   * (Senare byter vi till riktiga gRPC-streams när plugin fungerar.)
+   * Startar WebSocket-prenumeration på slot-ändringar.
+   * @returns prenumerations-ID som kan användas för att avbryta.
    */
-  async start(pollIntervalMs = 500): Promise<void> {
-    let lastSlot = await this.connection.getSlot("confirmed");
-    // Anropa callback direkt på första slot
-    this.onSlot(lastSlot);
+  async start(): Promise<number> {
+    const subId = this.connection.onSlotChange((slotInfo: any) => {
+      const slot = typeof slotInfo === "number" ? slotInfo : slotInfo.slot;
+      this.onSlot(slot);
+    });
+    this.subscriptionId = subId;
+    return subId;
+  }
 
-    // Poll-loop
-    setInterval(async () => {
-      try {
-        const slot = await this.connection.getSlot("confirmed");
-        if (slot > lastSlot) {
-          lastSlot = slot;
-          this.onSlot(slot);
-        }
-      } catch (err) {
-        console.error("StreamListener error:", err);
-      }
-    }, pollIntervalMs);
+  /**
+   * Stoppar WebSocket-prenumerationen.
+   */
+  stop(): void {
+    if (this.subscriptionId !== undefined) {
+      this.connection.removeSlotChangeListener(this.subscriptionId);
+    }
   }
 }
