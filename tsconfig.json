@@ -1,20 +1,13 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "es2019",
     "module": "commonjs",
-    "lib": ["es2020"],
-    "rootDir": "src/ts",
     "outDir": "dist",
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "src/*": ["src/*"]
-    },
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "rootDir": "src",
     "strict": true,
-    "skipLibCheck": true
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["src/ts/**/*.ts"],
-  "exclude": ["node_modules", "tests"]
+  "include": ["src"]
 }

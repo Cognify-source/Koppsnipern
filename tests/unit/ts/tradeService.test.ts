@@ -1,73 +1,85 @@
 // tests/unit/ts/tradeService.test.ts
 
 import { TradeService } from "../../../src/ts/services/tradeService";
+import { Connection, Keypair } from "@solana/web3.js";
 import {
-  Connection,
-  Keypair,
-  Transaction,
-  SystemProgram,
-  PublicKey,
-} from "@solana/web3.js";
+  jsonInfo2PoolKeys,
+  Liquidity,
+  LiquidityPoolJsonInfo,
+  LiquidityPoolKeys,
+} from "@raydium-io/raydium-sdk";
 
-describe("TradeService (SOL-transfer stub)", () => {
-  let connectionMock: jest.Mocked<Connection>;
+jest.mock("@raydium-io/raydium-sdk", () => ({
+  __esModule: true,
+  jsonInfo2PoolKeys: jest.fn((json: any) => ({} as LiquidityPoolJsonInfo)),
+  Liquidity: {
+    fetchInfo: jest.fn().mockResolvedValue({
+      userTokenAccounts: [] as any[],
+    }),
+    computeAmountOut: jest
+      .fn()
+      .mockReturnValue({ amountOut: 0, minAmountOut: 0 }),
+    makeSwapTransaction: jest.fn().mockResolvedValue({
+      transaction: new Transaction(),
+      signers: [] as Keypair[],
+    }),
+  },
+}));
+
+describe("TradeService (Raydium‐swap)", () => {
+  let connection: jest.Mocked<Connection>;
   let payer: Keypair;
+  let poolJson: LiquidityPoolJsonInfo;
   let svc: TradeService;
-  let addSpy: jest.SpyInstance;
-
-  const recipient = new PublicKey(
-    "4Nd1mCbA3ZBj1VwdgnTUA6zdi6t9s3tfG4PzP5r49e8Z"
-  );
 
   beforeEach(() => {
-    // Mocka bara de metoder vi använder
-    connectionMock = {
+    connection = {
       getRecentBlockhash: jest
         .fn()
-        .mockResolvedValue({ blockhash: "bh123", feeCalculator: { lamportsPerSignature: 0 } }),
-      sendRawTransaction: jest.fn().mockResolvedValue("sigABC"),
+        .mockResolvedValue({
+          blockhash: "bh",
+          feeCalculator: { lamportsPerSignature: 0 },
+        }),
+      sendRawTransaction: jest.fn().mockResolvedValue("txSig"),
       confirmTransaction: jest.fn().mockResolvedValue({}),
     } as any;
 
     payer = Keypair.generate();
-    svc = new TradeService({ connection: connectionMock, payer });
-
-    // Spy på Transaction.prototype.add med korrekt 'this'-typ
-    addSpy = jest
-      .spyOn(Transaction.prototype, "add")
-      .mockImplementation(function (this: Transaction, ..._args: any[]) {
-        return this;
-      });
-
-    // Stubba Transaction.sign och serialize
-    jest.spyOn(Transaction.prototype, "sign").mockImplementation(() => {});
-    jest.spyOn(Transaction.prototype, "serialize").mockImplementation(() => Buffer.from([1, 2, 3]));
+    poolJson = {} as LiquidityPoolJsonInfo;
+    svc = new TradeService({ connection, payer, poolJson });
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  it("använder Raydium‐SDK korrekt", async () => {
+    const sig = await svc.executeSwap(0.5, 0.01);
 
-  it("bygger, signerar och skickar en transfer-tx", async () => {
-    const sig = await svc.executeSwap(recipient, 0.42);
+    expect(jsonInfo2PoolKeys).toHaveBeenCalledWith(poolJson);
+    expect(Liquidity.fetchInfo).toHaveBeenCalledWith(
+      connection,
+      expect.any(Object)
+    );
+    expect(Liquidity.computeAmountOut).toHaveBeenCalledWith(
+      expect.any(Object),
+      Math.round(0.5 * 1e9),
+      0.01
+    );
+    expect(Liquidity.makeSwapTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connection,
+        poolKeys: expect.any(Object),
+        amountIn: Math.round(0.5 * 1e9),
+        amountOut: expect.any(Number),
+        fixedSide: "in",
+      })
+    );
 
-    // Kontrollera blockhash-anropet
-    expect(connectionMock.getRecentBlockhash).toHaveBeenCalledWith("confirmed");
-
-    // Kontrollera att vi la till exakt en instruktion
-    expect(addSpy).toHaveBeenCalledTimes(1);
-
-    // Kontrollera signering och serialisering
-    expect(Transaction.prototype.sign).toHaveBeenCalledWith(payer);
-    expect(Transaction.prototype.serialize).toHaveBeenCalled();
-
-    // Kontrollera skicka och confirm
-    expect(connectionMock.sendRawTransaction).toHaveBeenCalledWith(
-      Buffer.from([1, 2, 3]),
+    expect(connection.sendRawTransaction).toHaveBeenCalledWith(
+      expect.any(Buffer),
       { skipPreflight: false, preflightCommitment: "confirmed" }
     );
-    expect(connectionMock.confirmTransaction).toHaveBeenCalledWith("sigABC", "confirmed");
-
-    expect(sig).toBe("sigABC");
+    expect(connection.confirmTransaction).toHaveBeenCalledWith(
+      "txSig",
+      "confirmed"
+    );
+    expect(sig).toBe("txSig");
   });
 });
