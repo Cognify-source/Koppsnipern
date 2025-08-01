@@ -1,86 +1,34 @@
 // src/ts/index.ts
 
 import path from "path";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { StreamListener } from "./services/streamListener";
 import { measureLatency } from "./utils/latency";
 import { FeatureService } from "./services/featureService";
 import { MLService } from "./services/mlService";
-import { BundleSender } from "./services/bundleSender";
+import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 
-async function handleSlot(
-  slot: number,
-  featureSvc: FeatureService,
-  mlSvc: MLService,
-  risk: RiskManager,
-  mlThreshold: number
-): Promise<void> {
-  console.log(`🕵️‍♂️ Ny slot: ${slot}`);
-
-  // 1) Feature-extraktion (stub-event)
-  const rawEvent = {
-    initial_lp: 100,
-    burned_amount: 5,
-    mint_authority_burned: true,
-    init_timestamp: Date.now() / 1000,
-    extract_timestamp: Date.now() / 1000,
-    actions: [],
-  };
-  const features = featureSvc.extract(rawEvent);
-  console.log("🔧 Features:", features);
-
-  // 2) ML-prediktion
-  const score = mlSvc.predict(features);
-  console.log(`🤖 ML-score: ${score.toFixed(3)}`);
-
-  // 3) Latency & riskkontroller
-  const { result: pingOk, latencyMs } = await measureLatency(async () => true);
-  console.log(`📶 Ping OK=${pingOk}, latency=${latencyMs}ms`);
-
-  risk.recordLatency(latencyMs);
-  risk.recordBlockhashTimestamp();
-  risk.recordPrices(0, 0);
-  risk.recordDailyPnl(0);
-
-  if (!risk.shouldTrade()) {
-    console.error("🚫 Riskkontroll misslyckades, avbryter.");
-    return;
-  }
-
-  // 4) Beslut & bundle-sändning
-  if (score >= mlThreshold) {
-    const sender = new BundleSender({
-      endpoint:
-        process.env.JITO_ENDPOINT || "https://postman-echo.com/post",
-      authToken: process.env.JITO_AUTH_TOKEN || "uuid-1234",
-    });
-    const sent = await sender.sendBundle({ slot, dummy: true });
-    console.log(`📦 Bundle skickad: ${sent}`);
-  } else {
-    console.log("⚠️ Score under threshold, avbryter.");
-  }
-}
-
 async function main(): Promise<void> {
-  console.log("🚀 Orchestrator startar med ML...");
+  console.log("🚀 Orchestrator startar med TradePipeline...");
 
+  // Konfiguration
+  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
   const mlThreshold = parseFloat(process.env.ML_THRESHOLD ?? "0.5");
-  const pythonPath = process.env.PYTHON_PATH || "python3";
-  const featureScript = process.env.FEATURE_SCRIPT
-    ? path.resolve(process.cwd(), process.env.FEATURE_SCRIPT)
-    : undefined;
-  const mlScript = process.env.ML_SCRIPT
-    ? path.resolve(process.cwd(), process.env.ML_SCRIPT)
-    : undefined;
+  const secretKey = process.env.PAYER_SECRET_KEY!; // Base58 eller JSON-array
+  const recipientAddr = process.env.TRADE_RECIPIENT!; // t.ex. din destination
 
-  const featureSvc = new FeatureService({
-    pythonPath,
-    scriptPath: featureScript,
-  });
-  const mlSvc = new MLService({
-    pythonPath,
-    scriptPath: mlScript,
-  });
+  // Initiera Solana-anslutning och Keypair
+  const connection = new Connection(rpcUrl, { commitment: "confirmed" });
+  const payer = Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(secretKey))
+  );
+  const recipient = new PublicKey(recipientAddr);
+
+  // Initiera dina services
+  const featureSvc = new FeatureService({ pythonPath: "python3" });
+  const mlSvc = new MLService({ pythonPath: "python3" });
+  const tradeSvc = new TradeService({ connection, payer });
   const risk = new RiskManager({
     precisionWindow: 50,
     precisionThreshold: 0.85,
@@ -90,26 +38,46 @@ async function main(): Promise<void> {
     blockhashMaxAgeSec: 90,
   });
 
-  // Om vi kör i stub-mode (för integrationstest), matas slots från env
-  if (process.env.USE_STUB === "true") {
-    const slots: number[] = JSON.parse(process.env.STUB_SLOTS || "[]");
-    for (const slot of slots) {
-      await handleSlot(slot, featureSvc, mlSvc, risk, mlThreshold);
-    }
-    return;
-  }
-
-  // Annars kör vi mot riktig Solana-websocket
-  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
+  // Lyssna på slots
   const listener = new StreamListener(rpcUrl, async (slot: number) => {
-    await handleSlot(slot, featureSvc, mlSvc, risk, mlThreshold);
+    console.log(`🕵️‍♂️ Slot: ${slot}`);
+
+    // --- Features & ML ---
+    const rawEvent = { /* hämta ditt event här */ };
+    const features = featureSvc.extract(rawEvent);
+    const score = mlSvc.predict(features);
+    console.log(`🤖 ML-score: ${score.toFixed(3)}`);
+
+    // --- Latency & Risk ---
+    const { latencyMs } = await measureLatency(async () => true);
+    risk.recordLatency(latencyMs);
+    risk.recordBlockhashTimestamp();
+    risk.recordPrices(0, 0);
+    risk.recordDailyPnl(0);
+
+    if (!risk.shouldTrade()) {
+      console.warn("🚫 Riskkontroll stoppade handeln");
+      return;
+    }
+
+    // --- Trade-beslut ---
+    if (score >= mlThreshold) {
+      console.log(`💸 Exekverar swap: 0.1 SOL → ${recipient.toBase58()}`);
+      const sig = await tradeSvc.executeSwap(recipient, 0.1);
+      console.log(`✅ Traded, signature: ${sig}`);
+      risk.recordTradeOutcome(true, 0.1); 
+    } else {
+      console.log("⚠️ Score under threshold, ingen trade");
+      risk.recordTradeOutcome(false, 0);
+    }
   });
+
   await listener.start();
 }
 
 if (require.main === module) {
-  main().catch((err) => {
-    console.error("⚠️ Fatal error i orchestrator:", err);
+  main().catch((e) => {
+    console.error(e);
     process.exit(1);
   });
 }
