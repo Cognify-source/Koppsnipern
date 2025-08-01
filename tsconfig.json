@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
@@ -10,9 +10,10 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@raydium-io/raydium-sdk": ["src/types/raydium-sdk.d.ts"]
-    }
+      "@raydium-io/raydium-sdk": ["src/types/raydium-sdk/index.d.ts"]
+    },
+    "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "tests", "dist"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

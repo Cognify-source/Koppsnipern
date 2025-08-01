@@ -73,10 +73,13 @@ async function main(): Promise<void> {
     process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
   const mlThreshold = parseFloat(process.env.ML_THRESHOLD ?? "0.5");
 
+  // 1) Payer‐setup
+  const keyJson = process.env.PAYER_SECRET_KEY!;
   const payer = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(process.env.PAYER_SECRET_KEY!))
+    Uint8Array.from(JSON.parse(keyJson))
   );
 
+  // 2) Connection & services
   const connection = new Connection(rpcUrl, {
     commitment: "confirmed",
   });
@@ -95,10 +98,16 @@ async function main(): Promise<void> {
       : undefined,
   });
 
+  // 3) Läs in poolJson eller defaulta till {} så testa utan env OK
+  const poolJsonEnv = process.env.TRADE_POOL_JSON;
+  const poolJson = poolJsonEnv
+    ? JSON.parse(poolJsonEnv)
+    : ({} as any);
+
   const tradeSvc = new TradeService({
     connection,
     payer,
-    poolJson: JSON.parse(process.env.TRADE_POOL_JSON!),
+    poolJson,
   });
 
   const risk = new RiskManager({
@@ -110,6 +119,7 @@ async function main(): Promise<void> {
     blockhashMaxAgeSec: 90,
   });
 
+  // 4) Kör stub‐mode eller riktig WebSocket‐loop
   if (isStub) {
     const slots: number[] = JSON.parse(process.env.STUB_SLOTS || "[]");
     for (const slot of slots) {

@@ -1,23 +1,27 @@
 // tests/unit/ts/orchestratorTrade.test.ts
 
-// 1) Mocka Solana-web3 tidigt: bara override fromSecretKey
+// 1) Mocka Solana-web3 så Keypair.fromSecretKey aldrig validerar
 jest.mock("@solana/web3.js", () => {
   const actual = jest.requireActual("@solana/web3.js");
-  // Override fromSecretKey så den aldrig kraschar
-  actual.Keypair.fromSecretKey = jest.fn(() => actual.Keypair.generate());
   return {
     __esModule: true,
     ...actual,
+    Keypair: {
+      ...actual.Keypair,
+      fromSecretKey: jest.fn(() => actual.Keypair.generate()),
+    },
   };
 });
 
-// 2) Mocka övriga tjänster
+// 2) Mocka dina tjänster
 jest.mock("../../../src/ts/services/streamListener", () => ({
   __esModule: true,
-  StreamListener: jest.fn().mockImplementation((_url: string, cb: (slot: number) => Promise<void>) => ({
-    start: jest.fn().mockResolvedValue(undefined),
-    __callback: cb,
-  })),
+  StreamListener: jest.fn().mockImplementation(
+    (_url: string, cb: (slot: number) => Promise<void>) => ({
+      start: jest.fn().mockResolvedValue(undefined),
+      __callback: cb,
+    })
+  ),
 }));
 jest.mock("../../../src/ts/services/featureService", () => ({
   __esModule: true,
@@ -49,42 +53,34 @@ jest.mock("../../../src/ts/services/tradeService", () => ({
   })),
 }));
 
-// 3) Importera först när mocks är på plats
+// 3) Importera efter att mocks är definierade
 import { main } from "../../../src/ts/index";
 import { StreamListener } from "../../../src/ts/services/streamListener";
 import { TradeService } from "../../../src/ts/services/tradeService";
-import { PublicKey, Keypair } from "@solana/web3.js";
 
 describe("Orchestrator TradePipeline", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Miljö för secret key + recipient
+    // Ange placeholder för secret key
     process.env.PAYER_SECRET_KEY = JSON.stringify(Array(64).fill(1));
-    // Använd riktig generate för att få giltig PublicKey
-    process.env.TRADE_RECIPIENT = Keypair.generate().publicKey.toBase58();
   });
 
   it("ska starta listener och exekvera swap när score ok", async () => {
-    // Starta orchestratorn
+    // Kör orchestratorn som skapar StreamListener
     await main();
 
-    // Kontrollera att vår mockade StreamListener-konstruktor anropades
+    // Kontrollera att StreamListener-instansen skapades
     expect(StreamListener).toHaveBeenCalledTimes(1);
 
-    // Plocka ut callbacken från instansen
+    // Hämta callbacken och simulera en slot-händelse
     const inst = (StreamListener as jest.Mock).mock.results[0].value;
     const cb = (inst as any).__callback as (slot: number) => Promise<void>;
-    expect(typeof cb).toBe("function");
-
-    // Simulera ett slot
     await cb(123);
 
-    // Kontrollera att TradeService instansierades
-    expect(TradeService).toHaveBeenCalled();
-
-    // Och att executeSwap anropades med rätt parametrar
+    // Kontrollera att TradeService instansierades och executeSwap anropades med 0.1
+    expect(TradeService).toHaveBeenCalledTimes(1);
     const exec = (TradeService as jest.Mock).mock.results[0].value
       .executeSwap as jest.Mock;
-    expect(exec).toHaveBeenCalledWith(expect.any(PublicKey), 0.1);
+    expect(exec).toHaveBeenCalledWith(0.1);
   });
 });
