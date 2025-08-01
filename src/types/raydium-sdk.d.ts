@@ -1,18 +1,7 @@
 // src/types/raydium-sdk.d.ts
 declare module "@raydium-io/raydium-sdk" {
-  import {
-    Connection,
-    Transaction,
-    PublicKey,
-    Keypair,
-  } from "@solana/web3.js";
-
-  export interface LiquidityPoolJsonInfo {
-    [key: string]: any;
-  }
-  export interface LiquidityPoolKeys {
-    [key: string]: any;
-  }
+  export type LiquidityPoolJsonInfo = any;
+  export type LiquidityPoolKeys = any;
 
   export function jsonInfo2PoolKeys(
     json: LiquidityPoolJsonInfo
@@ -20,10 +9,10 @@ declare module "@raydium-io/raydium-sdk" {
 
   export class Liquidity {
     static fetchInfo(
-      connection: Connection,
-      poolKeys: LiquidityPoolKeys
+      connection: any,
+      poolKeys: any
     ): Promise<{
-      userTokenAccounts: PublicKey[];
+      userTokenAccounts: any[];
       [key: string]: any;
     }>;
 
@@ -34,15 +23,15 @@ declare module "@raydium-io/raydium-sdk" {
     ): { amountOut: number; minAmountOut: number };
 
     static makeSwapTransaction(opts: {
-      connection: Connection;
-      poolKeys: LiquidityPoolKeys;
-      userKeys: { owner: PublicKey; tokenAccounts: PublicKey[] };
+      connection: any;
+      poolKeys: any;
+      userKeys: { owner: any; tokenAccounts: any[] };
       amountIn: number;
       amountOut: number;
       fixedSide: "in" | "out";
     }): Promise<{
-      transaction: Transaction;
-      signers: Keypair[];
+      transaction: any;
+      signers: any[];
     }>;
   }
 }

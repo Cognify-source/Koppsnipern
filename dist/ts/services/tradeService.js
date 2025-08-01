@@ -1,5 +1,4 @@
 "use strict";
-// src/ts/services/tradeService.ts
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TradeService = void 0;
 const raydium_sdk_1 = require("@raydium-io/raydium-sdk");
@@ -9,10 +8,6 @@ class TradeService {
         this.payer = opts.payer;
         this.poolKeys = (0, raydium_sdk_1.jsonInfo2PoolKeys)(opts.poolJson);
     }
-    /**
-     * amountSol = hur mycket SOL att swappa
-     * slippage = t.ex. 0.005 för 0.5%
-     */
     async executeSwap(amountSol, slippage = 0.005) {
         const amountIn = Math.round(amountSol * 1e9);
         const poolState = await raydium_sdk_1.Liquidity.fetchInfo(this.connection, this.poolKeys);
