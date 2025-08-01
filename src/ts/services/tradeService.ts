@@ -1,9 +1,7 @@
 // src/ts/services/tradeService.ts
-
 import {
   Connection,
   Keypair,
-  Transaction,
 } from "@solana/web3.js";
 import {
   jsonInfo2PoolKeys,
@@ -29,23 +27,17 @@ export class TradeService {
     this.poolKeys = jsonInfo2PoolKeys(opts.poolJson);
   }
 
-  /**
-   * amountSol = hur mycket SOL att swappa
-   * slippage = t.ex. 0.005 för 0.5%
-   */
   async executeSwap(
     amountSol: number,
     slippage: number = 0.005
   ): Promise<string> {
     const amountIn = Math.round(amountSol * 1e9);
-
     const poolState = await Liquidity.fetchInfo(this.connection, this.poolKeys);
     const { minAmountOut } = Liquidity.computeAmountOut(
       poolState,
       amountIn,
       slippage
     );
-
     const { transaction, signers } = await Liquidity.makeSwapTransaction({
       connection: this.connection,
       poolKeys: this.poolKeys,
@@ -57,15 +49,11 @@ export class TradeService {
       amountOut: minAmountOut,
       fixedSide: "in",
     });
-
     transaction.feePayer = this.payer.publicKey;
-    const { blockhash } =
-      await this.connection.getRecentBlockhash("confirmed");
+    const { blockhash } = await this.connection.getRecentBlockhash("confirmed");
     transaction.recentBlockhash = blockhash;
-
     transaction.partialSign(...signers);
     transaction.sign(this.payer);
-
     const raw = transaction.serialize();
     const sig = await this.connection.sendRawTransaction(raw, {
       skipPreflight: false,
