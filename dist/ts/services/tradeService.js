@@ -10,7 +10,8 @@ class TradeService {
         this.poolKeys = (0, raydium_sdk_1.jsonInfo2PoolKeys)(opts.poolJson);
     }
     /**
-     * Swappa amountSol SOL med angiven slippage (t.ex. 0.005 = 0.5%).
+     * amountSol = hur mycket SOL att swappa
+     * slippage = t.ex. 0.005 för 0.5%
      */
     async executeSwap(amountSol, slippage = 0.005) {
         const amountIn = Math.round(amountSol * 1e9);

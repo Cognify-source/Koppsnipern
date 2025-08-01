@@ -54,9 +54,10 @@ async function handleSlot(slot, featureSvc, mlSvc, tradeSvc, risk, mlThreshold) 
     }
 }
 async function main() {
+    var _a;
     console.log("🚀 Orchestrator startar", isStub ? "(stub-mode)" : "");
     const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
-    const mlThreshold = parseFloat(process.env.ML_THRESHOLD ?? "0.5");
+    const mlThreshold = parseFloat((_a = process.env.ML_THRESHOLD) !== null && _a !== void 0 ? _a : "0.5");
     const payer = web3_js_1.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.PAYER_SECRET_KEY)));
     const connection = new web3_js_1.Connection(rpcUrl, {
         commitment: "confirmed",

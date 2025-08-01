@@ -4,62 +4,74 @@ import {
   Connection,
   Keypair,
   Transaction,
-  SystemProgram,
-  PublicKey,
 } from "@solana/web3.js";
+import {
+  jsonInfo2PoolKeys,
+  Liquidity,
+  LiquidityPoolJsonInfo,
+  LiquidityPoolKeys,
+} from "@raydium-io/raydium-sdk";
 
 export interface TradeServiceOptions {
   connection: Connection;
   payer: Keypair;
+  poolJson: LiquidityPoolJsonInfo;
 }
 
-/**
- * TradeService bygger och skickar en "swap" i form av
- * en enkel SOL-transfer (placeholder för riktig swap).
- */
 export class TradeService {
   private connection: Connection;
   private payer: Keypair;
+  private poolKeys: LiquidityPoolKeys;
 
   constructor(opts: TradeServiceOptions) {
     this.connection = opts.connection;
     this.payer = opts.payer;
+    this.poolKeys = jsonInfo2PoolKeys(opts.poolJson);
   }
 
   /**
-   * Skickar `amountSol` SOL till `recipient`. Returnerar transaktionens signature.
+   * amountSol = hur mycket SOL att swappa
+   * slippage = t.ex. 0.005 för 0.5%
    */
   async executeSwap(
-    recipient: PublicKey,
-    amountSol: number
+    amountSol: number,
+    slippage: number = 0.005
   ): Promise<string> {
-    const lamports = Math.round(amountSol * 1e9);
-    // Hämta blockhash
-    const { blockhash } = await this.connection.getRecentBlockhash(
-      "confirmed"
+    const amountIn = Math.round(amountSol * 1e9);
+
+    const poolState = await Liquidity.fetchInfo(this.connection, this.poolKeys);
+    const { minAmountOut } = Liquidity.computeAmountOut(
+      poolState,
+      amountIn,
+      slippage
     );
-    // Bygg transaktionen
-    const tx = new Transaction({
-      recentBlockhash: blockhash,
-      feePayer: this.payer.publicKey,
+
+    const { transaction, signers } = await Liquidity.makeSwapTransaction({
+      connection: this.connection,
+      poolKeys: this.poolKeys,
+      userKeys: {
+        owner: this.payer.publicKey,
+        tokenAccounts: poolState.userTokenAccounts,
+      },
+      amountIn,
+      amountOut: minAmountOut,
+      fixedSide: "in",
     });
-    tx.add(
-      SystemProgram.transfer({
-        fromPubkey: this.payer.publicKey,
-        toPubkey: recipient,
-        lamports,
-      })
-    );
-    // Signera
-    tx.sign(this.payer);
-    const raw = tx.serialize();
-    // Skicka
-    const signature = await this.connection.sendRawTransaction(raw, {
+
+    transaction.feePayer = this.payer.publicKey;
+    const { blockhash } =
+      await this.connection.getRecentBlockhash("confirmed");
+    transaction.recentBlockhash = blockhash;
+
+    transaction.partialSign(...signers);
+    transaction.sign(this.payer);
+
+    const raw = transaction.serialize();
+    const sig = await this.connection.sendRawTransaction(raw, {
       skipPreflight: false,
       preflightCommitment: "confirmed",
     });
-    // Bekräfta
-    await this.connection.confirmTransaction(signature, "confirmed");
-    return signature;
+    await this.connection.confirmTransaction(sig, "confirmed");
+    return sig;
   }
 }
