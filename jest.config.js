@@ -1,5 +1,6 @@
 // jest.config.js
 module.exports = {
+  setupFiles: ["dotenv/config"],  // ===> laddar .env innan testerna körs
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],              // Kör både unit & integration
