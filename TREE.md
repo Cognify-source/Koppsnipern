@@ -3,7 +3,6 @@
 ├── README.md
 ├── TREE.md
 ├── docs
-│   ├── README.md
 │   ├── architecture.md
 │   ├── handover.md
 │   └── sniper_playbook.md
@@ -58,4 +57,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 40 files
+19 directories, 39 files
