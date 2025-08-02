@@ -1,4 +1,4 @@
-# Sniper-Playbook v2.0 (Uppdaterad 2025-08-02)
+# Sniper-Playbook v2.1 (Uppdaterad 2025-08-02)
 
 ## A · Storlek ↔ WSOL-LP
 
@@ -71,4 +71,41 @@
 
 ---
 
-*Denna playbook gäller för all kod och logik relaterad till snipern och ska följas strikt.*
+## G · Edge & Förbättringar (Prestanda & Säkerhet)
+
+1. **Egen snabb nod:**  
+   - All trafik går via egen Solana-nod med gRPC och RTT kring 10 ms.
+
+2. **Async parallell analys:**  
+   - All filtrering, risk- och poolanalys sker parallellt med mottagande av nya pooler – ingen analys görs i det kritiska path när Cupsyy köper.
+
+3. **Dynamisk slippage-tweak:**  
+   - Vid exekvering kan slippage justeras neråt om orderboken är djup/stabil, utan att införa märkbar fördröjning.
+
+4. **Minsta möjliga tx-payload:**  
+   - Transaktioner är optimerade för snabb propagation; all onödig data/instruktion tas bort.
+
+5. **Blacklistning av deployers/devs:**  
+   - Deployers eller dev-adresser som tidigare triggat rug/block filter blockas automatiskt i framtida pooler.
+   - Blacklisting uppdateras asynkront, så ingen lagg införs.
+
+6. **Community blacklist & rug-list checks:**  
+   - Snipern synkar och cacha community-listor över scams/rugs dagligen.  
+   - Filtrering sker pre-signering – ingen lagg vid exekvering.
+
+7. **Market-move protection:**  
+   - Om Solana-marknaden visar tecken på kraftig volatilitet eller on-chain stress (via parallell monitor), kan snipern pausa eller dra ned size, asynkront.
+
+8. **Förberedd för multi-bot:**  
+   - Playbooken tillåter i framtiden cross-check mellan flera bottar (t.ex. via redis/pubsub) om så önskas – nu körs dock endast en instans.
+
+9. **AI/ML-baserad anomaly detection:**  
+   - En enkel ML-modell eller heuristik processar pool- och dev-mönster i bakgrunden. Endast tydliga anomalies stoppar exekvering.
+   - Ingen lagg införs, då inference/preprocessing sker parallellt.
+
+10. **Dynamisk storlek/riskcap:**  
+    - Size och riskcap kan justeras dynamiskt utifrån tid på dygnet, aktuell PnL, och antal lyckade trades senaste timmen – helt utan försening i kritiskt path.
+
+---
+
+*Denna playbook gäller för all kod och logik relaterad till snipern och ska följas strikt. Edge-reglerna ovan gäller som riktlinjer även för vidareutveckling och optimering.*
