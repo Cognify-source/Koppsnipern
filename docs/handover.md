@@ -1,4 +1,4 @@
-Koppsnipern Sniper Bot – Handover Playbook
+Koppsnipern UPDATED Sniper Bot – Handover Playbook
 ===========================================
 
 1. ÖVERGRIPANDE STATUS
@@ -110,7 +110,4 @@ Koppsnipern Sniper Bot – Handover Playbook
 
 ---
 
-Den här playbooken ger Koppsnipern GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
-
-
-::contentReference[oaicite:0]{index=0}
+Den här playbooken ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
