@@ -110,4 +110,29 @@ Koppsnipern UPDATED Sniper Bot – Handover Playbook
 
 ---
 
+### 10. Roadmap – Nästa utvecklingssteg
+
+1. **Python-koppling för feature/ML**  
+   Implementera subprocess-anrop i `featureService.ts` och `mlService.ts`. Hantera fallback, fel, timeouts.
+
+2. **Aktivera riktiga `rawEvent` från Geyser**  
+   Byt ut dummy `rawEvent = {}` i orchestratorn. Skapa parser för realtidshändelser.
+
+3. **Integrera Jito Block Bundle**  
+   Ersätt stub i `bundleSender.ts` med riktiga API-anrop. Använd i `TradeService` eller direkt i orchestratorn.
+
+4. **CI: Airdrop + Devnet-tests**  
+   Lägg till `scripts/airdrop.ts` som steg i GitHub Actions. Skapa säker fallback om `.env` saknas.
+
+5. **Health-check och metrics**  
+   Lägg till Express-server med `/health`, `/metrics`. Logga latency, PnL, antal swaps etc.
+
+6. **Dockerfile och build-miljö**  
+   Skapa en container med Node.js + Python. Möjliggör lokal och molnbaserad körning.
+
+7. **Retraining-skript för ML-modell**  
+   Samla data efter varje trade. Schemalägg retraining var 10:e dag.
+
+---
+
 Den här playbooken ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
