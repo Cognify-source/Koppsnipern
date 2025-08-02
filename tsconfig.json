@@ -2,13 +2,13 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
-    "rootDir": ".",
+    "rootDir": "src/ts",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
@@ -16,6 +16,6 @@
     },
     "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/ts/**/*", "src/types/**/*"],
   "exclude": ["node_modules", "dist"]
 }
