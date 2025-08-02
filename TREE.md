@@ -1,9 +1,11 @@
 .
+├── GPT-INSTRUKTIONER.txt
 ├── README.md
 ├── TREE.md
 ├── docs
 │   ├── README.md
-│   └── architecture.md
+│   ├── architecture.md
+│   └── sniper_playbook.md
 ├── ev. konflikter → git rebase --continue
 ├── jest.config.js
 ├── lightgbm_config.json
@@ -55,4 +57,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 37 files
+19 directories, 39 files
