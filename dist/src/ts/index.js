@@ -6,30 +6,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.main = void 0;
 const path_1 = __importDefault(require("path"));
-const web3_js_1 = require("@solana/web3.js");
 const streamListener_1 = require("./services/streamListener");
 const latency_1 = require("./utils/latency");
 const featureService_1 = require("./services/featureService");
 const mlService_1 = require("./services/mlService");
 const tradeService_1 = require("./services/tradeService");
 const riskManager_1 = require("./services/riskManager");
+const web3_js_1 = require("@solana/web3.js");
 const isStub = process.env.USE_STUB === "true";
 async function handleSlot(slot, featureSvc, mlSvc, tradeSvc, risk, mlThreshold) {
     console.log(`🕵️‍♂️ Ny slot: ${slot}`);
     const { result: pingOk, latencyMs } = await (0, latency_1.measureLatency)(async () => true);
     console.log(`📶 Ping OK=${pingOk}, latency=${latencyMs}ms`);
     if (isStub) {
+        // stub-mode: bara logga bundle-bekräftelse
         console.log(`📦 Bundle skickad: true`);
         return;
     }
-    const rawEvent = {
-        initial_lp: 100,
-        burned_amount: 5,
-        mint_authority_burned: true,
-        init_timestamp: Date.now() / 1000,
-        extract_timestamp: Date.now() / 1000,
-        actions: [],
-    };
+    // ... resten av ML → risk → TradeService.executeSwap(0.1) …
+    const rawEvent = { /* … */};
     const features = featureSvc.extract(rawEvent);
     console.log("🔧 Features:", features);
     const score = mlSvc.predict(features);
@@ -56,15 +51,26 @@ async function handleSlot(slot, featureSvc, mlSvc, tradeSvc, risk, mlThreshold) 
 async function main() {
     var _a;
     console.log("🚀 Orchestrator startar", isStub ? "(stub-mode)" : "");
+    // Om stub-mode: kör stub-slots och avsluta direkt
+    if (isStub) {
+        const slots = JSON.parse(process.env.STUB_SLOTS || "[]");
+        for (const slot of slots) {
+            // dummy-services skickar bara loggar i handleSlot
+            await handleSlot(slot, {}, // featureSvc – används inte i stub
+            {}, // mlSvc      – används inte i stub
+            {}, // tradeSvc   – används inte i stub
+            {}, // risk       – används inte i stub
+            0);
+        }
+        return;
+    }
+    // ——— Resten kräver riktiga keypairs och poolJson ———
     const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
     const mlThreshold = parseFloat((_a = process.env.ML_THRESHOLD) !== null && _a !== void 0 ? _a : "0.5");
-    // 1) Payer‐setup
+    // Payer‐setup (kräver att PAYER_SECRET_KEY är en JSON-array)
     const keyJson = process.env.PAYER_SECRET_KEY;
     const payer = web3_js_1.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(keyJson)));
-    // 2) Connection & services
-    const connection = new web3_js_1.Connection(rpcUrl, {
-        commitment: "confirmed",
-    });
+    const connection = new web3_js_1.Connection(rpcUrl, { commitment: "confirmed" });
     const featureSvc = new featureService_1.FeatureService({
         pythonPath: process.env.PYTHON_PATH || "python3",
         scriptPath: process.env.FEATURE_SCRIPT
@@ -77,16 +83,11 @@ async function main() {
             ? path_1.default.resolve(process.cwd(), process.env.ML_SCRIPT)
             : undefined,
     });
-    // 3) Läs in poolJson eller defaulta till {} så testa utan env OK
-    const poolJsonEnv = process.env.TRADE_POOL_JSON;
-    const poolJson = poolJsonEnv
-        ? JSON.parse(poolJsonEnv)
+    // poolJson måste sättas i env för Devnet-testet
+    const poolJson = process.env.TRADE_POOL_JSON
+        ? JSON.parse(process.env.TRADE_POOL_JSON)
         : {};
-    const tradeSvc = new tradeService_1.TradeService({
-        connection,
-        payer,
-        poolJson,
-    });
+    const tradeSvc = new tradeService_1.TradeService({ connection, payer, poolJson });
     const risk = new riskManager_1.RiskManager({
         precisionWindow: 50,
         precisionThreshold: 0.85,
@@ -95,14 +96,7 @@ async function main() {
         maxPriceSlippage: 0.20,
         blockhashMaxAgeSec: 90,
     });
-    // 4) Kör stub‐mode eller riktig WebSocket‐loop
-    if (isStub) {
-        const slots = JSON.parse(process.env.STUB_SLOTS || "[]");
-        for (const slot of slots) {
-            await handleSlot(slot, featureSvc, mlSvc, tradeSvc, risk, mlThreshold);
-        }
-        return;
-    }
+    // Riktig WebSocket-loop
     const listener = new streamListener_1.StreamListener(rpcUrl, async (slot) => {
         await handleSlot(slot, featureSvc, mlSvc, tradeSvc, risk, mlThreshold);
     });
