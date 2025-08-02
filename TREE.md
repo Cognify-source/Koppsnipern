@@ -4,6 +4,7 @@
 ├── TREE.md
 ├── docs
 │   ├── README.md
+│   ├── SNIPER.KB.md
 │   ├── architecture.md
 │   └── sniper_playbook.md
 ├── ev. konflikter → git rebase --continue
@@ -57,4 +58,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 39 files
+19 directories, 40 files
