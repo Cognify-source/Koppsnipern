@@ -5,6 +5,7 @@
 ├── docs
 │   ├── README.md
 │   ├── architecture.md
+│   ├── handover.md
 │   └── sniper_playbook.md
 ├── ev. konflikter → git rebase --continue
 ├── jest.config.js
@@ -57,4 +58,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 39 files
+19 directories, 40 files
