@@ -1,5 +1,8 @@
 // src/ts/index.ts
 
+import * as dotenv from "dotenv";
+dotenv.config();  // ===> laddar .env in i process.env
+
 import path from "path";
 import { StreamListener } from "./services/streamListener";
 import { measureLatency } from "./utils/latency";
