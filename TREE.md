@@ -5,7 +5,6 @@
 ├── docs
 │   ├── handover.md
 │   └── sniper_playbook.md
-├── ev. konflikter → git rebase --continue
 ├── jest.config.js
 ├── lightgbm_config.json
 ├── package-lock.json
@@ -56,4 +55,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 38 files
+19 directories, 37 files
