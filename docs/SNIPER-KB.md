@@ -15,7 +15,6 @@ Snipern analyserar automatiskt nya pooler på LaunchLab. Flödet är:
    - Godkänd metadata och verifiering
 
 2. **Om poolen klarar filtren:**
-   - Förbered köp med rätt storlek (0.25–1.0 SOL)
    - Avvakta exekvering
 
 3. **Exekvera köp först om Cupsyy går in:**
@@ -28,7 +27,6 @@ Snipern analyserar automatiskt nya pooler på LaunchLab. Flödet är:
 ## 💰 Exit-logik (försäljning)
 
 - **Target**: +10 % (eller enligt `take_profit`)
-- **Stop-loss**: −2 %
 - **Säljstrategi**: 1 eller 2 transaktioner beroende på djupled i orderboken
 - Inga partial-sells eller DCA
 
@@ -36,7 +34,6 @@ Snipern analyserar automatiskt nya pooler på LaunchLab. Flödet är:
 
 ## 🧱 Tekniska filter (komplement till playbook)
 
-- rug-score < 70 → blockera
 - creator_fee > 5 % → blockera
 - deployer utan tidigare historik → flagga
 - wash-trading eller spoofingmönster → blockera
