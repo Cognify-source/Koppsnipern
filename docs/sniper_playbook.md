@@ -131,6 +131,9 @@ Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
   * Alias-listor uppdateras parallellt
   * Om ML-score saknas → fortsätt ändå
 
+  - ML-modellen tränas om automatiskt via `should_retrain.py` om tillräckligt många nya datapunkter loggats till `ml/data/snipes.jsonl`
+
+
 ---
 
 ## ⚙️ DRIFT & ÖVERVAKNING

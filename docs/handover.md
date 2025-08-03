@@ -48,6 +48,7 @@
 - [ ] SKAPA: `services/safetyService.ts` – rugcheck, metadata, blacklists
 - [ ] SKAPA: `services/tradePlanner.ts` – dev-trigger, latency, pre-swap
 - [ ] 📦 (SENARE) Lägg till `docker-compose.yml` för att köra orchestrator + ML parallellt
+- [ ] KOPPLA IN: adaptiv retrain-trigger i CI eller cron
 
 ## 6. DESIGNBESLUT & KOMPROMISSER
 
@@ -120,6 +121,11 @@ Modulnamn | Fil | Ansvar
 - Alla hjälpskript ska bo i `scripts/` eller `scripts/utils/`.
 - Konfigfiler för ML bör ligga under `src/ml/config/` eller `configs/`.
 
+## 15. ML-STRUKTUR
+
+- `ml/data/snipes.jsonl` – loggfil för snipes och prediction-outcomes
+- `ml/scripts/should_retrain.py` – adaptivt script för att trigga retrain vid tillräckligt datavolym
+- `ml/ML-KB.md` – dokumentation av features, modell, retrain-policy
 ---
 
 *Denna handover är alltid aktuell och ska hållas uppdaterad efter varje steg.*
