@@ -2,7 +2,7 @@
 import fs from 'fs';
 import https from 'https';
 
-const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2q..."; // Fyll i fullständigt program-ID
+const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"; 
 const DAYS_BACK = 30;
 
 const START_DATE = new Date(Date.now() - DAYS_BACK * 86400 * 1000).toISOString();
