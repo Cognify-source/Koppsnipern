@@ -1,4 +1,4 @@
-Sniping-regler & förutsättningar  
+# Sniping-regler & förutsättningar  
 (“Cupsyy-klonen” – 80–90 % mål-lönsamhet)
 
 ────────────────────────────────
@@ -6,26 +6,20 @@ Sniping-regler & förutsättningar
     • Trigger: Raydium **LaunchLab Initialize**-event ≤ **120 s** från pool-creation.  
     • Liquidity: **6–20 SOL** initialt i poolen (sänkt från 40 för fler targets).  
     • Token-filter:  
-      – max **10 %** top-10 holders  
       – dev-wallet **aldrig** tidigare snipat Raydium-pool  
       – mint **inte freezable / mintable**  
     • Insats per trade: **2–3 SOL** (konstant).  
-    • Timing: köp **1,2–2,3 s** efter event (±0,3 s jitter).  
-    • Exit:  
-      – **70 % sälj** vid **trailing +5 %**  
-      – **30 % sälj** vid **+8 %** eller **20 s timer**, vilket som kommer först.  
+    • Exit: enligt playbookens trailing TP-logik.  
 
 ────────────────────────────────
 2.  Teknisk stack
-    • **Helius Professional gRPC** (LaserStream) – 999 USD/mån (delad 250 USD/pers).  
     • **Jito bundles** – tip 0.001–0.002 SOL per bundle för extra 100 ms edge.  
     • **Pre-signade transaktioner** – laddas i RAM för < 50 ms send-time.  
-    • **WebSocket program-log** – lyssnar på Initialize-event direkt (ingår i Pro).  
-    • **3–4 burner-wallets** – roterar för att undvika detektering.  
+    • **WebSocket program-log** – lyssnar på Initialize-event direkt.  
 
 ────────────────────────────────
 3.  Latency-budget
-    • Helius gRPC → bot: **< 150 ms**  
+    • Geyser → bot: **< 150 ms**  
     • Pre-sign + send: **< 50 ms**  
     • Jito-bundle: **< 100 ms** extra  
     • Total försprång mot cupsyy: **200–300 ms** – tillräckligt för att front-run:a.
@@ -35,13 +29,13 @@ Sniping-regler & förutsättningar
     • Lyckade: 210 × 70 % = **147 trades**  
     • Netto vinst/trade: 2.5 SOL × 4 % ≈ **0.10 SOL** (~15 USD)  
     • Månadsbrutto: **≈ 14.7 SOL** (~2 200 USD)  
-    • Kostnad Helius Pro delad: **≈ 250 USD**  
+    • Infrastrukturkostnad: inkluderad i delat flöde  
     • **Netto: ~1 950 USD / månad** (≈ 80 % lönsamhet).
 
 ────────────────────────────────
 5.  Checklista innan launch
-    ☐ `.env` med `HELIUS_KEY`, `PRIVATE_KEY`, `RPC_URL`  
-    ☐ `gitignore` och burner-wallets klara  
+    ☐ `.env` med `RPC_URL`, `PRIVATE_KEY`, `JITO_AUTH`  
+    ☐ `gitignore` och wallet-rotering klar  
     ☐ Jito-tip-wallet med 0.1 SOL buffert  
     ☐ Test-köp med 0.1 SOL för latency-mätning  
     ☐ Loggning av varje trade för PnL-uppföljning
