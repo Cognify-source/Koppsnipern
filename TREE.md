@@ -19,6 +19,8 @@
 ├── scripts
 │   ├── airdrop.ts
 │   └── utils
+│       ├── fetch_launchlab_pools.ts
+│       ├── filter_cupsyy_pools.ts
 │       └── filterjson.py
 ├── src
 │   ├── __init__.py
@@ -54,4 +56,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 32 files
+23 directories, 34 files
