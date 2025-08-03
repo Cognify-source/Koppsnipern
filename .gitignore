@@ -1,6 +1,15 @@
-node_modules
-.env
-dist
+# Node
+node_modules/
+dist/
+
+# Python
+.venv/
 .venv-1/
 *.pyc
 __pycache__/
+
+# Editor/IDE
+.vscode/
+
+# Environment
+.env
