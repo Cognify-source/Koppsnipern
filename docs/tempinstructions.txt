@@ -1,0 +1,108 @@
+SYFTE
+Bygga en Solana‑bot som köper Raydium LaunchLab‑pooler där Cupsyy (wallet suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK) går in.
+Målsättning: minst 95% precision.
+Trades ska kunna skala från 0,1 SOL till minst 5 SOL.
+
+STRATEGITYP
+Hybrid “snabb copytrade”.
+
+1. Prediktiv filtrering av nya pooler några sekunder före Cupsyys köp.
+2. Bekräftelse så snart Cupsyys första signatur syns.
+3. Rid på copytrader‑flödet som följer efter.
+
+INFRASTRUKTUR
+
+* Läsflöde:
+  Yellowstone gRPC Geyser‑plugin på Chainstack. Strömmen kommer direkt från validatorminnet och levereras i millisekunder enligt Chainstack‑beskrivningen ([Chainstack][1]).
+  (Latency i praktiken: cirka 20‑60 ms efter slot‑commit; fortfarande tiotals millisekunder snabbare än vanlig WebSocket).
+* Sändväg:
+  Jito Block Engine, metod sendBundle, header x‑jito‑auth med egen UUID.
+* Serverplacering: Amsterdam (EU C) eller Ashburn (US E) med ping under 20 ms.
+
+KOSTNAD
+Yellowstone gRPC tillägg på Chainstack Global Node kostar för närvarande från 149 USD per månad ([Chainstack][1]).
+
+POOLFILTER (hårt läge)
+
+1. ML‑score P(Cupsyy) minst 0,8.
+   Viktiga features: LP‑storlek, initial burn, mint‑authority‑status, tid sedan init, tidig buy‑sell‑kvot.
+2. Bekräftelse – minst ett av:
+
+   * Cupsyys huvudadress signerar.
+   * Minst två av hans kända alias signerar.
+   * Poolen uppfyller safelist: burnad mint‑authority och verifierad creator.
+3. Cupsyy måste köpa inom fem sekunder efter init annars avbryt.
+4. Extra köp om en känd follower‑adress signerar inom 200 ms efter Cupsyy.
+
+TRADEPIPELINE
+
+1. Pool‑init via Yellowstone Geyser → beräkna features och ML‑score.
+2. Bygg och signera flera swap‑transaktioner med olika priority‑fee‑nivåer och håll dem i minnet.
+3. När Cupsyys signatur bekräftas → skicka snabbaste bundle via Block Engine med hög tip.
+4. Sälj när priset når exit‑regel (t.ex. pris har ökat 15%) eller när Cupsyy börjar skala ut.
+
+RISKKONTROLLER (obligatoriska)
+
+* Stoppa botten och larma om rullande precision på de senaste 50 affärerna sjunker under 85 %.
+* Stoppa botten om dags‑P\&L går under minus två procent av kontobalansen.
+* Blockera nya affärer om RTT mot Jito överstiger 150 ms.
+* Avbryt köp om exekveringspriset överstiger init‑priset med mer än 20 %.
+* Förnya blockhash och signatur om den blir äldre än 90 sekunder.
+
+UPPSTARTSPLAN
+Vecka 1: torrsim i test‑ eller forkad mainnet‑miljö, bekräfta end‑to‑end‑latens under 350 ms.
+Vecka 2–3: live med 0,05–0,1 SOL per trade, samla minst 100 affärer, precision minst 95%.
+Vecka 4+: dubbla trade‑size först när de senaste 100 live‑affärerna uppfyller mål‑ROI och precision.
+Reträna ML‑modellen och uppdatera alias‑listan minst var tionde dag.
+
+OPERATIVA RUTINER
+
+* Daglig backup av privata nycklar och databaser.
+
+
+STARTPROMPT TILL CHATGPT
+Agera som min tekniska partner. Följ specifikationen ovan men använd Chainstack‑Yellowstone‑Geyser som primär läsström. Hjälp mig med TypeScript‑ och Python‑kod, latency‑mätning, ML‑modellering (LightGBM), DevOps‑skript och riskkontroller. Ge sakliga, korta svar och ställ de frågor som krävs för att sätta upp projektets repo‑struktur.
+
+[1]: https://chainstack.com/marketplace/yellowstone-grpc-geyser-plugin/ "Yellowstone gRPC Geyser Plugin | Chainstack"
+
+Sniping-bot — samlad krav- & design­checklista
+Block	Detalj	Värden / regler
+A. Handels­logik		
+Trade-mål	≈ 200 försök/månad ⇒ 180 lyckade (90 %)	10 % SL-trades (–4 % eller 45 s)
+TP-mål	10 – 20 % (baseline) • logga >30 % spikar	
+Insats-trappa
+(WSOL-LP = poolens WSOL-sida)	20–40 SOL LP → 2 SOL
+40–60 SOL → 3 SOL
+60–100 SOL → 5 SOL
+100–150 SOL → 8 SOL
+>150 SOL → 10 SOL (hårt tak)	Ger ≤ 3–4 % slippage
+Priority-fee-trappa	12 k / 15 k / 20 k / 25 k µlamports ≈ 0,002 / 0,003 / 0,004 / 0,0045 SOL	Mappas till insats-steg
+Auto-tuning	+2 k µlamports om slot_lag > 1 × 3	–1 k om slot_lag_p90 = 0 & fee > 3 % av vinst
+Max samtida positioner	2 – 3	Daglig risk-cap 50 SOL
+B. Risk­filter		
+Rug-score föreköp	mintAuthority + freezeAuthority = null
+LP ≥ 1 & ≤ 25 SOL
+dev-swap inom 2 s
+tax/burn < 5 %
+blacklist dev-adr.	Skip pool om score < 70
+Stop-loss	–4 % eller 45 s timeout	Trailing-TP: lås +6 % efter +12 %
+C. Teknik / latency		
+Infrastruktur	Hetzner CCX13 (2 ded vCPU, 8 GB) i fsn1/nbg1	12,49 €/mån
+Data­ström	Chainstack Growth + 5 gRPC-streams	149 USD/mån
+RTT-mål	≤ 40 ms bot ↔ RPC	slot_lag ≤ 1
+Kod-overhead	2–3 ms (gRPC, protobuf, pinned CPU)	persistent outbound WS
+WSOL-hantering	Håll ≥ 15 SOL buffert • unwrap periodiskt	aldrig wrap i kritisk väg
+D. Auto-loggning		
+Per trade	slot_lag, fee_ratio, rug_score, outcome	rullande fönster 50 trades
+Nattlig rapport	success-rate, median fee, stdev slot_lag	justera trappor
+E. Kapital­plan		
+Testfas	start 6 SOL (1–2 SOL-trades)	skala när slot-timing & SL OK
+Drift (2–5 SOL-mix)	15 SOL likviditet + 2 SOL avgifts­buffert	
+
+Nyckel-mål
+
+RTT ≤ 40 ms, kod­latens ≤ 3 ms → slot_lag ≤ 1 i ≥ 90 % av trades.
+
+90 % träff, 10 % SL – 4 % ⇒ ≈ 50 – 130 SOL netto/mån (beroende på 10–30 % pump).
+
+Implementera, logga, autotuna – och skala storlek först när live­data visar låg slippage och stabil nettovinst.
