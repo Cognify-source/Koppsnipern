@@ -2,183 +2,174 @@
 
 ---
 
-## 🎯 SYFTE OCH STRATEGI
+## 1. 🎯 SYFTE OCH STRATEGI
 
-Sniper-bot för Solana LaunchLab-pooler. Exekverar strax efter Cupsyy.
+Sniper-bot för Solana LaunchLab-pooler. Exekverar strax efter Cupsyy.  
 Primärmål:
 
-* 90–95 % precision
-* Latens < 350 ms (E2E)
-* Stabil daglig nettovinst, max 50 SOL risk per dag
+- 90–95 % precision  
+- Latens < 350 ms (E2E)  
+- Stabil daglig nettovinst, max 50 SOL risk per dag
 
 **Modell:**
-
 1. Prediktiv filtrering (ML + feature rules)
 2. Bekräftelse: Cupsyy-signatur
 3. Exekvering: Jito-bundle innan copytraders
 
-\$1
+> **Not:** Alla köp och sälj sker mot WSOL–SPL-token-pooler (ingen konvertering från SOL sker vid sniping).  
+> Förbered alltid tillräcklig WSOL i sniper-walleten.
 
-> **Not:** Alla köp och sälj sker mot WSOL–SPL-token-pooler (ingen konvertering från SOL sker vid sniping).
-> Förbered alltid tillräcklig WSOL i sniper-walleten för att undvika latency och extra avgifter.
+Steg:
+1. Pool upptäcks via Geyser  
+2. Bekräfta LaunchLab (Raydium `Initialize` inom 2 sekunder)  
+3. Feature extraction → ML-score  
+4. Förbered signerade swappar  
+5. Vänta på Cupsyy-signal  
+6. Skicka Jito-bundle  
+7. Exit enligt regler
 
-1. Pool upptäcks via Geyser
-2. Validera att poolen är en faktisk LaunchLab:
+**Precision-definition:**  
+Cupsyy köpt ≤ 10s innan + ROI ≥ 0 %
 
-   * Raydium `Initialize`-event måste ske **inom 2 sekunder** från pool-creation (hård gräns, för maximal edge)
-3. Feature extraction → ML-score (om tillgänglig)
-4. Skapa signerade swap-transaktioner (flera fees)
-5. Vänta på Cupsyy-signal
-6. Skicka optimal Jito bundle
-7. Exit enligt regler (→ se EXITREGLER nedan)
+---
 
-**Precision-definition:**
-Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0 %
+## 2. 🧪 FILTER & TRIGGERS
 
-## 🧪 FILTER & TRIGGERS
+### 2.1 Hårda regler
+- WSOL-LP ≥ 20 SOL  
+- Creator fee ≤ 5 %  
+- Mint/freeze ej revoked  
+- Dev-trigger: köp ≥ 1 SOL inom 10 sek
 
-### Hårda regler (måste uppfyllas):
+### 2.2 Rug-check (endast loggning)
+- `is_safe == true` (valfri)
+- `rug_score ≥ 30` (loggas)
 
-* WSOL-LP ≥ 20 SOL
-* Creator fee ≤ 5 %
-* Revoked mint/freeze
-* Dev-trigger:
+### 2.3 Tillägg
+- ML-score `P(Cupsyy) ≥ 0.8`  
+  → fallback: saknas ML → fortsätt ändå
+- RTT ≤ 150 ms (pausa om >3 trades i följd)
+- Filterkörning ≤ 500 ms
+- Slippage-estimat < 3 %
 
-  * Dev-köp ≥ 1 SOL inom 10 sek
+---
 
-### Rug-check (endast loggning & analys):
+## 3. 💰 KAPITAL & SKALNING
 
-* `is_safe == true` *(extra trygghet – valfri)*
-* `rug_score ≥ 30` *(mjuk gräns, loggas vid avvikelse)*
+- **Start:** 0.1–0.5 SOL
+- **Skalning:** efter 100 trades med ≥95 % precision & positiv ROI
+- **Trade-size (WSOL-LP):**
+  - 20–40 → 2 SOL
+  - 40–60 → 3 SOL
+  - 60–100 → 5 SOL
+  - 100–150 → 8 SOL
+  - >150 → 10 SOL (max)
 
-### Tillägg:
+- Slippagekrav: ≤ 3 %
 
-* ML-score `P(Cupsyy) ≥ 0.8` (om modell är laddad)
-  → *Fallback: om ML-score saknas → fortsätt om övriga filter godkända*
-* RTT ≤ 150 ms mot Jito (avser realtidsfördröjning vid exekvering – stoppa om > 3 trades i följd)
-* Filter-exekvering ≤ 500 ms
-* Slippage-estimat < 3 % (för aktuell storlek, kontrolleras även vid sändning)
+---
 
-## 💰 KAPITAL & SKALNING
+## 4. 🔐 RISKKONTROLL
 
-* **Start:** 0.1–0.5 SOL (testfas)
-* **Skalning:** endast efter 100 trades med:
+Bot pausar vid:
+- Precision (50 senaste) < 85 %
+- Dags-P&L < –2 % av wallet
+- RTT > 150 ms i 3 trades
+- Exekveringspris > 120 % av init
 
-  * ≥ 95 % precision
-  * Nettopositiv ROI
-* **Trade-size (enligt WSOL-LP):**
+- Maxpositioner: 2 trades per wallet  
+- Riskcap: 50 SOL/dag
 
-  * 20–40 SOL → 2 SOL
-  * 40–60 SOL → 3 SOL
-  * 60–100 SOL → 5 SOL
-  * 100–150 SOL → 8 SOL
-  * > 150 SOL → 10 SOL (hårt tak)
-* **Slippage-krav:** ≤ 3 % för vald storlek
+---
 
-## 🔐 RISKKONTROLL
+## 5. 📤 EXITREGLER
 
-Bot pausar automatiskt vid:
+- **SL:** –4 % eller 45 sek timeout  
+  (om TP ej aktiv)
 
-* [ ] Precision (senaste 50 trades) < 85 %
-* [ ] Dags-P\&L < –2 % av walletbalans
-* [ ] RTT > 150 ms i 3 trades i följd
-* [ ] Exekveringspris > 120 % av init-pris
+- **Trailing TP:**  
+  - Aktiv vid +12 %  
+  - Lås vinst vid +6 %  
+  - SL följer toppen med –3 %
 
-**Maxpositioner:** 2 samtidiga trades per wallet
-**Riskcap:** 50 SOL per orchestrator/dag (återställs 00:00 UTC)
+---
 
-## 📤 EXITREGLER
+## 6. 🧠 ML & LOGGNING
 
-* **Stop-loss (SL):**
+- Rug-score och `is_safe` = loggning  
+- Logga per trade:
+  - `slot_lag`, `fee_ratio`, `rug_score`, `latency`, `outcome`
+- Nattrapport (till Discord):
+  - Median ROI, fee, lag, precision
 
-  * –4 % eller 45 sek timeout
-  * *Timeout-regeln gäller endast om TP ej är aktiv – vid aktiv TP gäller trailing exit nedan*
+- ML:
+  - Retrain var 10:e dag
+  - Automatiskt via `should_retrain.py` om tillräckligt data i `ml/data/snipes.jsonl`
+  - Score saknas? → fortsätt ändå
 
-* **Trailing TP:**
+---
 
-  * Aktiveras vid +12 %
-  * Lås vinster på +6 %
-  * SL följer toppen med –3 %
+## 7. ⚙️ DRIFT & ÖVERVAKNING
 
-Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
+Dagliga rutiner:
+- Backup av nycklar + ML-konfig
+- Kontroll:
+  - gRPC-anslutning
+  - RTT < 40 ms
+  - CPU/heap OK
+  - Bundle-fel inom gräns
 
-## 🧠 ML & LOGGNING
+Latencybudget:
+- Geyser → bot < 150 ms  
+- Signering+sändning < 50 ms  
+- Jito-bundle < 100 ms
 
-*Obs: Rug-check (`rug_score`, `is_safe`) används endast för loggning och analys, inte för att blockera trades.*
+---
 
-* **Per trade loggas:**
+## 8. 🚀 FÖRBEREDANDE STEG
 
-  * `slot_lag`, `fee_ratio`, `rug_score`, `latency`, `outcome`
-* **Nattlig rapport:**
+Checklista:
+- [ ] `.env` komplett
+- [ ] `gitignore` korrekt
+- [ ] Tip-wallet ≥ 0.1 SOL
+- [ ] Testköp 0.1 SOL
+- [ ] Logging fungerar
 
-  * Median ROI, fee, slot lag, precision
-  * Rek: skickas till Discord/webhook
-* **ML-modell:**
+---
 
-  * Retränas var 10\:e dag
-  * Alias-listor uppdateras parallellt
-  * Om ML-score saknas → fortsätt ändå
+## 9. ✅ IMPLEMENTERINGSPRINCIPER
 
-  - ML-modellen tränas om automatiskt via `should_retrain.py` om tillräckligt många nya datapunkter loggats till `ml/data/snipes.jsonl`
+- Strikt filter
+- Vänta på signal
+- Allt testas torrt innan live
+- Skala först efter validerad precision
 
-## ⚙️ DRIFT & ÖVERVAKNING
+### 9.1 Exempelscenario – lönsamhet
 
-**Dagliga rutiner:**
+- LaunchLab-pooler/mån: ~1 200  
+- Cupsyy-trades: ~210  
+- Möjliga träffar: 140–170  
+- Lyckade: 110–150  
+- Snitt trade: 2–5 SOL  
+- Snittvinst: 3–7 %  
+- Estimerad vinst: 11–38 SOL  
+- Maxrisk: 50 SOL
 
-* Backup av privata nycklar + ML-konfig
-* Driftstatus-check varje morgon:
+---
 
-  * gRPC-anslutning aktiv
-  * RTT mot Jito < 40 ms (övervakningsmål – inte samma som triggergräns)
-  * CPU/heap inom gräns
-  * Bundle-fel under tröskel
+## 10. 📁 FILHANTERING & STRUKTUR
 
-**Latencybudget (mål):**
+- TS-tjänster: `src/ts/services/`  
+- ML-moduler: `src/ml/`  
+- Typer: `src/types/`  
+- Testdata: `tests/integration/data/`  
+- Stubtester: `tests/unit/ts/`
 
-* Geyser → bot: < 150 ms
-* Pre-signering + sändning: < 50 ms
-* Jito-bundle-fördröjning: < 100 ms
+---
 
-## 🚀 FÖRBEREDANDE STEG
+## 11. 📎 APPENDIX
 
-Checklista inför drift:
-
-* [ ] `.env` med `RPC_URL`, `PRIVATE_KEY`, `JITO_AUTH`
-* [ ] `gitignore` korrekt konfigurerad
-* [ ] Tip-wallet för Jito innehåller minst 0.1 SOL
-* [ ] Utför testköp med 0.1 SOL för latency-mätning
-* [ ] Säkerställ logging av varje trade (inkl PnL)
-
-## ✅ IMPLEMENTERINGSPRINCIPER
-
-* Strict filter → inga “best effort”-trades
-* Exekvering först efter bekräftad signal
-* All logik testas i torrsim innan live
-* Skala endast när precision och ROI är validerade
-
-### Exempelscenario – Lönsamhetsberäkning
-
-* Totalt lanserade LaunchLab-pooler/månad: \~1 200
-* Cupsyy-trades/månad: \~210
-* Möjliga träffar (efter filter & latens): \~140–170
-* Lyckade trades (≥ 0 % ROI): \~110–150
-* Snitt trade size: 2–5 SOL
-* Snittvinst/trade: \~3–7 % (efter slippage)
-* Vinst per trade: 0.06–0.35 SOL
-* Estimerad månadsvinst: 11–38 SOL
-* Risk per månad: max 50 SOL
-
-## FILHANTERING & STRUKTUR
-
-- TS-tjänster ska bo i `src/ts/services/`
-- ML-moduler i `src/ml/`
-- Typdefinitioner i `src/types/`
-- Testdata ska inte blandas med testlogik – lägg i `tests/integration/data/`
-- För varje ny service, skapa stub-test i `tests/unit/ts/`
-
-## 📎 APPENDIX
-
-* **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`
-* **Dev-trigger-villkor:** se ovan
-* **Testmiljö:** forkad mainnet / Devnet fallback
-* **Slottid-krav:** `slot_lag_p90 ≤ 1`
+- **Cupsyy wallet:** `suqh5s...`  
+- **Dev-trigger:** se 2.1  
+- **Miljö:** forkad mainnet eller Devnet fallback  
+- **Slot-krav:** `slot_lag_p90 ≤ 1`
