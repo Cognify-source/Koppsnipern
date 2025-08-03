@@ -7,6 +7,7 @@
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
+├── launchlab_methods.json
 ├── ml
 │   ├── ML-KB.md
 │   ├── data
@@ -21,6 +22,8 @@
 │   ├── airdrop.ts
 │   └── utils
 │       ├── backtest_strategy.ts
+│       ├── fetch_launchlab_from_dexscreener.ts
+│       ├── fetch_launchlab_methods.ts
 │       ├── fetch_launchlab_pools.ts
 │       ├── fetch_price_movement.ts
 │       ├── filter_cupsyy_pools.ts
@@ -59,4 +62,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 37 files
+23 directories, 40 files
