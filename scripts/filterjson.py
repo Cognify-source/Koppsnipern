@@ -1,3 +1,6 @@
+# Rensar Raydium-loggar på irrelevanta fält för vidare analys
+# Används manuellt vid logggranskning
+
 from datetime import datetime, timedelta
 import json, csv
 
