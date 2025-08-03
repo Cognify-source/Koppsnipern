@@ -47,6 +47,8 @@
 - [ ] SKRIV: retrain-script för ML-modell var 10:e dag
 - [ ] SKAPA: `services/safetyService.ts` – rugcheck, metadata, blacklists
 - [ ] SKAPA: `services/tradePlanner.ts` – dev-trigger, latency, pre-swap
+- [ ] 📦 (SENARE) Lägg till `docker-compose.yml` för att köra orchestrator + ML parallellt
+
 
 ## 6. DESIGNBESLUT & KOMPROMISSER
 
