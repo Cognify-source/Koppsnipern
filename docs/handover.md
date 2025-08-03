@@ -1,180 +1,117 @@
-Koppsnipern UPDATED Sniper Bot – Handover Playbook
-===========================================
+# Koppsnipern UPDATED Sniper Bot – Handover Playbook
 
-1. ÖVERGRIPANDE STATUS
-----------------------
+## 1. ÖVERGRIPANDE STATUS
+
 - **Kodbas**: Typescript-projekt under `src/ts`, med Jest-tester under `tests/unit/ts` + `tests/integration`.
 - **Bygg & Test**: 
-  - `npm run build` kompilerar allt till `dist/`.
-  - `npm run test:unit` kör alla unit-tester.
-  - `npm run test:integration` kör stub-E2E + valfri Devnet-integration (skippas om nyckel saknas).
-- **Miljö**: `.env`-fil (ej committad) laddas med `dotenv.config()` i `index.ts`.  
-- **CI-förslag**: GitHub Actions som kör build → unit → integration (skippa Devnet-test om `PAYER_SECRET_KEY` saknas).
+  - `npm run build` kompilerar allt till `dist/`
+  - `npm run test:unit` kör alla unit-tester
+  - `npm run test:integration` kör stub-E2E + Devnet om nyckel finns
+- **Miljö**: `.env` laddas via `dotenv.config()` i `index.ts`
+- **CI-förslag**: GitHub Actions med build → unit → integration (skippa Devnet om `PAYER_SECRET_KEY` saknas)
 
-2. KLARA HUVUDFUNKTIONER
-------------------------
-- **Orchestrator** (`src/ts/index.ts`):  
-  - Stub-mode: loopar över `STUB_SLOTS`, loggar slot, ping, “📦 Bundle skickad”.  
-  - Riktigt mode: öppnar WebSocket (via `StreamListener`), mäter latency, feature→ML→risk→swap.
-- **StreamListener** (`services/streamListener.ts`):  
-  - Stub‐E2E testad via Devnet WebSocket E2E-test.
-- **Latency-mätning** (`utils/latency.ts`):  
-  - Wrapper runt timestamp för att mäta round-trip.  
-- **TradeService** (`services/tradeService.ts`):  
-  - Bygger Raydium-swap via `@raydium-io/raydium-sdk`.  
-  - Unit-testad med mockad SDK som stubbar `fetchInfo`, `computeAmountOut`, `makeSwapTransaction`.
-- **RiskManager** (`services/riskManager.ts`):  
-  - Rullar precision, daily PnL, latency, blockhash‐ålder och prisslippage.  
-  - Unit-testad.
-- **FeatureService & MLService** (`services/featureService.ts`, `services/mlService.ts`):  
-  - Kör Python-skript (LightGBM) för feature-extraktion & prediction.  
-  - Unit-testar mockar bara `extract()` respektive `predict()`.
-- **BundleSender** (`services/bundleSender.ts`):  
-  - Jito Block Engine stub, används ej i trade-pipeline men testad.
+## 2. KLARA HUVUDFUNKTIONER
 
-3. PÅBÖRJADE MEN EJ FÄRDIGA DELAR
----------------------------------
-- **Devnet-integration**: 
-  - Testskript `tests/integration/tradeService.devnet.test.ts` finns, men kräver `.env` med JSON-array för `PAYER_SECRET_KEY` och `TRADE_POOL_JSON`.  
-  - Airdrop via Web3.ts (`scripts/airdrop.ts`) är skrivet men ej integrerat i CI.
-- **Jito Block Bundle**:  
-  - `BundleSender` stubb finns, men ej kopplat i riktiga orchestrator‐flödet.
-- **ML/feature‐skript**:  
-  - Själva Python-scripts `extract_features.py` och `predict_model.py` ligger i `src/py/` men behöver implementeras, tränas och byggas in.
-- **Metrics/monitoring**:  
-  - Ej implementerat (hälsokontroll-endpoint, Prometheus-metrics, etc).
-- **Dockerfile & Deployment**: 
-  - Ej påbörjat. Inga instruktioner för container eller server‐provisioning.
+- **Orchestrator** (`src/ts/index.ts`): stub-loop vs WS/Geyser-flöde
+- **StreamListener**: testad Devnet-WS
+- **Latency-mätning**: `utils/latency.ts`
+- **TradeService**: bygger Raydium-swap, unit-testad
+- **RiskManager**: PnL, latency, risk, unit-testad
+- **FeatureService + MLService**: Python-anrop LightGBM, mockade tester
+- **BundleSender**: Jito API stub (testad)
 
-4. KÄNDA BUGGAR & BLOCKERARE
-----------------------------
-- **Stub-test timeout**:  
-  - `orchestrator.test.ts` hängde tidigare pga key‐parsing i `index.ts`; fixat genom att köra stub-loop före secret-setup.  
-- **JSON-parse-fel**:  
-  - Env-variabler måste vara JSON-arrays, annars kraschar `JSON.parse`.  
-  - Devnet-test skippar nu om nyckel saknas.
-- **TS-paths & type stubs**:  
-  - Flera iterationer av `tsconfig.json` och `src/types/raydium-sdk/index.d.ts` för att få TypeScript att hitta `makeSwapTransaction`.
-- **Testinnehåll**:  
-  - `orchestratorTrade.test.ts` uppdaterad så `executeSwap` anropas med bara `0.1` (ej `PublicKey`).
+## 3. PÅBÖRJADE MEN EJ FÄRDIGA DELAR
 
-5. AKTIVA TODOs
----------------
-- **services/featureService.ts**  
-  - IMPLEMENTERA: spawn av Python‐skript, hantera IO, felhantering.  
-- **services/mlService.ts**  
-  - IMPLEMENTERA: laddning av LightGBM-modell, batch-predict, caching.  
-- **services/bundleSender.ts**  
-  - KOPPLA IN: ersätta stub i orchestrator för riktiga Jito API‐anrop.  
-- **scripts/airdrop.ts**  
-  - INTEGRERA i CI: kör före Devnet-test.  
-- **Dockerfile**  
-  - SKAPA: containerbild med Node.js, Python, deps.  
-- **Metrics endpoint**  
-  - LÄGG TILL: `express`-server för `/health`, `/metrics`.  
-- **ML re-training**  
-  - SKRIV: script för att samla event, reträna modell var 10:e dag.
-- **safetyService.ts**
-  - SKAPA: modul för rugcheck, metadata-validering och blacklists
-- **tradePlanner.ts**
-  - SKAPA: modul för dev-trigger, latency-analys, pre-swap planning
+- Devnet-test (`tradeService.devnet.test.ts`) kräver `.env`
+- Airdrop-skript (`scripts/airdrop.ts`) klart men ej i CI
+- BundleSender ej kopplad till pipeline
+- ML-skript (Python) ej färdigtränade
+- Metrics/monitoring saknas
+- Inget Docker-stöd än
 
-6. DESIGNBESLUT & KOMPROMISSER
------------------------------
-- **Stub-mode tidigt**:  
-  - Flytt av stub-loop före all env‐parsing för att isolera E2E stub‐test från env‐dependencies.
-- **TradeServiceOptions**:  
-  - Lagt till `poolJson` i konstruktorn (istället för separat API‐anrop) för enklare testbarhet.
-- **TS-stubs**:  
-  - Använt `paths` i `tsconfig.json` för att peka `@raydium-io/raydium-sdk` mot lokala typfiler.
-- **JSON‐import i Jest**:  
-  - `resolveJsonModule` + `src/types/json.d.ts` för att kunna `import poolJson from "./*.json"`.
+## 4. KÄNDA BUGGAR & BLOCKERARE
 
-7. NYCKELFILERS PRIORITET & RELEVANS
-------------------------------------
-1. `src/ts/index.ts` – hjärtat i orchestratorn, stub vs riktig loop.  
-2. `src/ts/services/tradeService.ts` – Raydium-swap‐logik, viktig för Devnet.  
-3. `tsconfig.json` + `src/types/raydium-sdk/index.d.ts`, `src/types/json.d.ts` – TypeScript-stubs.  
-4. `tests/integration/orchestrator.test.ts` – stub‐E2E, validerar orchestrator stub-läget.  
-5. `tests/integration/tradeService.devnet.test.ts` – Devnet-integration, kräver env-setup.  
-6. `.env.example` (lämpligen skapas) – dokumentation av alla nödvändiga env-vars.
+- Stub-test hängde pga `index.ts` key-parsing (åtgärdat)
+- JSON-parse-krascher vid ogiltiga `.env`
+- TS-paths för Raydium fixade via `paths` + `d.ts`
+- `orchestratorTrade.test.ts` uppdaterad (enklare inputs)
 
-8. MODULÖVERSIKT & ANSVAR
---------------------------
+## 5. AKTIVA TODOs
+
+- [ ] IMPLEMENTERA: `services/featureService.ts` – spawn Python, IO, fel
+- [ ] IMPLEMENTERA: `services/mlService.ts` – load modell, predict, cache
+- [ ] KOPPLA IN: `services/bundleSender.ts` till orchestratorn
+- [ ] INTEGRERA: `scripts/airdrop.ts` i CI
+- [ ] SKAPA: `Dockerfile` med Node.js + Python
+- [ ] LÄGG TILL: Express endpoint `/health`, `/metrics`
+- [ ] SKRIV: retrain-script för ML-modell var 10:e dag
+- [ ] SKAPA: `services/safetyService.ts` – rugcheck, metadata, blacklists
+- [ ] SKAPA: `services/tradePlanner.ts` – dev-trigger, latency, pre-swap
+
+## 6. DESIGNBESLUT & KOMPROMISSER
+
+- Stub-mode initieras tidigt (före .env-load)
+- `TradeServiceOptions` har `poolJson` i konstruktorn
+- Raydium-typer stubbas via `tsconfig.paths`
+- `resolveJsonModule` används i Jest + typfil
+
+## 7. NYCKELFILERS PRIORITET
+
+1. `src/ts/index.ts` – orchestratorn
+2. `services/tradeService.ts` – swap-logik
+3. `tsconfig.json`, typer i `src/types/`
+4. `tests/integration/orchestrator.test.ts` – stub-E2E
+5. `tests/integration/tradeService.devnet.test.ts`
+6. `.env.example` – miljövariabler
+
+## 8. MODULÖVERSIKT & ANSVAR
+
 Modulnamn | Fil | Ansvar
 ----------|-----|-------
-**StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events via WS. Triggar `onNewPool()`, skickar vidare för filtrering och dev-trigger.
-**safetyService** | _(rekommenderad ny modul)_ | Rug-checks, metadata-validering, blacklist/whitelist-hantering.
-**tradePlanner** | _(rekommenderad ny modul)_ | Dev-trigger-logik, latency-mätning, slippage-estimat. Förbereder swap men skickar ej.
-**TradeService** | `services/tradeService.ts` | Bygger och skickar swap-transaktioner. Hanterar fee, slippage och pooldata.
-**RiskManager** | `services/riskManager.ts` | Stop-loss, trailing TP, position control, daglig riskcap.
-**MLService** | `services/mlService.ts` | Anropar LightGBM för scoring av pooler.
-**FeatureService** | `services/featureService.ts` | Kör Python-skript för feature extraction på nya pooler.
-**BundleSender** | `services/bundleSender.ts` | Jito Block Engine – bygger och skickar bundles (endast stub i nuläget).
-**orchestrator** | `src/ts/index.ts` | Huvudflödet – loopar över nya pooler, triggar alla steg enligt exekveringssekvens.
+**StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events, triggar `onNewPool`
+**safetyService** | `services/safetyService.ts` (NY) | Rug-checks, metadata, blacklist
+**tradePlanner** | `services/tradePlanner.ts` (NY) | Dev-trigger, latency, pre-swap
+**TradeService** | `services/tradeService.ts` | Skapar & skickar swaps
+**RiskManager** | `services/riskManager.ts` | Stop-loss, riskcap, TP
+**MLService** | `services/mlService.ts` | Scoring via LightGBM
+**FeatureService** | `services/featureService.ts` | Feature extraction via Python
+**BundleSender** | `services/bundleSender.ts` | Jito bundle stub
+**orchestrator** | `src/ts/index.ts` | Huvudflöde
 
-9. PÅBÖRJADE HALVFÄRDIGA KODAVSNITT
-----------------------------------
-- `rawEvent` i `index.ts` är hårdkodat dummy‐data; bör ersättas med riktig event‐parsing från Geyser.  
-- `RiskManager.recordPrices(0,0)` och `recordDailyPnl(0)` är placeholders.  
-- Jito BundleSender är stubb, ingen riktig endpointintegrering.
+## 9. PÅBÖRJADE HALVFÄRDIGA KODAVSNITT
 
-10. LESSONS LEARNED & PATTERNs
------------------------------
-- **Guard JSON.parse**: alltid fallback till `{}` om env saknas.  
-- **Stub tidigt**: isolera stub-läge innan resurs-initiering (keys, nätverk).  
-- **TS stub modules**: `paths` + `typeRoots` är effektiva för att injicera custom‐d.ts.  
-- **Jest async handles**: använd `--detectOpenHandles` / `--forceExit` för att få nedhängande handles att dö.
+- `rawEvent = {}` i `index.ts` – ska ersättas med Geyser-parser
+- `RiskManager.recordPrices(0,0)` är placeholder
+- `BundleSender` ännu ej inkopplad i mainloop
 
-11. Roadmap – Nästa utvecklingssteg
------------------------------------
-1. **Python-koppling för feature/ML**  
-   Implementera subprocess-anrop i `featureService.ts` och `mlService.ts`. Hantera fallback, fel, timeouts.
+## 10. LESSONS LEARNED
 
-2. **Aktivera riktiga `rawEvent` från Geyser**  
-   Byt ut dummy `rawEvent = {}` i orchestratorn. Skapa parser för realtidshändelser.
+- Fallbacka `JSON.parse` vid .env-fel
+- Stub-läge måste initieras tidigt
+- `typeRoots`, `paths` m.m. krävs för TS-stubs
+- `--detectOpenHandles`/`--forceExit` i Jest
 
-3. **Integrera Jito Block Bundle**  
-   Ersätt stub i `bundleSender.ts` med riktiga API-anrop. Använd i `TradeService` eller direkt i orchestratorn.
+## 11. ROADMAP
 
-4. **CI: Airdrop + Devnet-tests**  
-   Lägg till `scripts/airdrop.ts` som steg i GitHub Actions. Skapa säker fallback om `.env` saknas.
+1. ✅ Feature/ML subprocess
+2. 🔄 Aktivera riktig `rawEvent` via Geyser
+3. ⏳ Jito Bundle integration
+4. ⏳ CI med airdrop & Devnet
+5. ⏳ Express health-check + metrics
+6. ⏳ Docker-miljö
+7. ⏳ ML retrain-script (var 10:e dag)
 
-5. **Health-check och metrics**  
-   Lägg till Express-server med `/health`, `/metrics`. Logga latency, PnL, antal swaps etc.
+## 12. ARBETSFLÖDE
 
-6. **Dockerfile och build-miljö**  
-   Skapa en container med Node.js + Python. Möjliggör lokal och molnbaserad körning.
+- All projektstatus sparas i `handover.md`
+- Ny session:  
+  > “Läs in `docs/handover.md` och `docs/sniper_playbook.md`”
 
-7. **Retraining-skript för ML-modell**  
-   Samla data efter varje trade. Schemalägg retraining var 10:e dag.
+## 13. SENASTE AKTIVITET
 
-12. Arbetsflöde för iterativ utveckling
----------------------------------------
-För att möjliggöra effektiv utveckling av snipern över flera sessions och chattar används följande strategi:
-
-### 🧠 Kontextminne & Token-effektivitet
-- All viktig kontext och projektstatus sparas i `handover.md`
-- Ny chatt = be GPT:  
-  > “Läs in `docs/handover.md` och `docs/sniper_playbook.md`. Vi fortsätter därifrån.”
-
-### 🔁 Roadmap & progress-logg
-- `Roadmap` (sektion 11) visar nästa steg
-- Använd ✅, 🔄, ❌ framför varje punkt för att visa status:
-  - ✅ = Klar
-  - 🔄 = Pågående
-  - ❌ = Avbruten / Pausad
-
-### 📌 Best practice
-- Lägg till ny information i `handover.md` direkt efter avslutad implementation eller beslut
-- Håll filen koncis – inga stora kodblock eller loggar
-- Vid nya funktioner: dokumentera beslut och koppla till relaterade filer
-
-13. Senaste aktivitet
----------------------
-- ✅ Punkt 1 i roadmap färdigställd (Feature/ML subprocess)
-- 🕒 Start nästa session: Punkt 2 – aktivera `rawEvent`
+- ✅ Punkt 1 klar: Feature/ML subprocess
+- 🕒 Startpunkt: Geyser `rawEvent`
 
 ---
 
-Denna playbook ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, testsvit och roadmap. Den är alltid aktuell.
+*Denna handover är alltid aktuell och ska hållas uppdaterad efter varje steg.*
