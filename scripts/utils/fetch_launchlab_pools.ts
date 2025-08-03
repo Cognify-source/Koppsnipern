@@ -15,12 +15,12 @@ const query = JSON.stringify({
   query: `{
     solana(network: solana) {
       instructions(
-        limit: 2000,
+        limit: 3000,
         where: {
           Transaction: { Result: { Success: true }, Block: { Time: { greaterThan: "${since}" } } },
           Instruction: {
             Program: { Address: { is: "${LAUNCHLAB_PROGRAM}" } },
-            Method: { is: "initialize" }
+            Method: { is: "PoolCreateEvent" }
           }
         }
       ) {
@@ -46,6 +46,7 @@ async function fetchLaunchlabPools() {
     console.error('❌ Ingen BITQUERY_ACCESS_TOKEN satt i .env');
     process.exit(1);
   }
+
   const options = {
     method: 'POST',
     headers: {
@@ -53,6 +54,7 @@ async function fetchLaunchlabPools() {
       'Authorization': `Bearer ${token}`
     },
   };
+
   const req = https.request(BITQUERY_ENDPOINT, options, res => {
     let data = '';
     res.on('data', chunk => data += chunk);
@@ -79,8 +81,10 @@ async function fetchLaunchlabPools() {
       }
     });
   });
+
   req.on('error', console.error);
   req.write(query);
   req.end();
 }
+
 fetchLaunchlabPools();
