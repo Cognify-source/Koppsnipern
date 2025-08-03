@@ -1,4 +1,4 @@
-# Sniper-Playbook v2.4 (Uppdaterad 2025-08-03)
+# Sniper-Playbook v2.5 (Uppdaterad 2025-08-03)
 
 ## A · Trade-size & slippage (Cupsyy-anpassad)
 
@@ -31,6 +31,7 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
    - Mint/freeze revoked
    - Owner balance < 5 %
    - Blockera deployers utan historik
+   - Dev-köp måste ha skett inom **10 sekunder** från pool creation, före vårt köp
 
 2. **Exekvering:**
    - Vänta på att Cupsyy köper (wallet: `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`)
@@ -41,15 +42,15 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 
 ## D · Exit- & riskregler
 
-- **Stop-loss:**  
-  −4 % eller max 45 sekunders hålltid  
+- **SL:**  
+  −4 % eller max 45 sek hålltid  
   *(gäller endast om ROI < +20 %)*  
   Om ROI ≥ +20 % → håll vidare enligt trailing TP
 
-- **Konservativ Take-Profit (safe trailing):**
-  - Första vinstsäkring aktiveras vid **+12 %**
-  - Då sätts en **trailing stop-loss på +7 %**
-  - Därefter följer TP toppen med ett avstånd på **−3 %**
+- **Konservativ TP (safe trailing):**
+  - Aktiveras vid +12 %
+  - Då sätts trailing SL på +7 %
+  - Följer toppen med –3 %
   - Exempel:  
     - Vid +25 % → SL på +22 %  
     - Vid +60 % → SL på +57 %  
@@ -63,19 +64,18 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 
 ## E · Dev-trigger & volymlogik
 
-- Vi köper bara om deployer/dev köpt före oss
-- Volym ignoreras – vi *är* volymen
+- Vi köper endast om dev köpt före oss (inom 10 sek)
+- Volym ignoreras – vi *orsakar* volymen
 
 ---
 
 ## F · Beteendemönster (härlett från Cupsyy)
 
-- Entry-size: alltid 2–3 SOL (~475 USD)
-- Hålltid: 3–25 s, max 45 s
-- Sälj: oftast efter +30–75 % ROI
-- Aldrig DCA eller skalning
+- Entry-size: se §A
+- Hålltid: 3–25 s, max 45 s om ingen vinst
+- Sälj: oftast vid +30–75 % ROI
+- Ingen DCA eller skalning
 - Max 2 öppna tokens
-- Dev måste ha köpt före oss
 
 ---
 
@@ -87,8 +87,8 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 - Dynamisk slippage-tweak
 - Deployer-blacklistning
 - Rug-checks från community (offline-cache)
-- On-chain stress skydd (paus eller mindre size)
-- AI/ML anomaly-detection (passiv)
+- On-chain stress-skydd
+- AI/ML anomaly-detection
 - Multi-bot redo
 
 ---
