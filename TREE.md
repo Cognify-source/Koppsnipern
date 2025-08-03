@@ -6,14 +6,14 @@
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
-├── lightgbm_config.json
 ├── package-lock.json
 ├── package.json
 ├── pytest.ini
 ├── requirements.txt
 ├── scripts
 │   ├── airdrop.ts
-│   └── filterjson.py
+│   └── utils
+│       └── filterjson.py
 ├── src
 │   ├── __init__.py
 │   ├── config
@@ -21,6 +21,7 @@
 │   │   └── jito.config.ts
 │   ├── ml
 │   │   ├── __init__.py
+│   │   ├── config
 │   │   ├── extract.py
 │   │   ├── features.py
 │   │   ├── ml_model.py
@@ -37,7 +38,7 @@
 ├── tests
 │   ├── conftest.py
 │   ├── integration
-│   │   ├── devnet-pool.json
+│   │   ├── data
 │   │   ├── orchestrator.test.ts
 │   │   ├── streamListener.e2e.test.ts
 │   │   └── tradeService.devnet.test.ts
@@ -46,4 +47,4 @@
 │       └── ts
 └── tsconfig.json
 
-16 directories, 31 files
+19 directories, 29 files
