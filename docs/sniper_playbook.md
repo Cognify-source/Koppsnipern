@@ -25,13 +25,14 @@ Primärmål:
 > Förbered alltid tillräcklig WSOL i sniper-walleten för att undvika latency och extra avgifter.
 
 1. Pool upptäcks via Geyser
-2. Feature extraction → ML-score (om tillgänglig)
-3. Skapa signerade swap-transaktioner (flera fees)
-4. Vänta på Cupsyy-signal
-5. Skicka optimal Jito bundle
-6. Exit enligt regler (→ se EXITREGLER nedan)
-7. Validera att poolen är en faktisk LaunchLab:
-   → Raydium `Initialize`-event måste ske inom **10 sekunder** från pool-creation
+2. Validera att poolen är en faktisk LaunchLab:
+
+   * Raydium `Initialize`-event måste ske **inom 2 sekunder** från pool-creation (hård gräns, för maximal edge)
+3. Feature extraction → ML-score (om tillgänglig)
+4. Skapa signerade swap-transaktioner (flera fees)
+5. Vänta på Cupsyy-signal
+6. Skicka optimal Jito bundle
+7. Exit enligt regler (→ se EXITREGLER nedan)
 
 **Precision-definition:**
 Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0 %
