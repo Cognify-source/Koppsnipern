@@ -135,4 +135,27 @@ Koppsnipern UPDATED Sniper Bot – Handover Playbook
 
 ---
 
+### 11. Arbetsflöde för iterativ utveckling
+
+För att möjliggöra effektiv utveckling av snipern över flera sessions och chattar används följande strategi:
+
+#### 🧠 Kontextminne & Token-effektivitet
+- All viktig kontext och projektstatus sparas i `handover.md`
+- Ny chatt = be GPT:  
+  > “Läs in `docs/handover.md` och `docs/sniper_playbook.md`. Vi fortsätter därifrån.”
+
+#### 🔁 Roadmap & progress-logg
+- `Roadmap` (sektion 10) visar nästa steg
+- Använd ✅, 🔄, ❌ framför varje punkt för att visa status:
+  - ✅ = Klar
+  - 🔄 = Pågående
+  - ❌ = Avbruten / Pausad
+
+#### 📌 Best practice
+- Lägg till ny information i `handover.md` direkt efter avslutad implementation eller beslut
+- Håll filen koncis – inga stora kodblock eller loggar
+- Vid nya funktioner: dokumentera beslut och koppla till relaterade filer
+
+---
+
 Den här playbooken ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
