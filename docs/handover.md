@@ -126,6 +126,5 @@ Modulnamn | Fil | Ansvar
 - `ml/data/snipes.jsonl` – loggfil för snipes och prediction-outcomes
 - `ml/scripts/should_retrain.py` – adaptivt script för att trigga retrain vid tillräckligt datavolym
 - `ml/ML-KB.md` – dokumentation av features, modell, retrain-policy
----
 
 *Denna handover är alltid aktuell och ska hållas uppdaterad efter varje steg.*

@@ -17,8 +17,6 @@ Primärmål:
 2. Bekräftelse: Cupsyy-signatur
 3. Exekvering: Jito-bundle innan copytraders
 
----
-
 \$1
 
 > **Not:** Alla köp och sälj sker mot WSOL–SPL-token-pooler (ingen konvertering från SOL sker vid sniping).
@@ -36,8 +34,6 @@ Primärmål:
 
 **Precision-definition:**
 Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0 %
-
----
 
 ## 🧪 FILTER & TRIGGERS
 
@@ -63,8 +59,6 @@ Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0�
 * Filter-exekvering ≤ 500 ms
 * Slippage-estimat < 3 % (för aktuell storlek, kontrolleras även vid sändning)
 
----
-
 ## 💰 KAPITAL & SKALNING
 
 * **Start:** 0.1–0.5 SOL (testfas)
@@ -81,8 +75,6 @@ Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0�
   * > 150 SOL → 10 SOL (hårt tak)
 * **Slippage-krav:** ≤ 3 % för vald storlek
 
----
-
 ## 🔐 RISKKONTROLL
 
 Bot pausar automatiskt vid:
@@ -94,8 +86,6 @@ Bot pausar automatiskt vid:
 
 **Maxpositioner:** 2 samtidiga trades per wallet
 **Riskcap:** 50 SOL per orchestrator/dag (återställs 00:00 UTC)
-
----
 
 ## 📤 EXITREGLER
 
@@ -111,8 +101,6 @@ Bot pausar automatiskt vid:
   * SL följer toppen med –3 %
 
 Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
-
----
 
 ## 🧠 ML & LOGGNING
 
@@ -133,9 +121,6 @@ Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
 
   - ML-modellen tränas om automatiskt via `should_retrain.py` om tillräckligt många nya datapunkter loggats till `ml/data/snipes.jsonl`
 
-
----
-
 ## ⚙️ DRIFT & ÖVERVAKNING
 
 **Dagliga rutiner:**
@@ -154,8 +139,6 @@ Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
 * Pre-signering + sändning: < 50 ms
 * Jito-bundle-fördröjning: < 100 ms
 
----
-
 ## 🚀 FÖRBEREDANDE STEG
 
 Checklista inför drift:
@@ -166,16 +149,12 @@ Checklista inför drift:
 * [ ] Utför testköp med 0.1 SOL för latency-mätning
 * [ ] Säkerställ logging av varje trade (inkl PnL)
 
----
-
 ## ✅ IMPLEMENTERINGSPRINCIPER
 
 * Strict filter → inga “best effort”-trades
 * Exekvering först efter bekräftad signal
 * All logik testas i torrsim innan live
 * Skala endast när precision och ROI är validerade
-
----
 
 ### Exempelscenario – Lönsamhetsberäkning
 
@@ -189,8 +168,6 @@ Checklista inför drift:
 * Estimerad månadsvinst: 11–38 SOL
 * Risk per månad: max 50 SOL
 
----
-
 ## FILHANTERING & STRUKTUR
 
 - TS-tjänster ska bo i `src/ts/services/`
@@ -198,8 +175,6 @@ Checklista inför drift:
 - Typdefinitioner i `src/types/`
 - Testdata ska inte blandas med testlogik – lägg i `tests/integration/data/`
 - För varje ny service, skapa stub-test i `tests/unit/ts/`
-
----
 
 ## 📎 APPENDIX
 
