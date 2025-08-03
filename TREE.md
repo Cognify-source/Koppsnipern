@@ -7,12 +7,16 @@
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
+├── ml
+│   └── data
+│       └── snipes.jsonl
 ├── package-lock.json
 ├── package.json
 ├── pytest.ini
 ├── requirements.txt
 ├── scripts
 │   ├── airdrop.ts
+│   ├── should_retrain.py
 │   └── utils
 │       └── filterjson.py
 ├── src
@@ -49,4 +53,4 @@
 │       └── ts
 └── tsconfig.json
 
-20 directories, 30 files
+22 directories, 32 files
