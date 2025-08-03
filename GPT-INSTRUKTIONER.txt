@@ -27,18 +27,8 @@ När användaren säger:
 - "enligt playbooken"
 - "stämmer det här mot våra filter?"
 
-...så syftar de på `docs/sniper_playbook.md`. Läs den och följ instruktionerna där.
-
----
-
-## 📌 Måsten vid analys av sniperkod
-
-Följ alltid dessa regler (finns i §A–E i playbooken):
-
-1. Storleks- och fee-trappan ska följas exakt (§A, §B)
-2. Kontrollera rug-score ≥ 70 och SL −4 % / 45 sek (§C, §D)
-3. Respektera daglig risk-cap på 50 SOL (§E)
-4. Svara kortfattat – TODO-listor, kodsnuttar, JSON. Undvik uppsatser om inte det efterfrågas.
+...så syftar de på `docs/sniper_playbook.md`. Läs den och följ  alltid instruktionerna där. Är något oklart så kan du fråga.
+Svara kortfattat – TODO-listor, kodsnuttar, JSON. Undvik uppsatser om inte det efterfrågas.
 
 ---
 
