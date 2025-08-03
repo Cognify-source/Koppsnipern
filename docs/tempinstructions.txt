@@ -3,10 +3,9 @@
 
 ────────────────────────────────
 1.  Grundregler (hårda filter – kopierade från cupsyy, 30-dagars data)
-    • Trigger: Raydium **LaunchLab Initialize**-event ≤ **120 s** från pool-creation.  
-    • Liquidity: **6–20 SOL** initialt i poolen (sänkt från 40 för fler targets).  
+    • Trigger: Raydium **LaunchLab Initialize**-event måste ske inom **10 sekunder** från pool-creation.  
+    • Liquidity: **≥ 20 SOL** initialt i poolen.  
     • Token-filter:  
-      – dev-wallet **aldrig** tidigare snipat Raydium-pool  
       – mint **inte freezable / mintable**  
     • Insats per trade: **2–3 SOL** (konstant).  
     • Exit: enligt playbookens trailing TP-logik.  
