@@ -3,6 +3,7 @@
 ├── TREE.md
 ├── docs
 │   ├── handover.md
+│   ├── historic_pool_analysis.md
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
@@ -58,4 +59,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 36 files
+23 directories, 37 files
