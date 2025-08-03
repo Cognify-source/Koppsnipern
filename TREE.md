@@ -1,6 +1,5 @@
 .
 ├── GPT-INSTRUKTIONER.txt
-├── README.md
 ├── TREE.md
 ├── docs
 │   ├── handover.md
@@ -56,4 +55,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 38 files
+19 directories, 37 files
