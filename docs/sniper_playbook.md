@@ -169,7 +169,7 @@ Checklista:
 
 ## 11. 📎 APPENDIX
 
-- **Cupsyy wallet:** `suqh5s...`  
+- **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`  
 - **Dev-trigger:** se 2.1  
 - **Miljö:** forkad mainnet eller Devnet fallback  
 - **Slot-krav:** `slot_lag_p90 ≤ 1`
