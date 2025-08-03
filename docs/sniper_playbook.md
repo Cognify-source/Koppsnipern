@@ -1,4 +1,4 @@
-# Sniper-Playbook v2.5 (Uppdaterad 2025-08-03)
+# Sniper-Playbook v2.7 (Uppdaterad 2025-08-03)
 
 ## A · Trade-size & slippage (Cupsyy-anpassad)
 
@@ -23,20 +23,23 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 ## C · Filtrering & triggers (Cupsyy-mode)
 
 1. **Pool-filter:**
-   - Min 20 SOL WSOL-LP
+   - Min 20 SOL WSOL-LP *(skydd mot spoofade micro-pools)*
    - Slippage < 8% (för filtrering)
    - Creator fee ≤ 5 %
    - Godkänd metadata + ikon
    - Mint/freeze revoked
    - Owner balance < 5 %
    - Blockera deployers utan historik
-   - Dev-köp måste ha skett inom **10 sekunder** från pool creation, före vårt köp
    - **Rugcheck:**  
-     - Binär `is_safe == true` från t.ex. RugCheck eller Solsniffer  
-     - Ingen trade om deployer finns i blacklist  
-     - **Rug-score ≥ 70 används inte längre**, då det är långsammare och mindre pålitligt vid early stage
+     - Binär `is_safe == true` från t.ex. RugCheck/Solsniffer  
+     - Ingen trade om deployer är blacklisted eller känd rugger
 
-2. **Exekvering:**
+2. **Dev-trigger:**
+   - Dev-köp måste ha skett **inom 10 sekunder** från pool creation
+   - Dev-köpet måste vara **≥ 1 SOL**
+   - Dev får ej vara anonym med helt ny wallet
+
+3. **Exekvering:**
    - Vänta på att Cupsyy köper (wallet: `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`)
    - Skicka direkt när signal triggas
    - Ingen ny analys i kritiskt path
@@ -67,18 +70,20 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 
 ## E · Dev-trigger & volymlogik
 
-- Vi köper endast om dev köpt före oss (inom 10 sek)
+- Vi köper endast om dev köpt före oss (inom 10 sek och ≥ 1 SOL)
+- Dev-wallet får inte vara helt ny
 - Volym ignoreras – vi *orsakar* volymen
 
 ---
 
 ## F · Beteendemönster (härlett från Cupsyy)
 
-- Entry-size: se §A
-- Hålltid: 3–25 s, max 45 s om ingen vinst
-- Sälj: oftast vid +30–75 % ROI
-- Ingen DCA eller skalning
-- Max 2 öppna tokens
+- Köper direkt efter dev, oftast inom sekunder
+- Vanlig vinstnivå: +30–75 %
+- Vanlig hålltid: 5–25 sek
+- Följer sällan parallella trades eller DCA
+- Verkar undvika devs som byter wallet ofta (≥ 3 på ett dygn)
+- Accepterar viss risk för att gå in före rug-checkar är klara
 
 ---
 
