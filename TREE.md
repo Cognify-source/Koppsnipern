@@ -21,7 +21,6 @@
 │   │   └── jito.config.ts
 │   ├── ml
 │   │   ├── __init__.py
-│   │   ├── __pycache__
 │   │   ├── extract.py
 │   │   ├── features.py
 │   │   ├── ml_model.py
@@ -52,4 +51,4 @@
 │       └── ts
 └── tsconfig.json
 
-18 directories, 35 files
+17 directories, 35 files
