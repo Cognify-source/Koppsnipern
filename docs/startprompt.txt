@@ -5,12 +5,12 @@ Läs in följande dokument:
 Syfte: Återuppta utvecklingen av sniper-boten “Koppsnipern” enligt vår roadmap och utvecklingsstruktur.
 
 Steg:
-1. Läs in roadmapen i `handover.md`, sektion 10
-2. Kontrollera senaste status i `Senaste aktivitet` (sektion 12 om den finns)
+1. Läs in roadmapen i `handover.md`
+2. Kontrollera senaste status i `Senaste aktivitet`
 3. Fortsätt med nästa punkt i roadmapen
 
 Regler:
-- Följ alltid playbookens §A–E
+- Följ alltid playbookens instruktioner
 - Minimera tokens / onödig kontext
 - Arbeta modulärt, fil för fil
 - Uppdatera `handover.md` efter varje steg
