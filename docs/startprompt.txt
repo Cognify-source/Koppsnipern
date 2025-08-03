@@ -1,0 +1,3 @@
+Hej! Läs in `docs/handover.md` och `docs/sniper_playbook.md`.  
+Ladda in roadmapen och fortsätt enligt nästa punkt.  
+Senaste sektionen i `handover.md` visar vårt arbetsflöde.

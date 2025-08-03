@@ -158,4 +158,10 @@ För att möjliggöra effektiv utveckling av snipern över flera sessions och ch
 
 ---
 
+### 12. Senaste aktivitet
+- ✅ Punkt 1 i roadmap färdigställd (Feature/ML subprocess)
+- 🕒 Start nästa session: Punkt 2 – aktivera `rawEvent`
+
+---
+
 Den här playbooken ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
