@@ -25,13 +25,16 @@ Pooler med mindre än 20 SOL i WSOL-LP ignoreras. Trade-size är alltid 2–3 
 1. **Pool-filter:**
    - Min 20 SOL WSOL-LP
    - Slippage < 8% (för filtrering)
-   - Rug-score ≥ 70
    - Creator fee ≤ 5 %
    - Godkänd metadata + ikon
    - Mint/freeze revoked
    - Owner balance < 5 %
    - Blockera deployers utan historik
    - Dev-köp måste ha skett inom **10 sekunder** från pool creation, före vårt köp
+   - **Rugcheck:**  
+     - Binär `is_safe == true` från t.ex. RugCheck eller Solsniffer  
+     - Ingen trade om deployer finns i blacklist  
+     - **Rug-score ≥ 70 används inte längre**, då det är långsammare och mindre pålitligt vid early stage
 
 2. **Exekvering:**
    - Vänta på att Cupsyy köper (wallet: `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`)
