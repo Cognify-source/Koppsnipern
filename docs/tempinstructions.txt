@@ -1,85 +1,115 @@
-# TEMPINSTRUCTIONS (rensad & synkad med playbook)
+# TEMPINSTRUCTIONS (v2.1 – synkad & rensad)
 
-## SYFTE
-Bygga en Solana‑sniper som reagerar på Cupsyys köp i LaunchLab‑pooler.
-Mål: 90–95 % precision, latency < 350 ms, daglig riskbegränsning.
+## 🎯 SYFTE
+Bygga en Solana-sniper som reagerar på Cupsyys köp i LaunchLab-pooler.
 
----
-
-## STRATEGI
-Hybridmodell:
-1. Prediktiv filtrering: ML + feature-rules innan Cupsyy.
-2. Bekräftelse vid första Cupsyy-signatur.
-3. Rid på efterföljande flöde (copytraders).
+**Mål:**
+- 90–95 % precision
+- Total latency < 350 ms
+- Daglig riskkontroll och automatiserad loggning
 
 ---
 
-## INFRASTRUKTUR
+## 🧠 STRATEGIMODELL
 
-- **Dataflöde**: Yellowstone gRPC via Chainstack
-- **Sändväg**: Jito Block Engine (`sendBundle`, `x-jito-auth`)
-- **Placering**: EU (fsn1/nbg1), latency < 20 ms
-- **Mål**: slot_lag ≤ 1, RTT < 40 ms, kodlatens < 3 ms
-
----
-
-## TRADEPIPELINE
-
-1. Pool-init via Geyser → kör feature extraction och ML-score
-2. Skapa och signera swaps med olika priority-fees (i minnet)
-3. Vid Cupsyy-signal → välj optimal bundle, skicka via Jito
-4. Exit enligt SL/TP-regler i playbook §D
+1. **Prediktiv filtrering** (ML + feature-rules) direkt efter pool-init
+2. **Cupsyy-bekräftelse** vid första signatur
+3. **Exekvering** innan copytraders via Jito bundle
 
 ---
 
-## POOLFILTER
+## 🌐 INFRASTRUKTUR
 
-Följ regler i playbook §C, med tillägg:
-
-- **ML-score P(Cupsyy) ≥ 0.8** (vid tillgång till modell)
-- **RTT mot Jito får ej överskrida 150 ms**
-- **Timeout vid pool-init**: 500 ms max (enligt §C)
-
----
-
-## RISKKONTROLLER
-
-- Stoppa bot om:
-  - precision (senaste 50 trades) < 85 %
-  - dags‑P&L < –2 % av walletbalans
-  - RTT > 150 ms
-- Stop-loss: –4 % eller 45 sek (enligt §D)
-- Max 2 samtidiga trades per wallet (enligt §D)
-- Riskcap: 50 SOL per dygn
+- **Inströmning:** Yellowstone gRPC Geyser (Chainstack)
+- **Sändning:** Jito Block Engine (med `x-jito-auth`)
+- **Serverplacering:** EU (fsn1/nbg1) med RTT < 20 ms
+- **Mål:**  
+  - `slot_lag_p90 ≤ 1`  
+  - `RTT ≤ 40 ms`  
+  - `Kodlatens ≤ 3 ms`
 
 ---
 
-## KAPITAL & SKALNING
+## 📈 TRADEPIPELINE (flöde)
 
-- Start: 0.1–0.5 SOL (testfas)
+1. Pool-init upptäcks → starta feature extraction + ML-score
+2. Skapa signerade swaps i minnet med varierande priority-fee
+3. Vid Cupsyy-signal → välj optimal bundle, sänd via Jito
+4. Exit enligt regler i playbook §D
+
+---
+
+## 🧪 POOLFILTER
+
+Följ playbook §C, med dessa tillägg:
+
+- [x] ML-score `P(Cupsyy) ≥ 0.8` (om modell är laddad)  
+  → *Fallback: fortsätt utan ML om modellen saknas*
+- [x] RTT mot Jito ≤ 150 ms (övervakas per trade)
+- [x] Init-filter timeout ≤ 500 ms
+
+---
+
+## 🚨 RISKKONTROLLER
+
+Bot ska stoppas om något av följande inträffar:
+
+- [ ] Precision senaste 50 trades < 85 %
+- [ ] Dags-P&L < –2 % av walletbalans
+- [ ] RTT > 150 ms i fler än 3 trades i följd
+- [ ] Exekveringspris > 120 % av poolens startpris
+
+**Aktiva begränsningar:**
+- Max 2 samtidiga trades per wallet
+- Daglig riskcap: 50 SOL
+
+**Precision definition:**  
+Andel trades där Cupsyy köpte ≤ 10s före vår exekvering och ROI ≥ 0 %
+
+---
+
+## 📊 KAPITAL & SKALNING
+
+- Start: 0.1–0.5 SOL
 - Skala endast efter 100 trades med:
-  - ≥ 95 % precision
-  - +ROI netto
-- WSOL-LP-anpassad trade-size enligt playbook §A
+  - [x] Precision ≥ 95 %
+  - [x] Nettopositiv ROI
+- Följ trade-size logik enligt playbook §A (LP-anpassad, max 10 SOL)
+- Kontrollera att varje trade ger ≤ 3 % slippage innan sändning
 
 ---
 
-## LOGGNING & ML
+## 🧠 LOGGNING & ML
 
-- Logga varje trade: `slot_lag`, `fee_ratio`, `rug_score`, `outcome`
-- Nattlig summering: precision, median fee, slot_lag
-- Reträna ML-modell & uppdatera aliaslista var 10:e dag
+Per trade:
+- `slot_lag`, `fee_ratio`, `rug_score`, `outcome`, latency
+
+Nattlig rapport (exempel):
+- Snitt/slut-ROI, precision, slot_lag-stats, median fee
+- Rekommendation: skicka till Discord/webhook
+
+ML-rutin:
+- Reträna modell & uppdatera aliaslistor var 10:e dag
+- Logga fall där ML-score saknas
 
 ---
 
-## OPERATIVA RUTINER
+## ⚙️ OPERATIVA RUTINER
 
-- Backup av nycklar & konfig varje natt
-- Kontrollera latency & driftstatus varje morgon
+- Daglig backup av:
+  - Privata nycklar
+  - ML-konfig & logs
+- Driftstatus-kontroll varje morgon:
+  - gRPC-anslutning
+  - RTT mot Jito
+  - CPU/heap-utilisering
+  - Missade bundles
 
 ---
 
-Kommentarer:
-- Follower-signaler & alias-avvikande logik har strukits (kan ge falska triggers)
-- Priority-fee tuning & exitlogik följer `sniper_playbook.md`
-- Strategin och ML-gräns är behållna som tilläggsfilter
+## 🔖 SAMMANFATTNING
+
+> Implementera, logga, autotuna – skala först när precision + ROI bevisats i live-miljö.
+
+---
+
