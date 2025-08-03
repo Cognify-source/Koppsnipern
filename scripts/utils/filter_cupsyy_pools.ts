@@ -5,15 +5,12 @@ const CUPSYY_WALLET = 'suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK';
 const INPUT_FILE = 'launchlab_pools.json';
 const OUTPUT_FILE = 'cupsyy_pools.json';
 
-function loadJSON(path: string): any {
+function loadJSON(path: string): any[] {
   return JSON.parse(fs.readFileSync(path, 'utf-8'));
 }
 
-function extractCupsyyPools(data: any): any[] {
-  const all = data?.data?.solana?.instructions || [];
-  return all.filter((entry: any) => {
-    return entry?.transaction?.signer === CUPSYY_WALLET;
-  });
+function extractCupsyyPools(pools: any[]): any[] {
+  return pools.filter(entry => entry?.signer === CUPSYY_WALLET);
 }
 
 function main() {

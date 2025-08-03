@@ -5,18 +5,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BITQUERY_ENDPOINT = 'https://graphql.bitquery.io';
-const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj";
+const LAUNCHLAB_PROGRAM = 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj';
+const DAYS_BACK = 30;
 const OUTPUT_FILE = 'launchlab_pools.json';
+
+const since = new Date(Date.now() - DAYS_BACK * 86400 * 1000).toISOString();
 
 const query = JSON.stringify({
   query: `{
     solana(network: solana) {
       instructions(
-        limit: 1000
+        limit: 2000,
         where: {
-          Transaction: { Result: { Success: true } },
+          Transaction: { Result: { Success: true }, Block: { Time: { greaterThan: "${since}" } } },
           Instruction: {
-            Program: { Address: { is: "${LAUNCHLAB_PROGRAM}" }, Method: { is: "PoolCreateEvent" } }
+            Program: { Address: { is: "${LAUNCHLAB_PROGRAM}" } },
+            Method: { is: "initialize" }
           }
         }
       ) {
@@ -42,15 +46,13 @@ async function fetchLaunchlabPools() {
     console.error('❌ Ingen BITQUERY_ACCESS_TOKEN satt i .env');
     process.exit(1);
   }
-
   const options = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`
     },
   };
-
   const req = https.request(BITQUERY_ENDPOINT, options, res => {
     let data = '';
     res.on('data', chunk => data += chunk);
@@ -62,13 +64,13 @@ async function fetchLaunchlabPools() {
       try {
         const json = JSON.parse(data);
         const raw = json?.data?.solana?.instructions || [];
-        const compact = raw.map((entry: any) => {
-          const time = entry?.Block?.Time;
-          const signer = entry?.Transaction?.Signer;
-          const poolAddress = entry?.Instruction?.Accounts?.[4]?.Address;
-          const mintArg = entry?.Instruction?.Arguments?.find((a: any) => a?.Name === 'base_mint_param');
+        const compact = raw.map((e: any) => {
+          const time = e.Block?.Time;
+          const signer = e.Transaction?.Signer;
+          const poolAddress = e.Instruction?.Accounts?.[4]?.Address;
+          const mintArg = e.Instruction?.Arguments?.find((a: any) => a.Name === 'base_mint_param');
           const mint = mintArg?.Value?.string;
-          return { time, signer, poolAddress, mint };
+          return { time, signer, mint, poolAddress };
         });
         fs.writeFileSync(OUTPUT_FILE, JSON.stringify(compact, null, 2));
         console.log(`✅ ${compact.length} pooler sparade till ${OUTPUT_FILE}`);
@@ -77,10 +79,8 @@ async function fetchLaunchlabPools() {
       }
     });
   });
-
   req.on('error', console.error);
   req.write(query);
   req.end();
 }
-
 fetchLaunchlabPools();
