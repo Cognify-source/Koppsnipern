@@ -28,7 +28,6 @@
 │   │   └── train.py
 │   ├── ts
 │   │   ├── index.ts
-│   │   ├── json.d.ts
 │   │   ├── services
 │   │   └── utils
 │   └── types
@@ -51,4 +50,4 @@
 │       └── ts
 └── tsconfig.json
 
-17 directories, 35 files
+17 directories, 34 files
