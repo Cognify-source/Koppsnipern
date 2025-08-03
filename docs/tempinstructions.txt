@@ -1,138 +1,49 @@
-# Sniper-Playbook v3.0 (Koppsnipern)
+Sniping-regler & förutsättningar  
+(“Cupsyy-klonen” – 80–90 % mål-lönsamhet)
 
----
+────────────────────────────────
+1.  Grundregler (hårda filter – kopierade från cupsyy, 30-dagars data)
+    • Trigger: Raydium **LaunchLab Initialize**-event ≤ **120 s** från pool-creation.  
+    • Liquidity: **6–20 SOL** initialt i poolen (sänkt från 40 för fler targets).  
+    • Token-filter:  
+      – max **10 %** top-10 holders  
+      – dev-wallet **aldrig** tidigare snipat Raydium-pool  
+      – mint **inte freezable / mintable**  
+    • Insats per trade: **2–3 SOL** (konstant).  
+    • Timing: köp **1,2–2,3 s** efter event (±0,3 s jitter).  
+    • Exit:  
+      – **70 % sälj** vid **trailing +5 %**  
+      – **30 % sälj** vid **+8 %** eller **20 s timer**, vilket som kommer först.  
 
-## 🎯 SYFTE OCH STRATEGI
+────────────────────────────────
+2.  Teknisk stack
+    • **Helius Professional gRPC** (LaserStream) – 999 USD/mån (delad 250 USD/pers).  
+    • **Jito bundles** – tip 0.001–0.002 SOL per bundle för extra 100 ms edge.  
+    • **Pre-signade transaktioner** – laddas i RAM för < 50 ms send-time.  
+    • **WebSocket program-log** – lyssnar på Initialize-event direkt (ingår i Pro).  
+    • **3–4 burner-wallets** – roterar för att undvika detektering.  
 
-Sniper-bot för Solana LaunchLab-pooler. Exekverar strax efter Cupsyy.  
-Primärmål:
-- 90–95 % precision
-- Latens < 350 ms (E2E)
-- Stabil daglig nettovinst, max 50 SOL risk per dag
+────────────────────────────────
+3.  Latency-budget
+    • Helius gRPC → bot: **< 150 ms**  
+    • Pre-sign + send: **< 50 ms**  
+    • Jito-bundle: **< 100 ms** extra  
+    • Total försprång mot cupsyy: **200–300 ms** – tillräckligt för att front-run:a.
 
-**Modell:**
-1. Prediktiv filtrering (ML + feature rules)
-2. Bekräftelse: Cupsyy-signatur
-3. Exekvering: Jito-bundle innan copytraders
+────────────────────────────────
+4.  Kostnad & lönsamhet (2–3 SOL/trade, 7 trades/dag, 210/mån)
+    • Lyckade: 210 × 70 % = **147 trades**  
+    • Netto vinst/trade: 2.5 SOL × 4 % ≈ **0.10 SOL** (~15 USD)  
+    • Månadsbrutto: **≈ 14.7 SOL** (~2 200 USD)  
+    • Kostnad Helius Pro delad: **≈ 250 USD**  
+    • **Netto: ~1 950 USD / månad** (≈ 80 % lönsamhet).
 
----
+────────────────────────────────
+5.  Checklista innan launch
+    ☐ `.env` med `HELIUS_KEY`, `PRIVATE_KEY`, `RPC_URL`  
+    ☐ `gitignore` och burner-wallets klara  
+    ☐ Jito-tip-wallet med 0.1 SOL buffert  
+    ☐ Test-köp med 0.1 SOL för latency-mätning  
+    ☐ Loggning av varje trade för PnL-uppföljning
 
-## 📈 TRADEPIPELINE
-
-1. Pool upptäcks via Geyser
-2. Feature extraction → ML-score (om tillgänglig)
-3. Skapa signerade swap-transaktioner (flera fees)
-4. Vänta på Cupsyy-signal
-5. Skicka optimal Jito bundle
-6. Exit enligt regler
-
----
-
-## 🧪 FILTER & TRIGGERS
-
-### Hårda regler (måste uppfyllas):
-- WSOL-LP ≥ 20 SOL
-- Creator fee ≤ 5 %
-- Revoked mint/freeze
-- Deployern ej svartlistad
-- Rug-check:
-  - `is_safe == true`
-  - `rug_score ≥ 70`
-- Dev-trigger:
-  - Dev-köp ≥ 1 SOL inom 10 sek
-  - Wallet ≥ 72h gammal
-  - ≥ 5 buys > 0.5 SOL
-  - Deployern har historik
-
-### Tillägg:
-- ML-score `P(Cupsyy) ≥ 0.8` (om modell är laddad)
-- RTT ≤ 150 ms mot Jito (stoppa om > 3 trades i följd)
-- Filter-exekvering ≤ 500 ms
-- Slippage-estimat < 3 % för aktuell insats
-
----
-
-## 💰 KAPITAL & SKALNING
-
-- **Start:** 0.1–0.5 SOL (testfas)
-- **Skalning:** endast efter 100 trades med:
-  - ≥ 95 % precision
-  - Nettopositiv ROI
-- **Trade-size (enligt WSOL-LP):**
-  - 20–40 SOL → 2 SOL
-  - 40–60 SOL → 3 SOL
-  - 60–100 SOL → 5 SOL
-  - 100–150 SOL → 8 SOL
-  - >150 SOL → 10 SOL (hårt tak)
-- **Slippage-krav:** ≤ 3 % för vald storlek
-
----
-
-## 🔐 RISKKONTROLL
-
-Bot pausar automatiskt vid:
-
-- [ ] Precision (senaste 50 trades) < 85 %
-- [ ] Dags-P&L < –2 % av walletbalans
-- [ ] RTT > 150 ms i 3 trades i följd
-- [ ] Exekveringspris > 120 % av init-pris
-
-**Maxpositioner:** 2 samtidiga trades per wallet  
-**Riskcap:** 50 SOL per orchestrator/dag (återställs 00:00 UTC)
-
----
-
-## 📤 EXITREGLER
-
-- **Stop-loss (SL):**
-  - –4 % eller 45 sek timeout
-- **Trailing TP:**
-  - Aktiveras vid +12 %
-  - Lås vinster på +6 %
-  - SL följer toppen med –3 %
-
-Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
-
----
-
-## 🧠 ML & LOGGNING
-
-- **Per trade loggas:**
-  - `slot_lag`, `fee_ratio`, `rug_score`, `latency`, `outcome`
-- **Nattlig rapport:**
-  - Median ROI, fee, slot lag, precision
-  - Rek: skickas till Discord/webhook
-- **ML-modell:**
-  - Retränas var 10:e dag
-  - Alias-listor uppdateras parallellt
-  - Om ML-score saknas → fortsätt ändå
-
----
-
-## ⚙️ DRIFT & ÖVERVAKNING
-
-**Dagliga rutiner:**
-- Backup av privata nycklar + ML-konfig
-- Driftstatus-check varje morgon:
-  - gRPC-anslutning aktiv
-  - RTT mot Jito < 40 ms
-  - CPU/heap inom gräns
-  - Bundle-fel under tröskel
-
----
-
-## ✅ IMPLEMENTERINGSPRINCIPER
-
-- Strict filter → inga “best effort”-trades
-- Exekvering först efter bekräftad signal
-- All logik testas i torrsim innan live
-- Skala endast när precision och ROI är validerade
-
----
-
-## 📎 APPENDIX
-
-- **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`
-- **Dev-trigger-villkor:** se ovan
-- **Testmiljö:** forkad mainnet / Devnet fallback
-- **Slottid-krav:** `slot_lag_p90 ≤ 1`
+Kör – och följ loggarna.
