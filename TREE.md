@@ -38,9 +38,7 @@
 │   ├── conftest.py
 │   ├── integration
 │   │   ├── devnet-pool.json
-│   │   ├── orchestrator.test.js
 │   │   ├── orchestrator.test.ts
-│   │   ├── streamListener.e2e.test.js
 │   │   ├── streamListener.e2e.test.ts
 │   │   └── tradeService.devnet.test.ts
 │   └── unit
@@ -48,4 +46,4 @@
 │       └── ts
 └── tsconfig.json
 
-16 directories, 33 files
+16 directories, 31 files
