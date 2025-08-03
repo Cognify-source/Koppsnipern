@@ -74,6 +74,10 @@ Koppsnipern UPDATED Sniper Bot – Handover Playbook
   - LÄGG TILL: `express`-server för `/health`, `/metrics`.  
 - **ML re-training**  
   - SKRIV: script för att samla event, reträna modell var 10:e dag.
+- **safetyService.ts**
+  - SKAPA: modul för rugcheck, metadata-validering och blacklists
+- **tradePlanner.ts**
+  - SKAPA: modul för dev-trigger, latency-analys, pre-swap planning
 
 6. DESIGNBESLUT & KOMPROMISSER
 -----------------------------
@@ -88,15 +92,15 @@ Koppsnipern UPDATED Sniper Bot – Handover Playbook
 
 7. NYCKELFILERS PRIORITET & RELEVANS
 ------------------------------------
-1. **`src/ts/index.ts`** – hjärtat i orchestratorn, stub vs riktig loop.  
-2. **`src/ts/services/tradeService.ts`** – Raydium-swap‐logik, viktig för Devnet.  
-3. **`tsconfig.json`** + **`src/types/raydium-sdk/index.d.ts`**, **`src/types/json.d.ts`** – TypeScript-stubs.  
-4. **`tests/integration/orchestrator.test.ts`** – stub‐E2E, validerar orchestrator stub-läget.  
-5. **`tests/integration/tradeService.devnet.test.ts`** – Devnet-integration, kräver env-setup.  
-6. **`.env.example`** (lämpligen skapas) – dokumentation av alla nödvändiga env-vars.
+1. `src/ts/index.ts` – hjärtat i orchestratorn, stub vs riktig loop.  
+2. `src/ts/services/tradeService.ts` – Raydium-swap‐logik, viktig för Devnet.  
+3. `tsconfig.json` + `src/types/raydium-sdk/index.d.ts`, `src/types/json.d.ts` – TypeScript-stubs.  
+4. `tests/integration/orchestrator.test.ts` – stub‐E2E, validerar orchestrator stub-läget.  
+5. `tests/integration/tradeService.devnet.test.ts` – Devnet-integration, kräver env-setup.  
+6. `.env.example` (lämpligen skapas) – dokumentation av alla nödvändiga env-vars.
 
-### 7b. Modulöversikt & ansvar
-
+8. MODULÖVERSIKT & ANSVAR
+--------------------------
 Modulnamn | Fil | Ansvar
 ----------|-----|-------
 **StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events via WS. Triggar `onNewPool()`, skickar vidare för filtrering och dev-trigger.
@@ -109,26 +113,21 @@ Modulnamn | Fil | Ansvar
 **BundleSender** | `services/bundleSender.ts` | Jito Block Engine – bygger och skickar bundles (endast stub i nuläget).
 **orchestrator** | `src/ts/index.ts` | Huvudflödet – loopar över nya pooler, triggar alla steg enligt exekveringssekvens.
 
-Syfte: tydliggöra ansvar per fil för snabbare utveckling, buggsökning och roadmap-implementation.
-
-
-8. PÅBÖRJADE HALVFÄRDIGA KODAVSNITT
+9. PÅBÖRJADE HALVFÄRDIGA KODAVSNITT
 ----------------------------------
-- **`rawEvent`** i `index.ts` är hårdkodat dummy‐data; bör ersättas med riktig event‐parsing från Geyser.  
-- **RiskManager.recordPrices(0,0)** och `recordDailyPnl(0)` är placeholders.  
-- **Jito BundleSender** är stubb, ingen riktig endpointintegrering.
+- `rawEvent` i `index.ts` är hårdkodat dummy‐data; bör ersättas med riktig event‐parsing från Geyser.  
+- `RiskManager.recordPrices(0,0)` och `recordDailyPnl(0)` är placeholders.  
+- Jito BundleSender är stubb, ingen riktig endpointintegrering.
 
-9. LESSONS LEARNED & PATTERNs
+10. LESSONS LEARNED & PATTERNs
 -----------------------------
 - **Guard JSON.parse**: alltid fallback till `{}` om env saknas.  
 - **Stub tidigt**: isolera stub-läge innan resurs-initiering (keys, nätverk).  
 - **TS stub modules**: `paths` + `typeRoots` är effektiva för att injicera custom‐d.ts.  
 - **Jest async handles**: använd `--detectOpenHandles` / `--forceExit` för att få nedhängande handles att dö.
 
----
-
-### 10. Roadmap – Nästa utvecklingssteg
-
+11. Roadmap – Nästa utvecklingssteg
+-----------------------------------
 1. **Python-koppling för feature/ML**  
    Implementera subprocess-anrop i `featureService.ts` och `mlService.ts`. Hantera fallback, fel, timeouts.
 
@@ -150,35 +149,32 @@ Syfte: tydliggöra ansvar per fil för snabbare utveckling, buggsökning och roa
 7. **Retraining-skript för ML-modell**  
    Samla data efter varje trade. Schemalägg retraining var 10:e dag.
 
----
-
-### 11. Arbetsflöde för iterativ utveckling
-
+12. Arbetsflöde för iterativ utveckling
+---------------------------------------
 För att möjliggöra effektiv utveckling av snipern över flera sessions och chattar används följande strategi:
 
-#### 🧠 Kontextminne & Token-effektivitet
+### 🧠 Kontextminne & Token-effektivitet
 - All viktig kontext och projektstatus sparas i `handover.md`
 - Ny chatt = be GPT:  
   > “Läs in `docs/handover.md` och `docs/sniper_playbook.md`. Vi fortsätter därifrån.”
 
-#### 🔁 Roadmap & progress-logg
-- `Roadmap` (sektion 10) visar nästa steg
+### 🔁 Roadmap & progress-logg
+- `Roadmap` (sektion 11) visar nästa steg
 - Använd ✅, 🔄, ❌ framför varje punkt för att visa status:
   - ✅ = Klar
   - 🔄 = Pågående
   - ❌ = Avbruten / Pausad
 
-#### 📌 Best practice
+### 📌 Best practice
 - Lägg till ny information i `handover.md` direkt efter avslutad implementation eller beslut
 - Håll filen koncis – inga stora kodblock eller loggar
 - Vid nya funktioner: dokumentera beslut och koppla till relaterade filer
 
----
-
-### 12. Senaste aktivitet
+13. Senaste aktivitet
+---------------------
 - ✅ Punkt 1 i roadmap färdigställd (Feature/ML subprocess)
 - 🕒 Start nästa session: Punkt 2 – aktivera `rawEvent`
 
 ---
 
-Den här playbooken ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, befintlig testsvit, kända fallgropar och var de påbörjade delarna finns. Samtidigt är TODO-listan tydlig så next GPT direkt kan fortsätta implementera Python-integration, Jito Bundle, metrics, Docker, CI-airdrop och ML-retraining.```
+Denna playbook ger Koppsnipern UPDATED GPT full överblick på arkitektur, setup, testsvit och roadmap. Den är alltid aktuell.
