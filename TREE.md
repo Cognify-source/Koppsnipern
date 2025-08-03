@@ -16,8 +16,6 @@
 │   └── filterjson.py
 ├── src
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   └── __init__.cpython-311.pyc
 │   ├── config
 │   │   ├── default.ts
 │   │   └── jito.config.ts
@@ -54,4 +52,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 36 files
+18 directories, 35 files
