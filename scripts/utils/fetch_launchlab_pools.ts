@@ -4,11 +4,37 @@ import https from 'https';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"; 
-const DAYS_BACK = 30;
-
-const START_DATE = new Date(Date.now() - DAYS_BACK * 86400 * 1000).toISOString();
 const BITQUERY_ENDPOINT = 'https://graphql.bitquery.io';
+const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj";
+const OUTPUT_FILE = 'launchlab_pools.json';
+
+const query = JSON.stringify({
+  query: `{
+    solana(network: solana) {
+      instructions(
+        limit: 1000
+        where: {
+          Transaction: { Result: { Success: true } },
+          Instruction: {
+            Program: { Address: { is: "${LAUNCHLAB_PROGRAM}" }, Method: { is: "PoolCreateEvent" } }
+          }
+        }
+      ) {
+        Block { Time }
+        Transaction { Signer Signature }
+        Instruction {
+          Accounts { Address }
+          Arguments {
+            Name
+            Value {
+              ... on Solana_ABI_String_Value_Arg { string }
+            }
+          }
+        }
+      }
+    }
+  }`
+});
 
 async function fetchLaunchlabPools() {
   const token = process.env.BITQUERY_ACCESS_TOKEN || '';
@@ -16,25 +42,6 @@ async function fetchLaunchlabPools() {
     console.error('❌ Ingen BITQUERY_ACCESS_TOKEN satt i .env');
     process.exit(1);
   }
-
-  const query = JSON.stringify({
-    query: `{
-      solana {
-        instructions(
-          where: {
-            instruction: {
-              program: { address: { is: \"${LAUNCHLAB_PROGRAM}\" }, method: { is: \"PoolCreateEvent\" } },
-              block: { time: { greaterThan: \"${START_DATE}\" } }
-            }
-          }
-        ) {
-          block { time }
-          transaction { signer signature }
-          argument { base_mint_param curve_param vesting_param }
-        }
-      }
-    }`
-  });
 
   const options = {
     method: 'POST',
@@ -54,8 +61,17 @@ async function fetchLaunchlabPools() {
       }
       try {
         const json = JSON.parse(data);
-        fs.writeFileSync('launchlab_pools.json', JSON.stringify(json, null, 2));
-        console.log(`✅ Pooldata sparad till launchlab_pools.json`);
+        const raw = json?.data?.solana?.instructions || [];
+        const compact = raw.map((entry: any) => {
+          const time = entry?.Block?.Time;
+          const signer = entry?.Transaction?.Signer;
+          const poolAddress = entry?.Instruction?.Accounts?.[4]?.Address;
+          const mintArg = entry?.Instruction?.Arguments?.find((a: any) => a?.Name === 'base_mint_param');
+          const mint = mintArg?.Value?.string;
+          return { time, signer, poolAddress, mint };
+        });
+        fs.writeFileSync(OUTPUT_FILE, JSON.stringify(compact, null, 2));
+        console.log(`✅ ${compact.length} pooler sparade till ${OUTPUT_FILE}`);
       } catch (e) {
         console.error('❌ JSON parse error:', e);
       }
