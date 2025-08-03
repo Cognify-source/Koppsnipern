@@ -13,8 +13,6 @@
 ├── requirements.txt
 ├── scripts
 │   ├── airdrop.ts
-│   ├── backup.sh
-│   ├── deploy.sh
 │   └── filterjson.py
 ├── src
 │   ├── __init__.py
@@ -56,4 +54,4 @@
 │       └── ts
 └── tsconfig.json
 
-19 directories, 38 files
+19 directories, 36 files
