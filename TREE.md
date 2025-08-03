@@ -5,7 +5,6 @@
 │   ├── handover.md
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
-├── filterjson.py
 ├── jest.config.js
 ├── lightgbm_config.json
 ├── package-lock.json
@@ -15,7 +14,8 @@
 ├── scripts
 │   ├── airdrop.ts
 │   ├── backup.sh
-│   └── deploy.sh
+│   ├── deploy.sh
+│   └── filterjson.py
 ├── src
 │   ├── __init__.py
 │   ├── __pycache__
