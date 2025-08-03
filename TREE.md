@@ -19,6 +19,7 @@
 ├── scripts
 │   ├── airdrop.ts
 │   └── utils
+│       ├── backtest_strategy.ts
 │       ├── fetch_launchlab_pools.ts
 │       ├── fetch_price_movement.ts
 │       ├── filter_cupsyy_pools.ts
@@ -57,4 +58,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 35 files
+23 directories, 36 files
