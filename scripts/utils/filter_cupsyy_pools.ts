@@ -1,7 +1,7 @@
 // scripts/utils/filter_cupsyy_pools.ts
 import fs from 'fs';
 
-const CUPSYY_WALLET = 'suqh5s...'; // Fyll i fullständiga adressen
+const CUPSYY_WALLET = 'suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK';
 const INPUT_FILE = 'launchlab_pools.json';
 const OUTPUT_FILE = 'cupsyy_pools.json';
 
