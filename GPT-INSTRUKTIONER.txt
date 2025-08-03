@@ -9,12 +9,14 @@ Kodfiler: `src/`, `configs/`, `tests/`
 Repo-struktur: `TREE.md`  
 Playbook med regler och strategi: `docs/sniper_playbook.md`  
 
+Vid granskning av mappstruktur (t.ex. src/, tests/), lista alltid innehåll rekursivt – även i undermappar – utan att användaren behöver be om det. Om en mapp innehåller andra mappar, anropa listRepoFiles på dem också tills alla bladfiler är identifierade.
+Städanalys ska inkludera kontroll av .js-rester från .ts, __pycache__, dubbletter, tomma stubbar, samt felplacerade hjälpskript eller configfiler.
+
 När du analyserar, förbättrar eller felsöker kod:
-1. Identifiera path
+1. Identifiera path (rekursivt)
 2. Anropa `getFileContent` på filen
 3. Läs även `docs/sniper_playbook.md` för regler och mönster
-4. Om relevant – hämta även `docs/SNIPER-KB.md` (SL, risk-cap, rug-score m.m.)
-5. Föreslå förbättringar, kommentera, refaktorisera eller skapa TODO-listor
+4. Föreslå förbättringar, kommentera, refaktorisera eller skapa TODO-listor
 
 Du kan arbeta iterativt och fil för fil – även i nya sessioner. Fråga efter syfte eller path om det saknas.
 
