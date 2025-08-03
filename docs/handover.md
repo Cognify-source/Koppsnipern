@@ -69,7 +69,7 @@
 Modulnamn | Fil | Ansvar
 ----------|-----|-------
 **StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events, triggar `onNewPool`
-**safetyService** | `services/safetyService.ts` (NY) | Rug-checks, metadata, blacklist
+**safetyService** | `services/safetyService.ts` | Kör rug-check via API (med 500 ms timeout), validerar metadata, ikoner, revoked, blacklist. Returnerar `isSafe: true/false`. Körs parallellt med ML och dev-trigger.
 **tradePlanner** | `services/tradePlanner.ts` (NY) | Dev-trigger, latency, pre-swap
 **TradeService** | `services/tradeService.ts` | Skapar & skickar swaps
 **RiskManager** | `services/riskManager.ts` | Stop-loss, riskcap, TP

@@ -34,7 +34,9 @@ Slippage vid exekvering är ≤ 3 %, men vid filtrering kan upp till 8 % til
 - Deployern ej blacklistad
 - **Rug-check:**  
   - `is_safe == true` och `rug_score ≥ 70`
-  - Fallback: ignorera poolen om check timeoutar eller saknas
+- Rug-check sker parallellt med metadata och feature extraction
+- Timeout: 500 ms → om ingen respons → pool ignoreras
+- Inget “best effort” – osäkra eller ofullständiga pooler blockeras direkt
 
 ### 2. Dev-trigger (måste uppfyllas):
 - Dev-köp ≥ 1 SOL inom 10 sek från pool creation
