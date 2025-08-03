@@ -1,115 +1,138 @@
-# TEMPINSTRUCTIONS (v2.1 – synkad & rensad)
+# Sniper-Playbook v3.0 (Koppsnipern)
 
-## 🎯 SYFTE
-Bygga en Solana-sniper som reagerar på Cupsyys köp i LaunchLab-pooler.
+---
 
-**Mål:**
+## 🎯 SYFTE OCH STRATEGI
+
+Sniper-bot för Solana LaunchLab-pooler. Exekverar strax efter Cupsyy.  
+Primärmål:
 - 90–95 % precision
-- Total latency < 350 ms
-- Daglig riskkontroll och automatiserad loggning
+- Latens < 350 ms (E2E)
+- Stabil daglig nettovinst, max 50 SOL risk per dag
+
+**Modell:**
+1. Prediktiv filtrering (ML + feature rules)
+2. Bekräftelse: Cupsyy-signatur
+3. Exekvering: Jito-bundle innan copytraders
 
 ---
 
-## 🧠 STRATEGIMODELL
+## 📈 TRADEPIPELINE
 
-1. **Prediktiv filtrering** (ML + feature-rules) direkt efter pool-init
-2. **Cupsyy-bekräftelse** vid första signatur
-3. **Exekvering** innan copytraders via Jito bundle
-
----
-
-## 🌐 INFRASTRUKTUR
-
-- **Inströmning:** Yellowstone gRPC Geyser (Chainstack)
-- **Sändning:** Jito Block Engine (med `x-jito-auth`)
-- **Serverplacering:** EU (fsn1/nbg1) med RTT < 20 ms
-- **Mål:**  
-  - `slot_lag_p90 ≤ 1`  
-  - `RTT ≤ 40 ms`  
-  - `Kodlatens ≤ 3 ms`
+1. Pool upptäcks via Geyser
+2. Feature extraction → ML-score (om tillgänglig)
+3. Skapa signerade swap-transaktioner (flera fees)
+4. Vänta på Cupsyy-signal
+5. Skicka optimal Jito bundle
+6. Exit enligt regler
 
 ---
 
-## 📈 TRADEPIPELINE (flöde)
+## 🧪 FILTER & TRIGGERS
 
-1. Pool-init upptäcks → starta feature extraction + ML-score
-2. Skapa signerade swaps i minnet med varierande priority-fee
-3. Vid Cupsyy-signal → välj optimal bundle, sänd via Jito
-4. Exit enligt regler i playbook §D
+### Hårda regler (måste uppfyllas):
+- WSOL-LP ≥ 20 SOL
+- Creator fee ≤ 5 %
+- Revoked mint/freeze
+- Deployern ej svartlistad
+- Rug-check:
+  - `is_safe == true`
+  - `rug_score ≥ 70`
+- Dev-trigger:
+  - Dev-köp ≥ 1 SOL inom 10 sek
+  - Wallet ≥ 72h gammal
+  - ≥ 5 buys > 0.5 SOL
+  - Deployern har historik
+
+### Tillägg:
+- ML-score `P(Cupsyy) ≥ 0.8` (om modell är laddad)
+- RTT ≤ 150 ms mot Jito (stoppa om > 3 trades i följd)
+- Filter-exekvering ≤ 500 ms
+- Slippage-estimat < 3 % för aktuell insats
 
 ---
 
-## 🧪 POOLFILTER
+## 💰 KAPITAL & SKALNING
 
-Följ playbook §C, med dessa tillägg:
-
-- [x] ML-score `P(Cupsyy) ≥ 0.8` (om modell är laddad)  
-  → *Fallback: fortsätt utan ML om modellen saknas*
-- [x] RTT mot Jito ≤ 150 ms (övervakas per trade)
-- [x] Init-filter timeout ≤ 500 ms
+- **Start:** 0.1–0.5 SOL (testfas)
+- **Skalning:** endast efter 100 trades med:
+  - ≥ 95 % precision
+  - Nettopositiv ROI
+- **Trade-size (enligt WSOL-LP):**
+  - 20–40 SOL → 2 SOL
+  - 40–60 SOL → 3 SOL
+  - 60–100 SOL → 5 SOL
+  - 100–150 SOL → 8 SOL
+  - >150 SOL → 10 SOL (hårt tak)
+- **Slippage-krav:** ≤ 3 % för vald storlek
 
 ---
 
-## 🚨 RISKKONTROLLER
+## 🔐 RISKKONTROLL
 
-Bot ska stoppas om något av följande inträffar:
+Bot pausar automatiskt vid:
 
-- [ ] Precision senaste 50 trades < 85 %
+- [ ] Precision (senaste 50 trades) < 85 %
 - [ ] Dags-P&L < –2 % av walletbalans
-- [ ] RTT > 150 ms i fler än 3 trades i följd
-- [ ] Exekveringspris > 120 % av poolens startpris
+- [ ] RTT > 150 ms i 3 trades i följd
+- [ ] Exekveringspris > 120 % av init-pris
 
-**Aktiva begränsningar:**
-- Max 2 samtidiga trades per wallet
-- Daglig riskcap: 50 SOL
-
-**Precision definition:**  
-Andel trades där Cupsyy köpte ≤ 10s före vår exekvering och ROI ≥ 0 %
+**Maxpositioner:** 2 samtidiga trades per wallet  
+**Riskcap:** 50 SOL per orchestrator/dag (återställs 00:00 UTC)
 
 ---
 
-## 📊 KAPITAL & SKALNING
+## 📤 EXITREGLER
 
-- Start: 0.1–0.5 SOL
-- Skala endast efter 100 trades med:
-  - [x] Precision ≥ 95 %
-  - [x] Nettopositiv ROI
-- Följ trade-size logik enligt playbook §A (LP-anpassad, max 10 SOL)
-- Kontrollera att varje trade ger ≤ 3 % slippage innan sändning
+- **Stop-loss (SL):**
+  - –4 % eller 45 sek timeout
+- **Trailing TP:**
+  - Aktiveras vid +12 %
+  - Lås vinster på +6 %
+  - SL följer toppen med –3 %
 
----
-
-## 🧠 LOGGNING & ML
-
-Per trade:
-- `slot_lag`, `fee_ratio`, `rug_score`, `outcome`, latency
-
-Nattlig rapport (exempel):
-- Snitt/slut-ROI, precision, slot_lag-stats, median fee
-- Rekommendation: skicka till Discord/webhook
-
-ML-rutin:
-- Reträna modell & uppdatera aliaslistor var 10:e dag
-- Logga fall där ML-score saknas
+Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
 
 ---
 
-## ⚙️ OPERATIVA RUTINER
+## 🧠 ML & LOGGNING
 
-- Daglig backup av:
-  - Privata nycklar
-  - ML-konfig & logs
-- Driftstatus-kontroll varje morgon:
-  - gRPC-anslutning
-  - RTT mot Jito
-  - CPU/heap-utilisering
-  - Missade bundles
-
----
-
-## 🔖 SAMMANFATTNING
-
-> Implementera, logga, autotuna – skala först när precision + ROI bevisats i live-miljö.
+- **Per trade loggas:**
+  - `slot_lag`, `fee_ratio`, `rug_score`, `latency`, `outcome`
+- **Nattlig rapport:**
+  - Median ROI, fee, slot lag, precision
+  - Rek: skickas till Discord/webhook
+- **ML-modell:**
+  - Retränas var 10:e dag
+  - Alias-listor uppdateras parallellt
+  - Om ML-score saknas → fortsätt ändå
 
 ---
 
+## ⚙️ DRIFT & ÖVERVAKNING
+
+**Dagliga rutiner:**
+- Backup av privata nycklar + ML-konfig
+- Driftstatus-check varje morgon:
+  - gRPC-anslutning aktiv
+  - RTT mot Jito < 40 ms
+  - CPU/heap inom gräns
+  - Bundle-fel under tröskel
+
+---
+
+## ✅ IMPLEMENTERINGSPRINCIPER
+
+- Strict filter → inga “best effort”-trades
+- Exekvering först efter bekräftad signal
+- All logik testas i torrsim innan live
+- Skala endast när precision och ROI är validerade
+
+---
+
+## 📎 APPENDIX
+
+- **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`
+- **Dev-trigger-villkor:** se ovan
+- **Testmiljö:** forkad mainnet / Devnet fallback
+- **Slottid-krav:** `slot_lag_p90 ≤ 1`
