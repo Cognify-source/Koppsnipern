@@ -95,6 +95,23 @@ Koppsnipern UPDATED Sniper Bot – Handover Playbook
 5. **`tests/integration/tradeService.devnet.test.ts`** – Devnet-integration, kräver env-setup.  
 6. **`.env.example`** (lämpligen skapas) – dokumentation av alla nödvändiga env-vars.
 
+### 7b. Modulöversikt & ansvar
+
+Modulnamn | Fil | Ansvar
+----------|-----|-------
+**StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events via WS. Triggar `onNewPool()`, skickar vidare för filtrering och dev-trigger.
+**safetyService** | _(rekommenderad ny modul)_ | Rug-checks, metadata-validering, blacklist/whitelist-hantering.
+**tradePlanner** | _(rekommenderad ny modul)_ | Dev-trigger-logik, latency-mätning, slippage-estimat. Förbereder swap men skickar ej.
+**TradeService** | `services/tradeService.ts` | Bygger och skickar swap-transaktioner. Hanterar fee, slippage och pooldata.
+**RiskManager** | `services/riskManager.ts` | Stop-loss, trailing TP, position control, daglig riskcap.
+**MLService** | `services/mlService.ts` | Anropar LightGBM för scoring av pooler.
+**FeatureService** | `services/featureService.ts` | Kör Python-skript för feature extraction på nya pooler.
+**BundleSender** | `services/bundleSender.ts` | Jito Block Engine – bygger och skickar bundles (endast stub i nuläget).
+**orchestrator** | `src/ts/index.ts` | Huvudflödet – loopar över nya pooler, triggar alla steg enligt exekveringssekvens.
+
+Syfte: tydliggöra ansvar per fil för snabbare utveckling, buggsökning och roadmap-implementation.
+
+
 8. PÅBÖRJADE HALVFÄRDIGA KODAVSNITT
 ----------------------------------
 - **`rawEvent`** i `index.ts` är hårdkodat dummy‐data; bör ersättas med riktig event‐parsing från Geyser.  
