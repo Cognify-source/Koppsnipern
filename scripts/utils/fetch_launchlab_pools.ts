@@ -1,6 +1,8 @@
 // scripts/utils/fetch_launchlab_pools.ts
 import fs from 'fs';
 import https from 'https';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const LAUNCHLAB_PROGRAM = "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"; 
 const DAYS_BACK = 30;
@@ -9,6 +11,12 @@ const START_DATE = new Date(Date.now() - DAYS_BACK * 86400 * 1000).toISOString()
 const BITQUERY_ENDPOINT = 'https://graphql.bitquery.io';
 
 async function fetchLaunchlabPools() {
+  const token = process.env.BITQUERY_ACCESS_TOKEN || '';
+  if (!token) {
+    console.error('❌ Ingen BITQUERY_ACCESS_TOKEN satt i .env');
+    process.exit(1);
+  }
+
   const query = JSON.stringify({
     query: `{
       solana {
@@ -32,7 +40,7 @@ async function fetchLaunchlabPools() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-KEY': process.env.BITQUERY_API_KEY || '',
+      'Authorization': `Bearer ${token}`,
     },
   };
 
@@ -40,6 +48,10 @@ async function fetchLaunchlabPools() {
     let data = '';
     res.on('data', chunk => data += chunk);
     res.on('end', () => {
+      if (res.statusCode !== 200) {
+        console.error(`❌ Bitquery API fel (${res.statusCode}):\n${data}`);
+        return;
+      }
       try {
         const json = JSON.parse(data);
         fs.writeFileSync('launchlab_pools.json', JSON.stringify(json, null, 2));

@@ -1,6 +1,8 @@
 // scripts/utils/fetch_price_movement.ts
 import fs from 'fs';
 import https from 'https';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const INPUT_FILE = 'cupsyy_pools.json';
 const OUTPUT_FILE = 'price_movements.json';
@@ -30,19 +32,30 @@ function buildQuery(mint: string, startTime: string): string {
 }
 
 async function fetchPricesForMint(mint: string, time: string): Promise<any> {
+  const token = process.env.BITQUERY_ACCESS_TOKEN || '';
+  if (!token) {
+    console.error('❌ Ingen BITQUERY_ACCESS_TOKEN satt i .env');
+    process.exit(1);
+  }
+
   const query = buildQuery(mint, time);
   const options = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-API-KEY': process.env.BITQUERY_API_KEY || '',
+      'Authorization': `Bearer ${token}`,
     },
   };
+
   return new Promise((resolve, reject) => {
     const req = https.request(BITQUERY_ENDPOINT, options, res => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
+        if (res.statusCode !== 200) {
+          console.error(`❌ Bitquery API fel (${res.statusCode}):\n${data}`);
+          return reject(new Error(`Bitquery API-fel ${res.statusCode}`));
+        }
         try {
           const json = JSON.parse(data);
           resolve(json);
