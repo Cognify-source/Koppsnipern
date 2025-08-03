@@ -8,15 +8,16 @@
 │   └── startprompt.txt
 ├── jest.config.js
 ├── ml
-│   └── data
-│       └── snipes.jsonl
+│   ├── data
+│   │   └── snipes.jsonl
+│   └── scripts
+│       └── should_retrain.py
 ├── package-lock.json
 ├── package.json
 ├── pytest.ini
 ├── requirements.txt
 ├── scripts
 │   ├── airdrop.ts
-│   ├── should_retrain.py
 │   └── utils
 │       └── filterjson.py
 ├── src
@@ -53,4 +54,4 @@
 │       └── ts
 └── tsconfig.json
 
-22 directories, 32 files
+23 directories, 32 files
