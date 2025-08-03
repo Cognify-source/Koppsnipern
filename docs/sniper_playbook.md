@@ -1,4 +1,4 @@
-# Sniper-Playbook v3.0 (Koppsnipern)
+# Sniper-Playbook v3.1 (Koppsnipern)
 
 ---
 
@@ -25,6 +25,8 @@ Primärmål:
 4. Vänta på Cupsyy-signal
 5. Skicka optimal Jito bundle
 6. Exit enligt regler
+7. Validera att poolen är en faktisk LaunchLab:  
+   → Raydium `Initialize`-event måste ske inom **10 sekunder** från pool-creation
 
 **Precision-definition:**  
 Andel trades där Cupsyy köpt ≤ 10s innan vår exekvering och ROI ≥ 0 %
@@ -123,6 +125,23 @@ Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
   - CPU/heap inom gräns
   - Bundle-fel under tröskel
 
+**Latencybudget (mål):**
+- Geyser → bot: < 150 ms
+- Pre-signering + sändning: < 50 ms
+- Jito-bundle-fördröjning: < 100 ms
+
+---
+
+## 🚀 FÖRBEREDANDE STEG
+
+Checklista inför drift:
+
+- [ ] `.env` med `RPC_URL`, `PRIVATE_KEY`, `JITO_AUTH`
+- [ ] `gitignore` korrekt konfigurerad
+- [ ] Tip-wallet för Jito innehåller minst 0.1 SOL
+- [ ] Utför testköp med 0.1 SOL för latency-mätning
+- [ ] Säkerställ logging av varje trade (inkl PnL)
+
 ---
 
 ## ✅ IMPLEMENTERINGSPRINCIPER
@@ -140,3 +159,12 @@ Ex: vid +30 % → SL = +27 %, vid +60 % → SL = +57 %
 - **Dev-trigger-villkor:** se ovan
 - **Testmiljö:** forkad mainnet / Devnet fallback
 - **Slottid-krav:** `slot_lag_p90 ≤ 1`
+
+### Exempelscenario – Lönsamhetsberäkning
+
+- Snitt: 7 trades/dag = 210/månad
+- Lyckade trades (70 %): ~147
+- Genomsnittlig vinst: 2.5 SOL × 4 % = ~0.10 SOL/trade
+- Månadsbrutto: 14.7 SOL (~2 200 USD)
+- Infrastrukturkostnad (delad): ~250 USD
+- Netto: ~1 950 USD / månad (~80 % lönsamhet)
