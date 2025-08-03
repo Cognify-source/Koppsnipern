@@ -174,13 +174,6 @@ Checklista inför drift:
 
 ---
 
-## 📎 APPENDIX
-
-* **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`
-* **Dev-trigger-villkor:** se ovan
-* **Testmiljö:** forkad mainnet / Devnet fallback
-* **Slottid-krav:** `slot_lag_p90 ≤ 1`
-
 ### Exempelscenario – Lönsamhetsberäkning
 
 * Totalt lanserade LaunchLab-pooler/månad: \~1 200
@@ -192,3 +185,22 @@ Checklista inför drift:
 * Vinst per trade: 0.06–0.35 SOL
 * Estimerad månadsvinst: 11–38 SOL
 * Risk per månad: max 50 SOL
+
+---
+
+## FILHANTERING & STRUKTUR
+
+- TS-tjänster ska bo i `src/ts/services/`
+- ML-moduler i `src/ml/`
+- Typdefinitioner i `src/types/`
+- Testdata ska inte blandas med testlogik – lägg i `tests/integration/data/`
+- För varje ny service, skapa stub-test i `tests/unit/ts/`
+
+---
+
+## 📎 APPENDIX
+
+* **Cupsyy wallet:** `suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`
+* **Dev-trigger-villkor:** se ovan
+* **Testmiljö:** forkad mainnet / Devnet fallback
+* **Slottid-krav:** `slot_lag_p90 ≤ 1`

@@ -49,7 +49,6 @@
 - [ ] SKAPA: `services/tradePlanner.ts` – dev-trigger, latency, pre-swap
 - [ ] 📦 (SENARE) Lägg till `docker-compose.yml` för att köra orchestrator + ML parallellt
 
-
 ## 6. DESIGNBESLUT & KOMPROMISSER
 
 - Stub-mode initieras tidigt (före .env-load)
@@ -113,6 +112,13 @@ Modulnamn | Fil | Ansvar
 
 - ✅ Punkt 1 klar: Feature/ML subprocess
 - 🕒 Startpunkt: Geyser `rawEvent`
+
+## 14. UTVECKLINGSSTANDARDER
+
+- Projektet är optimerat för GitHub Codespaces – Dockerfile/Docker Compose är valbara och bör införas vid behov av driftmiljö.
+- Inga `.js`-filer eller `.pyc`/`__pycache__` ska versionshanteras.
+- Alla hjälpskript ska bo i `scripts/` eller `scripts/utils/`.
+- Konfigfiler för ML bör ligga under `src/ml/config/` eller `configs/`.
 
 ---
 
