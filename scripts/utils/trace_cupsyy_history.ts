@@ -25,7 +25,16 @@ interface TradeRecord {
 async function main() {
   const cutoffTime = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
   let before: string | undefined = undefined;
-  const trades: TradeRecord[] = [];
+  const outPath = path.join(__dirname, '../../data/cupsyy_trades.json');
+
+  // Load previous trades if file exists
+  let trades: TradeRecord[] = [];
+  if (fs.existsSync(outPath)) {
+    trades = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+    before = trades[trades.length - 1]?.sig;
+    console.log(`🔁 Continuing from last signature: ${before}`);
+  }
+
   let totalChecked = 0;
   let skippedNoTime = 0;
 
@@ -41,13 +50,16 @@ async function main() {
     for (const sigInfo of signatures) {
       if (sigInfo.blockTime && sigInfo.blockTime < cutoffTime) {
         console.log('🛑 Reached cutoff time');
-        before = undefined;
-        break;
+        return finish(trades, outPath, totalChecked, skippedNoTime);
       } else if (!sigInfo.blockTime) {
         skippedNoTime++;
       }
 
       totalChecked++;
+      if (totalChecked % 20 === 0) {
+        const oldestSoFar = trades[trades.length - 1]?.ts;
+        console.log(`⏱ Oldest so far: ${oldestSoFar} (${new Date((oldestSoFar ?? 0) * 1000).toISOString()})`);
+      }
 
       const tx = await connection.getParsedTransaction(sigInfo.signature, {
         maxSupportedTransactionVersion: 0,
@@ -79,16 +91,23 @@ async function main() {
       }
     }
 
-    if (!before && signatures.length > 0) {
+    if (signatures.length > 0) {
       before = signatures[signatures.length - 1].signature;
     } else {
       break;
     }
   }
 
-  const outPath = path.join(__dirname, '../../data/cupsyy_trades.json');
+  return finish(trades, outPath, totalChecked, skippedNoTime);
+}
+
+function finish(trades: TradeRecord[], outPath: string, totalChecked: number, skippedNoTime: number) {
   fs.writeFileSync(outPath, JSON.stringify(trades, null, 2));
   console.log(`✅ Saved ${trades.length} trades to ${outPath}`);
+  if (trades.length > 0) {
+    const oldest = trades[trades.length - 1].ts;
+    console.log(`📅 Oldest trade timestamp: ${oldest} (${new Date((oldest ?? 0) * 1000).toISOString()})`);
+  }
   console.log(`🔍 Scanned ${totalChecked} transactions total (${skippedNoTime} without blockTime)`);
 }
 
