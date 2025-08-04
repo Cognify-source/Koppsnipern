@@ -34,6 +34,7 @@
 │   └── utils
 │       ├── backtest_strategy.ts
 │       ├── fetch_price_movement.ts
+│       ├── fetch_price_window.ts
 │       ├── quick_history_scan.ts
 │       └── trace_cupsyy_history.ts
 ├── src
@@ -70,4 +71,4 @@
 │       └── ts
 └── tsconfig.json
 
-25 directories, 46 files
+25 directories, 47 files
