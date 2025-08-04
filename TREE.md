@@ -7,8 +7,6 @@
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
-├── launchlab_methods.json
-├── launchlab_tx_debug.json
 ├── ml
 │   ├── ML-KB.md
 │   ├── data
@@ -33,6 +31,7 @@
 │       ├── filter_cupsyy_participation.ts
 │       ├── filter_cupsyy_pools.ts
 │       ├── inspect_mint_origin.ts
+│       ├── scan_cupyy_swaps.ts
 │       └── scan_launchlab_rpc.ts
 ├── src
 │   ├── __init__.py
@@ -68,4 +67,4 @@
 │       └── ts
 └── tsconfig.json
 
-24 directories, 45 files
+24 directories, 44 files
