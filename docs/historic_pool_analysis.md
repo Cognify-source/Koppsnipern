@@ -1,64 +1,62 @@
 # 📊 Historic Pool Analysis – Koppsnipern
 
-Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-pooler där Cupsyy handlat, och förbereda dessa för prisanalys och backtesting enligt sniper_playbook.md.
+Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-, Bonk- och Raydium CPMM-trades från Cupsyys wallethistorik, för att sedan analysera prisrörelse och backtesta strategin enligt sniper\_playbook.md.
 
 ---
 
-## 🔁 Översikt: Processflöde
+## 🔁 Översikt: Ny process (wallet-baserad)
 
-1. **Scanna poolskapelser (RPC)**
-   - `scan_launchlab_rpc.ts`
-   - Går igenom slots, letar efter transaktioner som anropar LaunchLab-programmet (`LanMV9...`)
-   - Output: `{ slot, signature }[]` → `launchlab_pools_*.json`
+1. **Scanna Cupsyys transaktionshistorik**
 
-2. **Filtrera transaktioner signerade av Cupsyy**
-   - `filter_cupsyy_participation.ts`
-   - Går igenom transaktionerna i `launchlab_pools`
-   - Output: `cupsyy_pools.json`
+   * Nytt script: `trace_cupsyy_history.ts`
+   * Hämtar transaktioner bakåt i tiden från Cupsyys wallet via `getSignaturesForAddress`
+   * Output: `cupsyy_history.json`
 
-3. **Identifiera faktiska swaps av Cupsyy**
-   - `scan_cupsyy_swaps.ts`
-   - Skannar 120 slots efter varje match
-   - Loggar transaktioner där Cupsyy faktiskt swappat
-   - Output: `cupsyy_swaps.json`
+2. **Filtrera relevanta program**
 
-4. **Prisanalys (kommande)**
-   - `extract_price_movements.ts`
-   - Analyserar prisrörelse första 60 sekunder efter varje Cupsyy-swap
-   - Input: `cupsyy_swaps.json`
-   - Output: `price_movements.json`
+   * Inspektera varje transaktion:
+
+     * LaunchLab (`LanMV9...`)
+     * Bonk Launchpad
+     * Raydium CPMM
+   * Märk varje post med `poolType`
+   * Output: `cupsyy_trades.json`
+
+3. **Prisanalys** *(kommande)*
+
+   * `extract_price_movements.ts`
+   * Analyserar prisrörelse första 60 sekunder efter varje trade
+   * Input: `cupsyy_trades.json`
+   * Output: `price_movements.json`
+
+4. **Strategiutvärdering** *(kommande)*
+
+   * Körs via `backtest_strategy.ts`
+   * Input: `price_movements.json`
+   * Output: `backtest_results.json`
 
 ---
 
 ## 📦 Outputfiler
 
-| Fil                     | Innehåll                                     |
-|-------------------------|----------------------------------------------|
-| `launchlab_pools_*.json`| Poolskapelser via LaunchLab-programmet       |
-| `cupsyy_pools.json`     | Transaktioner signerade av Cupsyy            |
-| `cupsyy_swaps.json`     | Transaktioner där Cupsyy faktiskt handlat    |
-| `price_movements.json`  | Prisutveckling per pool (under utveckling)   |
-| `backtest_results.json` | Resultat av strategi-backtest (kommande)     |
+| Fil                     | Innehåll                                 |
+| ----------------------- | ---------------------------------------- |
+| `cupsyy_history.json`   | Råa transaktioner signerade av Cupsyy    |
+| `cupsyy_trades.json`    | Filtrerade trades (LaunchLab/Bonk/CPMM)  |
+| `price_movements.json`  | Prisutveckling per trade (kommande)      |
+| `backtest_results.json` | Resultat av strategi-backtest (kommande) |
 
 ---
 
 ## 🧰 Verktyg
 
-- Alla script körs via `npx ts-node scripts/utils/<filnamn>.ts`
-- RPC används för all datahämtning via Chainstack
-- Inget behov av Bitquery eller Moralis längre
+* Alla script körs via `npx ts-node scripts/utils/<filnamn>.ts`
+* Data hämtas direkt via Solana RPC (Chainstack)
+* Bitquery och Moralis används inte
 
 ---
 
-## 🧭 Nästa steg
+## 🔜 Nästa steg
 
-- Samla in mer data: scanna fler slots (upp till 30 dagar)
-- När tillräcklig mängd Cupsyy-swaps hittats:
-  - Kör `extract_price_movements.ts` (att skapa)
-  - Påbörja strategiutvärdering
-
----
-
-## 🔄 Notering
-
-Vi har övergett Bitquery och Moralis p.g.a. bristande stöd för LaunchLab-händelser. All data hämtas nu direkt från Solana via RPC.
+* Skapa `trace_cupsyy_history.ts`
+* Därefter `extract_price_movements.ts` och `backtest_strategy.ts`
