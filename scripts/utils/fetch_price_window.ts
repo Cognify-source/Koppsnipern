@@ -51,8 +51,11 @@ async function main() {
 
   poolBar.start(pools.length, 0);
 
-  for (const pool of pools) {
+  const limitedPools = pools.slice(0, 1);
+
+  for (const pool of limitedPools) {
     const { mint, slot, sig, ts } = pool;
+    console.log(`🔍 Bearbetar mint: ${mint} @ slot ${slot}`);
     output[mint] = [];
     const slotRange = Array.from({ length: 120 }, (_, i) => slot + i);
     const batches = chunk(slotRange, 5);
@@ -66,6 +69,8 @@ async function main() {
             maxSupportedTransactionVersion: 0,
           });
           if (!block) return [];
+
+          console.log(`⏳ Slot ${s} hämtad, ${block.transactions.length} tx`);
 
           const txMatches: PriceObservation[] = [];
           for (const txSig of block.transactions.map(tx => tx.transaction.signatures[0])) {
