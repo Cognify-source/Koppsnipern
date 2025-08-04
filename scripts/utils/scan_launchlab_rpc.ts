@@ -1,4 +1,4 @@
-// scan_launchlab_rpc.ts
+// scripts/utils/scan_launchlab_rpc.ts
 import { Connection, PublicKey } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as path from 'path';
