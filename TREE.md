@@ -33,7 +33,8 @@
 │   │   └── scan_launchlab_rpc.ts
 │   └── utils
 │       ├── backtest_strategy.ts
-│       └── fetch_price_movement.ts
+│       ├── fetch_price_movement.ts
+│       └── trace_cupsyy_history.ts
 ├── src
 │   ├── __init__.py
 │   ├── config
@@ -68,4 +69,4 @@
 │       └── ts
 └── tsconfig.json
 
-25 directories, 44 files
+25 directories, 45 files
