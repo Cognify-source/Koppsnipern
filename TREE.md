@@ -34,6 +34,7 @@
 │   └── utils
 │       ├── backtest_strategy.ts
 │       ├── fetch_price_movement.ts
+│       ├── quick_history_scan.ts
 │       └── trace_cupsyy_history.ts
 ├── src
 │   ├── __init__.py
@@ -69,4 +70,4 @@
 │       └── ts
 └── tsconfig.json
 
-25 directories, 45 files
+25 directories, 46 files
