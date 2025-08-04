@@ -1,3 +1,4 @@
+// scripts/utils/fetch_launchlab_tx_debug.ts
 import fs from 'fs';
 import https from 'https';
 import dotenv from 'dotenv';
@@ -5,7 +6,7 @@ dotenv.config();
 
 const BITQUERY_ENDPOINT = 'https://graphql.bitquery.io';
 const OUTPUT_FILE = 'launchlab_tx_debug.json';
-const TX_HASH = '5AQPdEjpuVTV8XE4A2q7BfugiNG73G4WFSLapML3KK6SNmpAAbvp5E36iRfZmf78qXKbjHJhYVLc3g58EJ3ei2rN';
+const TX_HASH = '3Nhj22zJNR2s83W6dD5HySg9jUqqEB2LFezzjLGbsWKassRyphinzHoCmCLz2J2AUHbVRBs3rmkW7Zd8exZDGpJt';
 
 const query = JSON.stringify({
   query: `{

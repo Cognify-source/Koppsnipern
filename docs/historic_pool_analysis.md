@@ -2,34 +2,30 @@
 
 Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchLab-pooler som Cupsyy deltagit i – i syfte att testa snipingstrategin enligt sniper_playbook.md.
 
+---
+
 ## 🔁 Översikt: Processflöde
 
 1. **Hämta alla LaunchLab-pooler (senaste 30 dagar)**  
    → `fetch_launchlab_pools.ts` (via Bitquery, metod: PoolCreateEvent)  
    ⚠️ För närvarande returneras 0 träffar. Bitquery verkar inte indexera dessa korrekt.
 
-2. **Alternativ strategi: Använd DEX Screener eller Moralis API**  
-   → Under utredning – syftar till att samla historiska pooler utan Bitquery
+2. **Alternativa datakällor testade**
+   - DEX Screener → saknar historiskt sökbar endpoint
+   - Moralis API → visar inga LaunchLab-pooler
+   - Bitquery per transaktion → returnerar tomt resultat, även på äldre tx
 
-3. **Filtrera fram pooler Cupsyy köpt från**  
-   → `filter_cupsyy_pools.ts`
+3. **Verifikation via Solana RPC**
+   - Script `inspect_mint_origin.ts` skapades
+   - Bekräftade att transaktioner *använder LaunchLab-programmet* (LanMV9...)
+   - Men Bitquery returnerar ändå `[]` för dessa transaktioner
 
-4. **Hämta prisrörelse första minuten för varje pool**  
-   → `fetch_price_movement.ts`
-
-5. **Simulera vår strategi mot prisrörelsen**  
-   → `backtest_strategy.ts`
-
----
-
-## 📁 Filöversikt
-
-| Fil                                      | Syfte                                             |
-| ---------------------------------------- | ------------------------------------------------- |
-| `scripts/utils/fetch_launchlab_pools.ts` | Hämtar LaunchLab-pooler via Bitquery GraphQL      |
-| `scripts/utils/filter_cupsyy_pools.ts`   | Filtrerar på Cupsyys signeraddress                |
-| `scripts/utils/fetch_price_movement.ts`  | Hämtar trades för varje mint under första minuten |
-| `scripts/utils/backtest_strategy.ts`     | Simulerar strategi (entry, trailing TP/SL, exit)  |
+4. **Klassificering av pooltyp**
+   → Viktigt eftersom Cupsyy tradar både:
+     - LaunchLab
+     - Bonk Launchpad
+     - Raydium CPMM  
+   → Framtida strategi bör inkludera `identify_pool_source.ts`
 
 ---
 
@@ -52,10 +48,18 @@ Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchL
 
 ---
 
-## 🧪 Exempel: Stegvis körning
+## 📌 Nästa steg
 
-```bash
-npx ts-node scripts/utils/fetch_launchlab_pools.ts
-npx ts-node scripts/utils/filter_cupsyy_pools.ts
-npx ts-node scripts/utils/fetch_price_movement.ts
-npx ts-node scripts/utils/backtest_strategy.ts
+1. Skriv `identify_pool_source.ts`  
+   → Givet en transaktion, avgör: LaunchLab, Bonk, CPMM
+
+2. Välj annan metod än Bitquery för att få ut historiska pooler  
+   → Ev. genom att indexera token-mint och program-ID via RPC
+
+3. När data finns:
+   - Filtrera Cupsyy via signer
+   - Dra prisrörelse första minuten
+   - Kör `backtest_strategy.ts`
+
+---
+
