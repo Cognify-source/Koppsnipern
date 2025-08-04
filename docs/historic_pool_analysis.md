@@ -2,6 +2,8 @@
 
 Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchLab-pooler som Cupsyy deltagit i – i syfte att testa snipingstrategin enligt sniper_playbook.md.
 
+⚠️ OBS: Cupsyy tradar inte enbart LaunchLab-pooler utan även Bonk och Raydium CPMM. Detta kräver att vår pipeline särskiljer pooltyp per transaktion.
+
 ---
 
 ## 🔁 Översikt: Processflöde
@@ -29,6 +31,14 @@ Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchL
 
 ---
 
+## 📂 Inspektionsverktyg
+
+| Script                    | Syfte                                                             |
+|--------------------------|-------------------------------------------------------------------|
+| `inspect_mint_origin.ts` | Slår upp senaste transaktioner för en mint, visar program-ID mm.  |
+
+---
+
 ## 📦 Outputfiler
 
 | Fil                     | Innehåll                           |
@@ -48,7 +58,7 @@ Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchL
 
 ---
 
-## 📌 Nästa steg
+## 🔜 Nästa steg
 
 1. Skriv `identify_pool_source.ts`  
    → Givet en transaktion, avgör: LaunchLab, Bonk, CPMM
@@ -63,3 +73,7 @@ Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchL
 
 ---
 
+## 🔁 Om Bitquery förblir opålitligt
+
+- Bygg en RPC-baserad poolscanner som lyssnar på LaunchLab-programmet
+- Alternativt: logga nya token-mints och klassificera dem via program-ID
