@@ -30,7 +30,8 @@
 │       ├── fetch_price_movement.ts
 │       ├── filter_cupsyy_pools.ts
 │       ├── filterjson.py
-│       └── inspect_mint_origin.ts
+│       ├── inspect_mint_origin.ts
+│       └── scan_launchlab_rpc.ts
 ├── src
 │   ├── __init__.py
 │   ├── config
@@ -65,4 +66,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 43 files
+23 directories, 44 files
