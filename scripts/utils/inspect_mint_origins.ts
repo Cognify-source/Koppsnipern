@@ -1,10 +1,9 @@
-// scripts/utils/inspect_mint_origin.ts
 import https from 'https';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const RPC_ENDPOINT = 'https://api.mainnet-beta.solana.com';
-const MINT = process.argv[2]; // t.ex. mint-adress från terminalen
+const MINT = process.argv[2];
 if (!MINT) {
   console.error('⚠️ Ange mint-address som argument');
   process.exit(1);
