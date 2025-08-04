@@ -16,7 +16,7 @@ Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-, Bonk- och R
 
    * Inspektera varje transaktion:
 
-     * LaunchLab (`LanMV9...`)
+     * LaunchLab (`LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj`)
      * Bonk Launchpad
      * Raydium CPMM
    * Märk varje post med `poolType`
