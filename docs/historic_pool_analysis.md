@@ -1,79 +1,64 @@
-# Koppsnipern – Backtest Pipeline Sammanfattning
+# 📊 Historic Pool Analysis – Koppsnipern
 
-Denna fil sammanfattar processen för att hämta, filtrera och backtesta LaunchLab-pooler som Cupsyy deltagit i – i syfte att testa snipingstrategin enligt sniper_playbook.md.
-
-⚠️ OBS: Cupsyy tradar inte enbart LaunchLab-pooler utan även Bonk och Raydium CPMM. Detta kräver att vår pipeline särskiljer pooltyp per transaktion.
+Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-pooler där Cupsyy handlat, och förbereda dessa för prisanalys och backtesting enligt sniper_playbook.md.
 
 ---
 
 ## 🔁 Översikt: Processflöde
 
-1. **Hämta alla LaunchLab-pooler (senaste 30 dagar)**  
-   → `fetch_launchlab_pools.ts` (via Bitquery, metod: PoolCreateEvent)  
-   ⚠️ För närvarande returneras 0 träffar. Bitquery verkar inte indexera dessa korrekt.
+1. **Scanna poolskapelser (RPC)**
+   - `scan_launchlab_rpc.ts`
+   - Går igenom slots, letar efter transaktioner som anropar LaunchLab-programmet (`LanMV9...`)
+   - Output: `{ slot, signature }[]` → `launchlab_pools_*.json`
 
-2. **Alternativa datakällor testade**
-   - DEX Screener → saknar historiskt sökbar endpoint
-   - Moralis API → visar inga LaunchLab-pooler
-   - Bitquery per transaktion → returnerar tomt resultat, även på äldre tx
+2. **Filtrera transaktioner signerade av Cupsyy**
+   - `filter_cupsyy_participation.ts`
+   - Går igenom transaktionerna i `launchlab_pools`
+   - Output: `cupsyy_pools.json`
 
-3. **Verifikation via Solana RPC**
-   - Script `inspect_mint_origin.ts` skapades
-   - Bekräftade att transaktioner *använder LaunchLab-programmet* (LanMV9...)
-   - Men Bitquery returnerar ändå `[]` för dessa transaktioner
+3. **Identifiera faktiska swaps av Cupsyy**
+   - `scan_cupsyy_swaps.ts`
+   - Skannar 120 slots efter varje match
+   - Loggar transaktioner där Cupsyy faktiskt swappat
+   - Output: `cupsyy_swaps.json`
 
-4. **Klassificering av pooltyp**
-   → Viktigt eftersom Cupsyy tradar både:
-     - LaunchLab
-     - Bonk Launchpad
-     - Raydium CPMM  
-   → Framtida strategi bör inkludera `identify_pool_source.ts`
-
----
-
-## 📂 Inspektionsverktyg
-
-| Script                    | Syfte                                                             |
-|--------------------------|-------------------------------------------------------------------|
-| `inspect_mint_origin.ts` | Slår upp senaste transaktioner för en mint, visar program-ID mm.  |
+4. **Prisanalys (kommande)**
+   - `extract_price_movements.ts`
+   - Analyserar prisrörelse första 60 sekunder efter varje Cupsyy-swap
+   - Input: `cupsyy_swaps.json`
+   - Output: `price_movements.json`
 
 ---
 
 ## 📦 Outputfiler
 
-| Fil                     | Innehåll                           |
-| ----------------------- | ---------------------------------- |
-| `launchlab_pools.json`  | Alla LaunchLab-pooler (rådata)     |
-| `cupsyy_pools.json`     | Pooler där Cupsyy tradat           |
-| `price_movements.json`  | Prisdata för dessa pooler 0–60 sek |
-| `backtest_results.json` | Resultat för simulering per pool   |
+| Fil                     | Innehåll                                     |
+|-------------------------|----------------------------------------------|
+| `launchlab_pools_*.json`| Poolskapelser via LaunchLab-programmet       |
+| `cupsyy_pools.json`     | Transaktioner signerade av Cupsyy            |
+| `cupsyy_swaps.json`     | Transaktioner där Cupsyy faktiskt handlat    |
+| `price_movements.json`  | Prisutveckling per pool (under utveckling)   |
+| `backtest_results.json` | Resultat av strategi-backtest (kommande)     |
 
 ---
 
-## ⚙️ Förutsättningar
+## 🧰 Verktyg
 
-* `.env` måste innehålla giltig `BITQUERY_ACCESS_TOKEN`
-* Kör kommandon från projektroten
-* Använd `npx ts-node` om `ts-node` ej är globalt installerad
-
----
-
-## 🔜 Nästa steg
-
-1. Skriv `identify_pool_source.ts`  
-   → Givet en transaktion, avgör: LaunchLab, Bonk, CPMM
-
-2. Välj annan metod än Bitquery för att få ut historiska pooler  
-   → Ev. genom att indexera token-mint och program-ID via RPC
-
-3. När data finns:
-   - Filtrera Cupsyy via signer
-   - Dra prisrörelse första minuten
-   - Kör `backtest_strategy.ts`
+- Alla script körs via `npx ts-node scripts/utils/<filnamn>.ts`
+- RPC används för all datahämtning via Chainstack
+- Inget behov av Bitquery eller Moralis längre
 
 ---
 
-## 🔁 Om Bitquery förblir opålitligt
+## 🧭 Nästa steg
 
-- Bygg en RPC-baserad poolscanner som lyssnar på LaunchLab-programmet
-- Alternativt: logga nya token-mints och klassificera dem via program-ID
+- Samla in mer data: scanna fler slots (upp till 30 dagar)
+- När tillräcklig mängd Cupsyy-swaps hittats:
+  - Kör `extract_price_movements.ts` (att skapa)
+  - Påbörja strategiutvärdering
+
+---
+
+## 🔄 Notering
+
+Vi har övergett Bitquery och Moralis p.g.a. bristande stöd för LaunchLab-händelser. All data hämtas nu direkt från Solana via RPC.
