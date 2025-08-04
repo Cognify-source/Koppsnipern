@@ -1,5 +1,5 @@
 // scripts/utils/fetch_price_window.ts
-import { Connection, ParsedConfirmedTransaction } from '@solana/web3.js';
+import { Connection, ParsedConfirmedTransaction, PublicKey } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import cliProgress from 'cli-progress';
@@ -33,6 +33,29 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedConfirmedTransaction | null)[]> {
+  const maxRetries = 5;
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await connection.getParsedTransactions(signatures, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch (e: any) {
+      if (e?.code === -32005) {
+        const waitMs = parseInt(e?.data?.try_again_in || '500', 10);
+        console.warn(`⏳ RPS-limit, väntar ${waitMs}ms...`);
+        await delay(waitMs);
+        attempt++;
+      } else {
+        throw e;
+      }
+    }
+  }
+  throw new Error('❌ Max antal retries överskridet');
 }
 
 async function main() {
@@ -72,27 +95,30 @@ async function main() {
 
           console.log(`⏳ Slot ${s} hämtad, ${block.transactions.length} tx`);
 
+          const txSigs = block.transactions.map(tx => tx.transaction.signatures[0]);
+          const txChunks = chunk(txSigs, 10);
           const txMatches: PriceObservation[] = [];
-          for (const txSig of block.transactions.map(tx => tx.transaction.signatures[0])) {
-            await delay(100);
-            const parsedTx: ParsedConfirmedTransaction | null = await connection.getParsedTransaction(txSig, {
-              commitment: 'confirmed',
-              maxSupportedTransactionVersion: 0,
-            });
-            if (!parsedTx) continue;
 
-            const accounts = parsedTx.transaction.message.accountKeys.map(k => k.pubkey.toBase58());
-            if (accounts.includes(mint)) {
-              txMatches.push({
-                slot: s,
-                sig,
-                ts,
-                mint,
-                txSig,
-                accounts,
-              });
-            }
+          for (const group of txChunks) {
+            await delay(100);
+            const parsedTxs = await safeGetParsedTransactions(group);
+
+            parsedTxs.forEach((parsedTx, i) => {
+              if (!parsedTx) return;
+              const accounts = parsedTx.transaction.message.accountKeys.map(k => k.pubkey.toBase58());
+              if (accounts.includes(mint)) {
+                txMatches.push({
+                  slot: s,
+                  sig,
+                  ts,
+                  mint,
+                  txSig: group[i],
+                  accounts,
+                });
+              }
+            });
           }
+
           return txMatches;
         } catch (e) {
           console.warn(`⚠️ Misslyckades att hämta/parsa slot ${s}:`, e);
