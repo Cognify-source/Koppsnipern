@@ -16,3 +16,4 @@ __pycache__/
 
 # Ignorera lokal datafil
 data/cupsyy_trades.json
+data/quick_history_report.json

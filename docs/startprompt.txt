@@ -1,6 +1,7 @@
 Läs in följande dokument:
 - `docs/handover.md`
 - `docs/sniper_playbook.md`
+- `docs/historic_pool_analysis.md`
 
 Syfte: Återuppta utvecklingen av sniper-boten “Koppsnipern” enligt vår roadmap och utvecklingsstruktur.
 

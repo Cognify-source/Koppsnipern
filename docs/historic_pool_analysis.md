@@ -1,39 +1,27 @@
 # 📊 Historic Pool Analysis – Koppsnipern
 
-Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-, Bonk- och Raydium CPMM-trades från Cupsyys wallethistorik, för att sedan analysera prisrörelse och backtesta strategin enligt sniper\_playbook.md.
+Denna fil dokumenterar nuvarande analyskedja för att identifiera och analysera Cupsyys LaunchLab-, Bonk- och Raydium CPMM-trades via wallethistorik, samt backtesta strategin enligt sniper_playbook.md.
 
 ---
 
-## 🔁 Översikt: Ny process (wallet-baserad)
+## 🔁 Ny analyskedja (wallet-baserad)
 
 1. **Scanna Cupsyys transaktionshistorik**
+   - Script: `trace_cupsyy_history.ts`
+   - Hämtar *alla* transaktioner bakåt i tiden från Cupsyys wallet (via Chainstack archive node)
+   - Batchar och filtrerar direkt på program-ID
+   - Output: `cupsyy_trades.json` (endast relevanta trades)
 
-   * Nytt script: `trace_cupsyy_history.ts`
-   * Hämtar transaktioner bakåt i tiden från Cupsyys wallet via `getSignaturesForAddress`
-   * Output: `cupsyy_history.json`
+2. **Prisanalys** *(kommande steg)*
+   - Script: `extract_price_movements.ts`
+   - Hämtar prisrörelse första 60 sekunder efter varje trade
+   - Input: `cupsyy_trades.json`
+   - Output: `price_movements.json`
 
-2. **Filtrera relevanta program**
-
-   * Inspektera varje transaktion:
-
-     * LaunchLab (`LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj`)
-     * Bonk Launchpad
-     * Raydium CPMM
-   * Märk varje post med `poolType`
-   * Output: `cupsyy_trades.json`
-
-3. **Prisanalys** *(kommande)*
-
-   * `extract_price_movements.ts`
-   * Analyserar prisrörelse första 60 sekunder efter varje trade
-   * Input: `cupsyy_trades.json`
-   * Output: `price_movements.json`
-
-4. **Strategiutvärdering** *(kommande)*
-
-   * Körs via `backtest_strategy.ts`
-   * Input: `price_movements.json`
-   * Output: `backtest_results.json`
+3. **Strategiutvärdering**
+   - Script: `backtest_strategy.ts`
+   - Input: `price_movements.json`
+   - Output: `backtest_results.json`
 
 ---
 
@@ -41,22 +29,23 @@ Denna fil dokumenterar analyskedjan för att identifiera LaunchLab-, Bonk- och R
 
 | Fil                     | Innehåll                                 |
 | ----------------------- | ---------------------------------------- |
-| `cupsyy_history.json`   | Råa transaktioner signerade av Cupsyy    |
 | `cupsyy_trades.json`    | Filtrerade trades (LaunchLab/Bonk/CPMM)  |
 | `price_movements.json`  | Prisutveckling per trade (kommande)      |
 | `backtest_results.json` | Resultat av strategi-backtest (kommande) |
 
 ---
 
-## 🧰 Verktyg
+## 🧰 Verktyg och Metodik
 
-* Alla script körs via `npx ts-node scripts/utils/<filnamn>.ts`
-* Data hämtas direkt via Solana RPC (Chainstack)
-* Bitquery och Moralis används inte
+- Kör script via `npx ts-node scripts/utils/<filnamn>.ts`
+- Data hämtas direkt från Chainstack archive node (Solana RPC)
+- Ingen Bitquery, ingen Moralis – all data tas från blockchain
+- Batchad filtrering av program-ID sker innan djupanalys för att minska datamängd och öka fart
+- **Endast relevanta signatures sparas** för vidare analys
 
 ---
 
 ## 🔜 Nästa steg
 
-* Skapa `trace_cupsyy_history.ts`
-* Därefter `extract_price_movements.ts` och `backtest_strategy.ts`
+- Vidareutveckla scriptet för batchad program-filtrering och effektiv trade-extraktion
+- Implementera och köra prisanalys och backtest på filtrerade trades
