@@ -15,5 +15,5 @@ __pycache__/
 .env
 
 # Ignorera lokal datafil
-data/cupsyy_trades.json
+data/cupsyy_pools.json
 data/quick_history_report.json

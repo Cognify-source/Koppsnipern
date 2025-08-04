@@ -1,5 +1,5 @@
-// scripts/utils/trace_cupsyy_history.ts
-import { Connection, PublicKey, ParsedInstruction, ParsedTransactionWithMeta } from '@solana/web3.js';
+// scripts/utils/trace_cupsyy_history.ts (optimerad för pooltracking + 10h + throttling)
+import { Connection, PublicKey, ParsedMessageAccount, ParsedInstruction, ConfirmedSignatureInfo } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -10,105 +10,100 @@ const CUPSYY_WALLET = new PublicKey('suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK
 
 const PROGRAM_IDS = {
   launchlab: 'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj',
-  bonk: 'BoNk8kD1F6E6JXAvR7rSBHryh7s8WjRxYNoZw4v5ZJAq',
-  raydium_cpmm: 'RVKd61ztZW9GdKzGZkz3d4KxYHTz77uVZsZaf1dF8Vt',
 };
 
-interface TradeRecord {
+function log(msg: string) {
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] ${msg}`);
+}
+
+interface PoolRecord {
   sig: string;
   slot: number;
   ts: number | null;
-  type: string;
-  tokens: [string, number][];
+  mint: string;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
 }
 
 async function main() {
-  const cutoffTime = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
+  const cutoffTime = Math.floor(Date.now() / 1000) - 10 * 3600;
   let before: string | undefined = undefined;
-  const outPath = path.join(__dirname, '../../data/cupsyy_trades.json');
+  const outPath = path.join(__dirname, '../../data/cupsyy_pools.json');
 
-  // Load previous trades if file exists
-  let trades: TradeRecord[] = [];
-  if (fs.existsSync(outPath)) {
-    trades = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
-    before = trades[trades.length - 1]?.sig;
-    console.log(`🔁 Continuing from last signature: ${before}`);
-  }
-
+  let pools: PoolRecord[] = [];
   let totalChecked = 0;
   let skippedNoTime = 0;
 
-  console.log(`⏳ Fetching trades since ${new Date(cutoffTime * 1000).toISOString()}`);
-
   while (true) {
-    const signatures: Awaited<ReturnType<typeof connection.getSignaturesForAddress>> = await connection.getSignaturesForAddress(CUPSYY_WALLET, {
-      limit: 1000,
-      before,
-    });
+    const signatures: ConfirmedSignatureInfo[] = await connection.getSignaturesForAddress(CUPSYY_WALLET, { limit: 1000, before });
     if (signatures.length === 0) break;
 
-    for (const sigInfo of signatures) {
-      if (sigInfo.blockTime && sigInfo.blockTime < cutoffTime) {
-        console.log('🛑 Reached cutoff time');
-        return finish(trades, outPath, totalChecked, skippedNoTime);
-      } else if (!sigInfo.blockTime) {
-        skippedNoTime++;
-      }
+    const relevant = signatures.filter(sig => sig.blockTime && sig.blockTime >= cutoffTime);
+    totalChecked += relevant.length;
+    if (relevant.length === 0) break;
 
-      totalChecked++;
-      if (totalChecked % 20 === 0) {
-        const oldestSoFar = trades[trades.length - 1]?.ts;
-        console.log(`⏱ Oldest so far: ${oldestSoFar} (${new Date((oldestSoFar ?? 0) * 1000).toISOString()})`);
-      }
+    const batches = chunk(relevant, 5);
+    for (const batch of batches) {
+      await new Promise(res => setTimeout(res, 200));
 
-      const tx = await connection.getParsedTransaction(sigInfo.signature, {
-        maxSupportedTransactionVersion: 0,
-      });
-      if (!tx?.transaction || !tx.meta) continue;
+      const results = await Promise.allSettled(batch.map(sigInfo =>
+        connection.getParsedTransaction(sigInfo.signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
+        }).then(tx => ({ tx, sigInfo }))
+      ));
 
-      const instructions = tx.transaction.message.instructions as ParsedInstruction[];
-      const programKeys = instructions.map(ix => ix.programId.toBase58());
-      const matchedType = Object.entries(PROGRAM_IDS).find(([_type, id]) => programKeys.includes(id));
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { tx, sigInfo } = result.value;
 
-      if (matchedType) {
-        const tokenMap = new Map<string, number>();
-        for (const t of tx.meta.postTokenBalances || []) {
-          const mint = t.mint;
-          const amount = t.uiTokenAmount.uiAmount ?? 0;
-          tokenMap.set(mint, (tokenMap.get(mint) || 0) + amount);
-        }
-        const tokens: [string, number][] = Array.from(tokenMap.entries());
+        if (!tx?.transaction || !tx.meta || tx.meta.err !== null) continue;
+        if ((tx.meta.postTokenBalances ?? []).length === 0) continue;
+        if ((tx.meta.logMessages ?? []).some(l => l.includes('Instruction: Memo'))) continue;
 
-        console.log(`📌 Match: ${sigInfo.signature} [${matchedType[0]}]`);
+        const accountKeys = tx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey);
+        const instructions = tx.transaction.message.instructions as ParsedInstruction[];
 
-        trades.push({
-          sig: sigInfo.signature,
-          slot: sigInfo.slot,
-          ts: sigInfo.blockTime ?? null,
-          type: matchedType[0],
-          tokens,
+        const programKeys = instructions.map(ix => {
+          try {
+            return 'programId' in ix ? ix.programId.toBase58() : '(okänd)';
+          } catch (e) {
+            return '(fel vid toBase58)';
+          }
         });
+
+        const matched = programKeys.includes(PROGRAM_IDS.launchlab);
+        if (!matched) continue;
+
+        const seen = new Set<string>();
+        for (const t of tx.meta.postTokenBalances || []) {
+          if (seen.has(t.mint)) continue;
+          seen.add(t.mint);
+
+          log(`📌 Pool: ${t.mint} @ ${new Date(sigInfo.blockTime! * 1000).toISOString()}`);
+          pools.push({
+            sig: sigInfo.signature,
+            slot: tx.slot,
+            ts: tx.blockTime ?? null,
+            mint: t.mint,
+          });
+        }
       }
     }
 
-    if (signatures.length > 0) {
-      before = signatures[signatures.length - 1].signature;
-    } else {
-      break;
-    }
+    before = signatures.at(-1)?.signature;
   }
 
-  return finish(trades, outPath, totalChecked, skippedNoTime);
+  fs.writeFileSync(outPath, JSON.stringify(pools, null, 2));
+  log(`✅ Sparade ${pools.length} poolträffar till ${outPath}`);
+  log(`🔍 Totalt skannat: ${totalChecked} (${skippedNoTime} utan tidsstämpel)`);
 }
 
-function finish(trades: TradeRecord[], outPath: string, totalChecked: number, skippedNoTime: number) {
-  fs.writeFileSync(outPath, JSON.stringify(trades, null, 2));
-  console.log(`✅ Saved ${trades.length} trades to ${outPath}`);
-  if (trades.length > 0) {
-    const oldest = trades[trades.length - 1].ts;
-    console.log(`📅 Oldest trade timestamp: ${oldest} (${new Date((oldest ?? 0) * 1000).toISOString()})`);
-  }
-  console.log(`🔍 Scanned ${totalChecked} transactions total (${skippedNoTime} without blockTime)`);
-}
-
-main().catch(console.error);
+main().catch(e => log(`❌ Fel: ${e}`));
