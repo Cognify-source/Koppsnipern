@@ -15,5 +15,7 @@ __pycache__/
 .env
 
 # Analys av historisk data
-launchlab_pools.json
 cupsyy_pools.json
+
+# Ignorera lokal datafil
+data/launchlab_pools.json
