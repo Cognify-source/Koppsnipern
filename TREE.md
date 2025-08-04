@@ -1,7 +1,7 @@
 .
-├── GPT-INSTRUKTIONER.txt
 ├── TREE.md
 ├── docs
+│   ├── GPT-INSTRUKTIONER.txt
 │   ├── handover.md
 │   ├── historic_pool_analysis.md
 │   ├── sniper_playbook.md
