@@ -28,7 +28,7 @@
 │       ├── fetch_price_movement.ts
 │       ├── filter_cupsyy_pools.ts
 │       ├── filterjson.py
-│       └── inspect_mint_origins.ts
+│       └── inspect_mint_origin.ts
 ├── src
 │   ├── __init__.py
 │   ├── config
