@@ -21,16 +21,17 @@
 ├── requirements.txt
 ├── scripts
 │   ├── airdrop.ts
+│   ├── unused
+│   │   ├── fetch_launchlab_from_moralis.ts
+│   │   ├── fetch_launchlab_methods.ts
+│   │   ├── fetch_launchlab_pools.ts
+│   │   ├── fetch_launchlab_tx_debug.ts
+│   │   └── filterjson.py
 │   └── utils
 │       ├── backtest_strategy.ts
-│       ├── fetch_launchlab_from_moralis.ts
-│       ├── fetch_launchlab_methods.ts
-│       ├── fetch_launchlab_pools.ts
-│       ├── fetch_launchlab_tx_debug.ts
 │       ├── fetch_price_movement.ts
 │       ├── filter_cupsyy_participation.ts
 │       ├── filter_cupsyy_pools.ts
-│       ├── filterjson.py
 │       ├── inspect_mint_origin.ts
 │       └── scan_launchlab_rpc.ts
 ├── src
@@ -67,4 +68,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 45 files
+24 directories, 45 files
