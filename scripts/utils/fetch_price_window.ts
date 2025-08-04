@@ -55,7 +55,7 @@ async function main() {
     const { mint, slot, sig, ts } = pool;
     output[mint] = [];
     const slotRange = Array.from({ length: 120 }, (_, i) => slot + i);
-    const batches = chunk(slotRange, 10);
+    const batches = chunk(slotRange, 5);
 
     for (const batch of batches) {
       await delay(200);
@@ -69,6 +69,7 @@ async function main() {
 
           const txMatches: PriceObservation[] = [];
           for (const txSig of block.transactions.map(tx => tx.transaction.signatures[0])) {
+            await delay(100);
             const parsedTx: ParsedConfirmedTransaction | null = await connection.getParsedTransaction(txSig, {
               commitment: 'confirmed',
               maxSupportedTransactionVersion: 0,
