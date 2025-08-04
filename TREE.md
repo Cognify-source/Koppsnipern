@@ -28,6 +28,7 @@
 │       ├── fetch_launchlab_pools.ts
 │       ├── fetch_launchlab_tx_debug.ts
 │       ├── fetch_price_movement.ts
+│       ├── filter_cupsyy_participation.ts
 │       ├── filter_cupsyy_pools.ts
 │       ├── filterjson.py
 │       ├── inspect_mint_origin.ts
@@ -66,4 +67,4 @@
 │       └── ts
 └── tsconfig.json
 
-23 directories, 44 files
+23 directories, 45 files
