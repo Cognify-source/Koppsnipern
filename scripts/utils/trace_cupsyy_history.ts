@@ -33,7 +33,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function main() {
-  const cutoffTime = Math.floor(Date.now() / 1000) - 10 * 3600;
+  const cutoffTime = Math.floor(Date.now() / 1000) - 15 * 24 * 3600; // senaste 15 dagarna
   let before: string | undefined = undefined;
   const outPath = path.join(__dirname, '../../data/cupsyy_pools.json');
 
