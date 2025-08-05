@@ -43,7 +43,6 @@ async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Timeout helper: wraps a promise and returns null if time runs out
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
     promise,
@@ -51,7 +50,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null
   ]);
 }
 
-// Utility: async map med delay mellan varje call + timeout + exakta tidtagning & felinfo
 async function asyncMapWithDelay<T, U>(arr: T[], fn: (item: T) => Promise<U>, delayMs: number, timeoutMs = 20000): Promise<(U | null)[]> {
   const result: (U | null)[] = [];
   for (const item of arr) {
@@ -100,7 +98,7 @@ async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedC
   throw new Error('❌ Max antal retries överskridet');
 }
 
-async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, VersionedBlockResponse>): Promise<PriceObservation[]> {
+async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, VersionedBlockResponse>, poolFile: string): Promise<PriceObservation[]> {
   const { mint, slot, ts } = pool;
   const endTime = (ts ?? 0) + 120;
   const dynamicSlots: number[] = [];
@@ -115,12 +113,11 @@ async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, Vers
     if (slotsToFetch.length >= 100) break; // Skydd mot oändlig loop vid saknad blockTime
   }
 
-  // Blockhämtning med 35ms delay och timeout per request, loggar tid för varje
   const blocks = await asyncMapWithDelay(
     slotsToFetch,
     (s) => connection.getBlock(s, { maxSupportedTransactionVersion: 0 }),
     35,
-    20000 // 20 sek timeout per block
+    20000
   );
 
   for (let i = 0; i < slotsToFetch.length; i++) {
@@ -130,12 +127,11 @@ async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, Vers
       blockCache.set(slot, block);
       dynamicSlots.push(slot);
       if (block.blockTime && block.blockTime > endTime) break;
-    } else {
-      // Redan loggat i asyncMapWithDelay
     }
   }
 
   const result: PriceObservation[] = [];
+  let slotCounter = 0;
 
   for (const s of dynamicSlots) {
     console.log(`➡️ Börjar slot ${s}...`);
@@ -167,7 +163,18 @@ async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, Vers
 
     const ms = (performance.now() - slotStart).toFixed(1);
     console.log(`  ✅ Slot ${s} klar, tid: ${ms} ms, hittade ${result.length} observationer totalt`);
+
+    slotCounter++;
+    if (slotCounter % 50 === 0) {
+      // Skriv till fil var 50:e slot
+      await fs.writeFile(poolFile, JSON.stringify(result, null, 2));
+      console.log(`💾 Sparade delresultat efter ${slotCounter} slots till ${poolFile}`);
+    }
   }
+
+  // Sista skrivningen om det inte är exakt multipel av 50
+  await fs.writeFile(poolFile, JSON.stringify(result, null, 2));
+  console.log(`💾 Slutresultat för pool ${mint} sparat till: ${poolFile}`);
 
   console.log(`✅ Pool ${mint} färdig. Totalt ${result.length} observationer.`);
   return result;
@@ -199,17 +206,15 @@ async function run(limit?: number) {
     console.log(`\n🔸 [${i + 1}/${selected.length}] Pool ${pool.mint}`);
     const start = performance.now();
 
-    const result = await fetchWindowForPool(pool, blockCache);
+    const poolFile = path.join(outDir, `${pool.mint}.json`);
+    const result = await fetchWindowForPool(pool, blockCache, poolFile);
 
-    // Spara endast den nya poolens resultat till fil
+    // Spara endast den nya poolens resultat till huvudfilen
     output[pool.mint] = result;
     await fs.writeFile(outPath, JSON.stringify({ ...output, [pool.mint]: result }, null, 2));
 
-    const poolFile = path.join(outDir, `${pool.mint}.json`);
-    await fs.writeFile(poolFile, JSON.stringify(result, null, 2));
-
     const duration = ((performance.now() - start) / 1000).toFixed(1);
-    console.log(`💾 Sparad till: ${poolFile}`);
+    console.log(`💾 Poolresultat även till: ${poolFile}`);
     console.log(`⏱️  Klar på ${duration}s`);
 
     global.gc?.();
