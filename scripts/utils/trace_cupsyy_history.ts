@@ -1,4 +1,4 @@
-// scripts/utils/trace_cupsyy_history.ts (optimerad för pooltracking + 10h + throttling)
+// scripts/utils/trace_cupsyy_history.ts (optimerad för pooltracking + datumintervall + resumable + GC)
 import { Connection, PublicKey, ParsedMessageAccount, ParsedInstruction, ConfirmedSignatureInfo } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -32,20 +32,33 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
+async function writePoolsAsync(outPath: string, pools: PoolRecord[]) {
+  log(`💾 Sparar ${pools.length} poster till ${path.basename(outPath)}...`);
+  await fs.promises.writeFile(outPath, JSON.stringify(pools));
+  global.gc?.();
+}
+
 async function main() {
-  const cutoffTime = Math.floor(Date.now() / 1000) - 15 * 24 * 3600; // senaste 15 dagarna
+  const startDate = new Date('2025-07-24T00:00:00Z').getTime() / 1000;
+  const endDate = new Date('2025-08-04T23:59:59Z').getTime() / 1000;
   let before: string | undefined = undefined;
   const outPath = path.join(__dirname, '../../data/cupsyy_pools.json');
 
-  let pools: PoolRecord[] = [];
+  let pools: PoolRecord[] = fs.existsSync(outPath)
+    ? JSON.parse(fs.readFileSync(outPath, 'utf8'))
+    : [];
+
+  const existingMints = new Set(pools.map(p => p.mint));
+
   let totalChecked = 0;
   let skippedNoTime = 0;
+  let batchCounter = 0;
 
   while (true) {
     const signatures: ConfirmedSignatureInfo[] = await connection.getSignaturesForAddress(CUPSYY_WALLET, { limit: 1000, before });
     if (signatures.length === 0) break;
 
-    const relevant = signatures.filter(sig => sig.blockTime && sig.blockTime >= cutoffTime);
+    const relevant = signatures.filter(sig => sig.blockTime && sig.blockTime >= startDate && sig.blockTime <= endDate);
     totalChecked += relevant.length;
     if (relevant.length === 0) break;
 
@@ -86,6 +99,7 @@ async function main() {
         for (const t of tx.meta.postTokenBalances || []) {
           if (seen.has(t.mint)) continue;
           seen.add(t.mint);
+          if (existingMints.has(t.mint)) continue;
 
           log(`📌 Pool: ${t.mint} @ ${new Date(sigInfo.blockTime! * 1000).toISOString()}`);
           pools.push({
@@ -96,12 +110,17 @@ async function main() {
           });
         }
       }
+
+      batchCounter++;
+      if (batchCounter % 10 === 0) {
+        await writePoolsAsync(outPath, pools);
+      }
     }
 
     before = signatures.at(-1)?.signature;
   }
 
-  fs.writeFileSync(outPath, JSON.stringify(pools, null, 2));
+  await writePoolsAsync(outPath, pools);
   log(`✅ Sparade ${pools.length} poolträffar till ${outPath}`);
   log(`🔍 Totalt skannat: ${totalChecked} (${skippedNoTime} utan tidsstämpel)`);
 }

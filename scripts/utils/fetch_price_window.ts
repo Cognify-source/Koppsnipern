@@ -69,92 +69,75 @@ async function main() {
   const blockCache = new Map<number, VersionedBlockResponse>();
 
   const poolBar = new cliProgress.SingleBar({
-    format: 'Analyserar pool {bar} {percentage}% | {value}/{total} pooler',
-    hideCursor: true
+    format: 'Pool {mint} | {bar} {percentage}% | {value}/{total} pooler',
+    hideCursor: true,
+    autopadding: true,
+    barsize: 30
   }, cliProgress.Presets.shades_classic);
 
-  poolBar.start(pools.length, 0);
+  poolBar.start(pools.length, 0, { mint: '' });
 
   const limitedPools = pools.slice(0, 1); // ta bort slice() för att köra alla
 
   for (const pool of limitedPools) {
     const { mint, slot, sig, ts } = pool;
-    console.log(`🔍 Bearbetar mint: ${mint} @ slot ${slot}`);
+    poolBar.update({ mint });
     output[mint] = [];
 
-    let endReached = false;
-    let nextSlot = slot;
+    const endTime = (ts ?? 0) + 120;
     const dynamicSlots: number[] = [];
+    let currentSlot = slot;
+    let reachedEndTime = false;
 
-    while (!endReached) {
-      try {
-        const t0 = Date.now();
-        const block = await connection.getBlock(nextSlot, {
-          maxSupportedTransactionVersion: 0,
-        });
-        const t1 = Date.now();
-
-        if (!block || !block.blockTime) {
-          nextSlot += 1;
-          continue;
+    while (!reachedEndTime) {
+      const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
+      if (block) {
+        blockCache.set(currentSlot, block);
+        dynamicSlots.push(currentSlot);
+        if (block.blockTime && block.blockTime > endTime) {
+          reachedEndTime = true;
         }
-
-        console.log(`📘 Hämtar slot ${nextSlot} (blockTime: ${block.blockTime}) [${(t1 - t0)}ms]`);
-        dynamicSlots.push(nextSlot);
-        blockCache.set(nextSlot, block);
-
-        if (block.blockTime > (ts ?? 0) + 120) {
-          endReached = true;
-        } else {
-          nextSlot += 1;
-        }
-
-        await delay(25); // throttling
-      } catch (e) {
-        console.warn(`⚠️ Misslyckades att hämta slot ${nextSlot}:`, e);
-        nextSlot += 1;
       }
+      currentSlot++;
+      await delay(25);
     }
 
     const batches = chunk(dynamicSlots, 5);
+    let slotCounter = 0;
 
     for (const batch of batches) {
       await delay(25);
-      const batchStart = Date.now();
 
       const results = await Promise.allSettled(batch.map(async s => {
         try {
           const block = blockCache.get(s);
           if (!block) return [];
 
-          console.log(`⏳ Slot ${s} hämtad, ${block.transactions.length} tx`);
-
           const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
           const txChunks = chunk(txSigs, 10);
           const txMatches: PriceObservation[] = [];
 
-          for (const group of txChunks) {
-            console.log(`🔎 Bearbetar ${group.length} transaktioner från slot ${s}`);
+          const chunkResults = await Promise.all(
+            txChunks.map(async group => {
+              return await safeGetParsedTransactions(group as string[]);
+            })
+          );
 
-            const parsedTxs = await safeGetParsedTransactions(group as string[]);
+          chunkResults.flat().forEach((parsedTx, i) => {
+            if (!parsedTx) return;
+            const accounts = parsedTx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
+            if (accounts.includes(mint)) {
+              txMatches.push({
+                slot: s,
+                sig,
+                ts,
+                mint,
+                txSig: parsedTx.transaction.signatures[0],
+                accounts,
+              });
+            }
+          });
 
-            parsedTxs.forEach((parsedTx, i) => {
-              if (!parsedTx) return;
-              const accounts = parsedTx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
-              if (accounts.includes(mint)) {
-                txMatches.push({
-                  slot: s,
-                  sig,
-                  ts,
-                  mint,
-                  txSig: group[i] as string,
-                  accounts,
-                });
-              }
-            });
-          }
-
-          console.log(`✅ Träffar i slot ${s}: ${txMatches.length}`);
           return txMatches;
         } catch (e) {
           console.warn(`⚠️ Misslyckades att hämta/parsa slot ${s}:`, e);
@@ -162,13 +145,16 @@ async function main() {
         }
       }));
 
-      const batchEnd = Date.now();
-      console.log(`⏱️ Batch klar på ${batchEnd - batchStart} ms`);
-
       for (const r of results) {
         if (r.status === 'fulfilled') {
           output[mint].push(...r.value);
         }
+      }
+
+      slotCounter++;
+      if (slotCounter % 10 === 0) {
+        fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
+        global.gc?.();
       }
     }
 
