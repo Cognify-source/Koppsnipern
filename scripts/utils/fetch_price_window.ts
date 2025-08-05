@@ -1,10 +1,17 @@
 // scripts/utils/fetch_price_window.ts
-import { Connection, ParsedConfirmedTransaction, PublicKey, ParsedMessageAccount, VersionedBlockResponse } from '@solana/web3.js';
-import * as fs from 'fs';
+import {
+  Connection,
+  ParsedConfirmedTransaction,
+  ParsedMessageAccount,
+  VersionedBlockResponse
+} from '@solana/web3.js';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import cliProgress from 'cli-progress';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const RPC_URL = 'https://solana-mainnet.core.chainstack.com/4050a13fe14e6fdc43430faf2c01f015';
+const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
 const connection = new Connection(RPC_URL);
 
 interface PoolRecord {
@@ -16,11 +23,11 @@ interface PoolRecord {
 
 interface PriceObservation {
   slot: number;
-  sig: string;
+  txSig: string;
   ts: number | null;
   mint: string;
-  txSig: string;
   accounts: string[];
+  isCupsyy: boolean;
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -32,7 +39,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedConfirmedTransaction | null)[]> {
@@ -45,9 +52,9 @@ async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedC
         maxSupportedTransactionVersion: 0,
       });
     } catch (e: any) {
-      if (e?.code === -32005) {
-        const waitMs = parseInt(e?.data?.try_again_in || '500', 10);
-        console.warn(`⏳ RPS-limit, väntar ${waitMs}ms...`);
+      if (e?.code === -32005 || e?.message?.includes("429")) {
+        const waitMs = 1000;
+        console.warn(`⏳ Rate limit (429), väntar ${waitMs}ms...`);
         await delay(waitMs);
         attempt++;
       } else {
@@ -58,112 +65,108 @@ async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedC
   throw new Error('❌ Max antal retries överskridet');
 }
 
-async function main() {
+async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, VersionedBlockResponse>, slotBar: cliProgress.SingleBar): Promise<PriceObservation[]> {
+  const { mint, slot, ts, sig } = pool;
+  const endTime = (ts ?? 0) + 120;
+  const dynamicSlots: number[] = [];
+  let currentSlot = slot;
+
+  while (true) {
+    const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
+    if (!block) {
+      console.warn(`⚠️ Misslyckades hämta block ${currentSlot}`);
+    } else {
+      blockCache.set(currentSlot, block);
+      dynamicSlots.push(currentSlot);
+      if (block.blockTime && block.blockTime > endTime) break;
+    }
+    currentSlot++;
+    await delay(50);
+  }
+
+  const result: PriceObservation[] = [];
+  slotBar.start(dynamicSlots.length, 0);
+  let counter = 0;
+
+  for (const batch of chunk(dynamicSlots, 5)) {
+    await delay(50);
+    for (const slot of batch) {
+      const block = blockCache.get(slot);
+      if (!block) continue;
+      const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
+      const chunked = chunk(txSigs, 10);
+      for (const group of chunked) {
+        const txs = await safeGetParsedTransactions(group);
+        for (const tx of txs) {
+          if (!tx) continue;
+          const accounts = tx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
+          const txSig = tx.transaction.signatures[0];
+          result.push({
+            slot,
+            txSig,
+            ts: tx.blockTime || null,
+            mint,
+            accounts,
+            isCupsyy: txSig === sig,
+          });
+        }
+      }
+      counter++;
+      slotBar.update(counter);
+    }
+  }
+
+  slotBar.stop();
+  return result;
+}
+
+export async function run(limit?: number) {
   const poolPath = path.join(__dirname, '../../data/cupsyy_pools.json');
   const outPath = path.join(__dirname, '../../data/cupsyy_pool_prices.json');
-
-  const raw = fs.readFileSync(poolPath, 'utf8');
+  const raw = await fs.readFile(poolPath, 'utf8');
   const pools: PoolRecord[] = JSON.parse(raw);
-
+  const selected = limit ? pools.slice(0, limit) : pools;
   const output: Record<string, PriceObservation[]> = {};
   const blockCache = new Map<number, VersionedBlockResponse>();
 
   const poolBar = new cliProgress.SingleBar({
-    format: 'Pool {mint} | {bar} {percentage}% | {value}/{total} pooler',
+    format: 'Pool {mint} | {bar} {percentage}% | {value}/{total}',
     hideCursor: true,
     autopadding: true,
-    barsize: 30
+    barsize: 30,
   }, cliProgress.Presets.shades_classic);
 
-  poolBar.start(pools.length, 0, { mint: '' });
+  poolBar.start(selected.length, 0, { mint: '' });
 
-  const limitedPools = pools.slice(0, 1); // ta bort slice() för att köra alla
+  let poolCount = 0;
+  for (const pool of selected) {
+    const slotBar = new cliProgress.SingleBar({
+      format: `  Slot Scan | {bar} {percentage}% | {value}/{total}`,
+      hideCursor: true,
+      autopadding: true,
+      barsize: 30,
+    }, cliProgress.Presets.shades_classic);
 
-  for (const pool of limitedPools) {
-    const { mint, slot, sig, ts } = pool;
-    poolBar.update({ mint });
-    output[mint] = [];
+    poolBar.update({ mint: pool.mint });
+    output[pool.mint] = await fetchWindowForPool(pool, blockCache, slotBar);
+    poolCount++;
+    poolBar.update(poolCount);
 
-    const endTime = (ts ?? 0) + 120;
-    const dynamicSlots: number[] = [];
-    let currentSlot = slot;
-    let reachedEndTime = false;
-
-    while (!reachedEndTime) {
-      const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
-      if (block) {
-        blockCache.set(currentSlot, block);
-        dynamicSlots.push(currentSlot);
-        if (block.blockTime && block.blockTime > endTime) {
-          reachedEndTime = true;
-        }
-      }
-      currentSlot++;
-      await delay(25);
+    if (poolCount % 50 === 0) {
+      console.log(`💾 Sparar delresultat (${poolCount} pooler)`);
+      await fs.writeFile(outPath, JSON.stringify(output, null, 2));
     }
-
-    const batches = chunk(dynamicSlots, 5);
-    let slotCounter = 0;
-
-    for (const batch of batches) {
-      await delay(25);
-
-      const results = await Promise.allSettled(batch.map(async s => {
-        try {
-          const block = blockCache.get(s);
-          if (!block) return [];
-
-          const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
-          const txChunks = chunk(txSigs, 10);
-          const txMatches: PriceObservation[] = [];
-
-          const chunkResults = await Promise.all(
-            txChunks.map(async group => {
-              return await safeGetParsedTransactions(group as string[]);
-            })
-          );
-
-          chunkResults.flat().forEach((parsedTx, i) => {
-            if (!parsedTx) return;
-            const accounts = parsedTx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
-            if (accounts.includes(mint)) {
-              txMatches.push({
-                slot: s,
-                sig,
-                ts,
-                mint,
-                txSig: parsedTx.transaction.signatures[0],
-                accounts,
-              });
-            }
-          });
-
-          return txMatches;
-        } catch (e) {
-          console.warn(`⚠️ Misslyckades att hämta/parsa slot ${s}:`, e);
-          return [];
-        }
-      }));
-
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          output[mint].push(...r.value);
-        }
-      }
-
-      slotCounter++;
-      if (slotCounter % 10 === 0) {
-        fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
-        global.gc?.();
-      }
-    }
-
-    poolBar.increment();
+    global.gc?.();
   }
 
   poolBar.stop();
-  fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
-  console.log(`📦 Sparade till ${outPath}`);
+  await fs.writeFile(outPath, JSON.stringify(output, null, 2));
+  console.log(`📦 Slutresultat sparat till ${outPath}`);
 }
 
-main().catch(err => console.error('❌ Fel i scriptet:', err));
+if (require.main === module) {
+  const argLimit = process.argv.includes('--limit')
+    ? parseInt(process.argv[process.argv.indexOf('--limit') + 1] || '0', 10)
+    : undefined;
+  run(argLimit).catch((err) => console.error('❌ Fel i scriptet:', err));
+}
