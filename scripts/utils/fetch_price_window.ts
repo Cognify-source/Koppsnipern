@@ -72,13 +72,17 @@ async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, Vers
   let currentSlot = slot;
 
   while (true) {
-    const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
-    if (!block) {
-      console.warn(`⚠️ Misslyckades hämta block ${currentSlot}`);
-    } else {
-      blockCache.set(currentSlot, block);
-      dynamicSlots.push(currentSlot);
-      if (block.blockTime && block.blockTime > endTime) break;
+    try {
+      const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
+      if (!block) {
+        console.warn(`⚠️ Misslyckades hämta block ${currentSlot}`);
+      } else {
+        blockCache.set(currentSlot, block);
+        dynamicSlots.push(currentSlot);
+        if (block.blockTime && block.blockTime > endTime) break;
+      }
+    } catch (e) {
+      console.warn(`⚠️ Fel vid block ${currentSlot}:`, e);
     }
     currentSlot++;
     await delay(50);
@@ -125,8 +129,16 @@ export async function run(limit?: number) {
   const outPath = path.join(__dirname, '../../data/cupsyy_pool_prices.json');
   const raw = await fs.readFile(poolPath, 'utf8');
   const pools: PoolRecord[] = JSON.parse(raw);
-  const selected = limit ? pools.slice(0, limit) : pools;
-  const output: Record<string, PriceObservation[]> = {};
+
+  let output: Record<string, PriceObservation[]> = {};
+  try {
+    const existing = await fs.readFile(outPath, 'utf8');
+    output = JSON.parse(existing);
+  } catch {
+    output = {};
+  }
+
+  const selected = (limit ? pools.slice(0, limit) : pools).filter(p => !(p.mint in output));
   const blockCache = new Map<number, VersionedBlockResponse>();
 
   const poolBar = new cliProgress.SingleBar({
@@ -152,15 +164,13 @@ export async function run(limit?: number) {
     poolCount++;
     poolBar.update(poolCount);
 
-    if (poolCount % 50 === 0) {
-      console.log(`💾 Sparar delresultat (${poolCount} pooler)`);
-      await fs.writeFile(outPath, JSON.stringify(output, null, 2));
-    }
+    console.log(`💾 Sparar resultat för pool ${pool.mint}`);
+    await fs.writeFile(outPath, JSON.stringify(output, null, 2));
+
     global.gc?.();
   }
 
   poolBar.stop();
-  await fs.writeFile(outPath, JSON.stringify(output, null, 2));
   console.log(`📦 Slutresultat sparat till ${outPath}`);
 }
 
