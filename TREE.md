@@ -1,5 +1,7 @@
 .
 ├── TREE.md
+├── data
+│   └── cupsyy_pool_prices.json
 ├── docs
 │   ├── GPT-INSTRUKTIONER.txt
 │   ├── handover.md
@@ -71,4 +73,4 @@
 │       └── ts
 └── tsconfig.json
 
-25 directories, 47 files
+26 directories, 48 files
