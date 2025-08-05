@@ -1,5 +1,5 @@
 // scripts/utils/fetch_price_window.ts
-import { Connection, ParsedConfirmedTransaction, PublicKey } from '@solana/web3.js';
+import { Connection, ParsedConfirmedTransaction, PublicKey, ParsedMessageAccount, VersionedBlockResponse } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import cliProgress from 'cli-progress';
@@ -66,6 +66,7 @@ async function main() {
   const pools: PoolRecord[] = JSON.parse(raw);
 
   const output: Record<string, PriceObservation[]> = {};
+  const blockCache = new Map<number, VersionedBlockResponse>();
 
   const poolBar = new cliProgress.SingleBar({
     format: 'Analyserar pool {bar} {percentage}% | {value}/{total} pooler',
@@ -87,17 +88,20 @@ async function main() {
 
     while (!endReached) {
       try {
+        const t0 = Date.now();
         const block = await connection.getBlock(nextSlot, {
           maxSupportedTransactionVersion: 0,
         });
+        const t1 = Date.now();
 
         if (!block || !block.blockTime) {
           nextSlot += 1;
           continue;
         }
 
-        console.log(`📘 Hämtar slot ${nextSlot} (blockTime: ${block.blockTime})`);
+        console.log(`📘 Hämtar slot ${nextSlot} (blockTime: ${block.blockTime}) [${(t1 - t0)}ms]`);
         dynamicSlots.push(nextSlot);
+        blockCache.set(nextSlot, block);
 
         if (block.blockTime > (ts ?? 0) + 120) {
           endReached = true;
@@ -105,7 +109,7 @@ async function main() {
           nextSlot += 1;
         }
 
-        await delay(50); // throttling
+        await delay(25); // throttling
       } catch (e) {
         console.warn(`⚠️ Misslyckades att hämta slot ${nextSlot}:`, e);
         nextSlot += 1;
@@ -115,37 +119,35 @@ async function main() {
     const batches = chunk(dynamicSlots, 5);
 
     for (const batch of batches) {
-      await delay(50);
+      await delay(25);
+      const batchStart = Date.now();
 
       const results = await Promise.allSettled(batch.map(async s => {
         try {
-          const block = await connection.getBlock(s, {
-            maxSupportedTransactionVersion: 0,
-          });
+          const block = blockCache.get(s);
           if (!block) return [];
 
           console.log(`⏳ Slot ${s} hämtad, ${block.transactions.length} tx`);
 
-          const txSigs = block.transactions.map(tx => tx.transaction.signatures[0]);
+          const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
           const txChunks = chunk(txSigs, 10);
           const txMatches: PriceObservation[] = [];
 
           for (const group of txChunks) {
-            await delay(100);
             console.log(`🔎 Bearbetar ${group.length} transaktioner från slot ${s}`);
 
-            const parsedTxs = await safeGetParsedTransactions(group);
+            const parsedTxs = await safeGetParsedTransactions(group as string[]);
 
             parsedTxs.forEach((parsedTx, i) => {
               if (!parsedTx) return;
-              const accounts = parsedTx.transaction.message.accountKeys.map(k => k.pubkey.toBase58());
+              const accounts = parsedTx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
               if (accounts.includes(mint)) {
                 txMatches.push({
                   slot: s,
                   sig,
                   ts,
                   mint,
-                  txSig: group[i],
+                  txSig: group[i] as string,
                   accounts,
                 });
               }
@@ -159,6 +161,9 @@ async function main() {
           return [];
         }
       }));
+
+      const batchEnd = Date.now();
+      console.log(`⏱️ Batch klar på ${batchEnd - batchStart} ms`);
 
       for (const r of results) {
         if (r.status === 'fulfilled') {
