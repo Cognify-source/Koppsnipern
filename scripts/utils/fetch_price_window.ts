@@ -74,17 +74,48 @@ async function main() {
 
   poolBar.start(pools.length, 0);
 
-  const limitedPools = pools.slice(0, 1);
+  const limitedPools = pools.slice(0, 1); // ta bort slice() för att köra alla
 
   for (const pool of limitedPools) {
     const { mint, slot, sig, ts } = pool;
     console.log(`🔍 Bearbetar mint: ${mint} @ slot ${slot}`);
     output[mint] = [];
-    const slotRange = Array.from({ length: 120 }, (_, i) => slot + i);
-    const batches = chunk(slotRange, 5);
+
+    let endReached = false;
+    let nextSlot = slot;
+    const dynamicSlots: number[] = [];
+
+    while (!endReached) {
+      try {
+        const block = await connection.getBlock(nextSlot, {
+          maxSupportedTransactionVersion: 0,
+        });
+
+        if (!block || !block.blockTime) {
+          nextSlot += 1;
+          continue;
+        }
+
+        console.log(`📘 Hämtar slot ${nextSlot} (blockTime: ${block.blockTime})`);
+        dynamicSlots.push(nextSlot);
+
+        if (block.blockTime > (ts ?? 0) + 120) {
+          endReached = true;
+        } else {
+          nextSlot += 1;
+        }
+
+        await delay(50); // throttling
+      } catch (e) {
+        console.warn(`⚠️ Misslyckades att hämta slot ${nextSlot}:`, e);
+        nextSlot += 1;
+      }
+    }
+
+    const batches = chunk(dynamicSlots, 5);
 
     for (const batch of batches) {
-      await delay(200);
+      await delay(50);
 
       const results = await Promise.allSettled(batch.map(async s => {
         try {
@@ -101,6 +132,8 @@ async function main() {
 
           for (const group of txChunks) {
             await delay(100);
+            console.log(`🔎 Bearbetar ${group.length} transaktioner från slot ${s}`);
+
             const parsedTxs = await safeGetParsedTransactions(group);
 
             parsedTxs.forEach((parsedTx, i) => {
@@ -119,6 +152,7 @@ async function main() {
             });
           }
 
+          console.log(`✅ Träffar i slot ${s}: ${txMatches.length}`);
           return txMatches;
         } catch (e) {
           console.warn(`⚠️ Misslyckades att hämta/parsa slot ${s}:`, e);
