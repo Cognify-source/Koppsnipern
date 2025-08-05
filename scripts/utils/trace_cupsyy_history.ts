@@ -52,7 +52,7 @@ async function main() {
 
   let totalChecked = 0;
   let skippedNoTime = 0;
-  let batchCounter = 0;
+  let newSinceLastSave = 0;
 
   while (true) {
     const signatures: ConfirmedSignatureInfo[] = await connection.getSignaturesForAddress(CUPSYY_WALLET, { limit: 1000, before });
@@ -60,7 +60,12 @@ async function main() {
 
     const relevant = signatures.filter(sig => sig.blockTime && sig.blockTime >= startDate && sig.blockTime <= endDate);
     totalChecked += relevant.length;
-    if (relevant.length === 0) break;
+
+    // Fortsätt även om inga relevanta i detta steg
+    if (relevant.length === 0) {
+      before = signatures.at(-1)?.signature;
+      continue;
+    }
 
     const batches = chunk(relevant, 5);
     for (const batch of batches) {
@@ -108,12 +113,13 @@ async function main() {
             ts: tx.blockTime ?? null,
             mint: t.mint,
           });
+          newSinceLastSave++;
         }
       }
 
-      batchCounter++;
-      if (batchCounter % 10 === 0) {
+      if (newSinceLastSave >= 100) {
         await writePoolsAsync(outPath, pools);
+        newSinceLastSave = 0;
       }
     }
 

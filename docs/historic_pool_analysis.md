@@ -1,26 +1,29 @@
 # 📊 Historic Pool Analysis – Koppsnipern
 
-Denna fil dokumenterar nuvarande analyskedja för att identifiera och analysera Cupsyys LaunchLab-trades via wallethistorik, samt backtesta strategin enligt sniper_playbook.md.
+Denna fil dokumenterar analyskedjan för att identifiera Cupsyys LaunchLab-pooler och backtesta snipertaktik enligt `sniper_playbook.md`.
 
 ---
 
-## 🔁 Ny analyskedja (wallet-baserad)
+## 🔁 Analyskedja (wallet-baserad)
 
-1. **Scanna Cupsyys transaktionshistorik**
+1. **Transaktionsskanning:**
    - Script: `trace_cupsyy_history.ts`
-   - Hämtar *alla* transaktioner bakåt i tiden från Cupsyys wallet (via Chainstack archive node)
-   - Batchar och filtrerar direkt på program-ID
-   - Output: `cupsyy_pools.json` (endast relevanta trades)
+   - Hämtar Cupsyys historik via Chainstack (RPC)
+   - Filtrerar på LaunchLab-program-ID
+   - Begränsat till 2025-07-24 till 2025-08-04
+   - Undviker dubbletter (via mint-set)
+   - Sparar asynkront till `cupsyy_pools.json` var 100:e ny pool
 
-2. **Prisanalys** *(kommande steg)*
+2. **Prisfönsteranalys:**
    - Script: `fetch_price_window.ts`
-   - Hämtar prisrörelse första 60 sekunder efter varje trade
-   - Input: `cupsyy_pools.json`
-   - Output: `price_window.json`
+   - Hämtar alla transaktioner per pool i 120 sekunder efter mint-slot
+   - Identifierar relevanta transaktioner och prisrörelser
+   - Output: `price_window.md`
 
-3. **Strategiutvärdering**
+3. **Strategibacktest:**
    - Script: `backtest_strategy.ts`
-   - Input: `price_window.json`
+   - Utvärderar ROI enligt sniper_playbookens filter
+   - Input: `price_window.md`
    - Output: `backtest_results.json`
 
 ---
@@ -28,23 +31,25 @@ Denna fil dokumenterar nuvarande analyskedja för att identifiera och analysera 
 ## 📦 Outputfiler
 
 | Fil                     | Innehåll                                 |
-| ----------------------- | ---------------------------------------- |
-| `cupsyy_pools.json`    | Filtrerade trades (LaunchLab/Bonk/CPMM)  |
-| `price_window.json`  | Prisutveckling per trade (kommande)      |
-| `backtest_results.json` | Resultat av strategi-backtest (kommande) |
+|-------------------------|------------------------------------------|
+| `cupsyy_pools.json`     | Upptäckta LaunchLab-pooler från Cupsyy   |
+| `price_window.md`       | Transaktions- och prisdata per pool      |
+| `backtest_results.json` | Precision, ROI och träffanalys           |
 
 ---
 
-## 🧰 Verktyg och Metodik
+## 🧰 Metodik & Verktyg
 
-- Kör script via `npx ts-node scripts/utils/<filnamn>.ts`
-- Data hämtas direkt från Chainstack archive node (Solana RPC)
-- Batchad filtrering av program-ID sker innan djupanalys för att minska datamängd och öka fart
-- **Endast relevanta signatures sparas** för vidare analys
+- Körs via `npx ts-node scripts/utils/<filnamn>.ts`
+- RPC: Chainstack archive node
+- JSON-/markdown-baserad utdata
+- Resumable & minnesoptimerat (GC + batchad skrivning)
+- En pool definieras som en unik mint kopplad till en LaunchLab-trade från Cupsyy
 
 ---
 
 ## 🔜 Nästa steg
 
-- Vidareutveckla scriptet för batchad program-filtrering och effektiv trade-extraktion
-- Implementera och köra prisanalys och backtest på filtrerade trades
+- Slutföra och verifiera backtest-script
+- Automatisera precision/ROI-rapportering per filter
+- Identifiera mönster för false positives/negatives
