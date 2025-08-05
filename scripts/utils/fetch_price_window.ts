@@ -7,8 +7,8 @@ import {
 } from '@solana/web3.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import cliProgress from 'cli-progress';
 import * as dotenv from 'dotenv';
+import { performance } from 'perf_hooks';
 dotenv.config();
 
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -65,113 +65,103 @@ async function safeGetParsedTransactions(signatures: string[]): Promise<(ParsedC
   throw new Error('❌ Max antal retries överskridet');
 }
 
-async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, VersionedBlockResponse>, slotBar: cliProgress.SingleBar): Promise<PriceObservation[]> {
-  const { mint, slot, ts, sig } = pool;
+async function fetchWindowForPool(pool: PoolRecord, blockCache: Map<number, VersionedBlockResponse>): Promise<PriceObservation[]> {
+  const { mint, slot, ts } = pool;
   const endTime = (ts ?? 0) + 120;
   const dynamicSlots: number[] = [];
   let currentSlot = slot;
 
+  console.log(`🟡 Startar scanning av pool ${mint} från slot ${slot}...`);
+
   while (true) {
-    try {
-      const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
-      if (!block) {
-        console.warn(`⚠️ Misslyckades hämta block ${currentSlot}`);
-      } else {
-        blockCache.set(currentSlot, block);
-        dynamicSlots.push(currentSlot);
-        if (block.blockTime && block.blockTime > endTime) break;
-      }
-    } catch (e) {
-      console.warn(`⚠️ Fel vid block ${currentSlot}:`, e);
+    const block = await connection.getBlock(currentSlot, { maxSupportedTransactionVersion: 0 });
+    if (!block) {
+      console.warn(`⚠️ Misslyckades hämta block ${currentSlot}`);
+    } else {
+      blockCache.set(currentSlot, block);
+      dynamicSlots.push(currentSlot);
+      console.log(`  📦 Block ${currentSlot} | BlockTime: ${block.blockTime}`);
+      if (block.blockTime && block.blockTime > endTime) break;
     }
     currentSlot++;
     await delay(50);
   }
 
-  const result: PriceObservation[] = [];
-  slotBar.start(dynamicSlots.length, 0);
-  let counter = 0;
+  console.log(`🔍 Scannar ${dynamicSlots.length} slots...`);
 
-  for (const batch of chunk(dynamicSlots, 5)) {
-    await delay(50);
-    for (const slot of batch) {
-      const block = blockCache.get(slot);
-      if (!block) continue;
-      const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
-      const chunked = chunk(txSigs, 10);
-      for (const group of chunked) {
-        const txs = await safeGetParsedTransactions(group);
-        for (const tx of txs) {
-          if (!tx) continue;
-          const accounts = tx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
-          const txSig = tx.transaction.signatures[0];
+  const result: PriceObservation[] = [];
+
+  for (const s of dynamicSlots) {
+    const slotStart = performance.now();
+
+    const block = blockCache.get(s);
+    if (!block) continue;
+
+    const txSigs = block.transactions.map((tx: any) => tx.transaction.signatures[0]);
+    const txChunks = chunk(txSigs, 10);
+
+    let cupsyyHitsInSlot = 0;
+
+    for (const group of txChunks) {
+      await delay(50);
+      const parsedList = await safeGetParsedTransactions(group as string[]);
+      parsedList.forEach((parsedTx) => {
+        if (!parsedTx) return;
+        const accounts = parsedTx.transaction.message.accountKeys.map((k: ParsedMessageAccount) => k.pubkey.toBase58());
+        if (accounts.includes(pool.mint)) {
+          const isCupsyy = accounts.includes("suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK");
           result.push({
-            slot,
-            txSig,
-            ts: tx.blockTime || null,
+            slot: s,
+            txSig: parsedTx.transaction.signatures[0],
+            ts,
             mint,
             accounts,
-            isCupsyy: txSig === sig,
+            isCupsyy
           });
+          if (isCupsyy) cupsyyHitsInSlot++;
         }
-      }
-      counter++;
-      slotBar.update(counter);
+      });
     }
+
+    const ms = (performance.now() - slotStart).toFixed(1);
+    const blockTime = block.blockTime ?? 0;
+    const txCount = block.transactions.length;
+
+    console.log(`  ✅ Slot ${s} | BlockTime: ${blockTime} | ${ms}ms | ${txCount} txs | ${cupsyyHitsInSlot} cupsyy | ${result.length} träffar totalt`);
   }
 
-  slotBar.stop();
+  console.log(`✅ Pool ${mint} färdig. Totalt ${result.length} observationer.`);
+
   return result;
 }
 
-export async function run(limit?: number) {
+async function run(limit?: number) {
   const poolPath = path.join(__dirname, '../../data/cupsyy_pools.json');
-  const outPath = path.join(__dirname, '../../data/cupsyy_pool_prices.json');
   const raw = await fs.readFile(poolPath, 'utf8');
   const pools: PoolRecord[] = JSON.parse(raw);
+  const selected = typeof limit === 'number' ? pools.slice(0, limit) : pools;
 
-  let output: Record<string, PriceObservation[]> = {};
-  try {
-    const existing = await fs.readFile(outPath, 'utf8');
-    output = JSON.parse(existing);
-  } catch {
-    output = {};
-  }
-
-  const selected = (limit ? pools.slice(0, limit) : pools).filter(p => !(p.mint in output));
   const blockCache = new Map<number, VersionedBlockResponse>();
+  console.log(`🚀 Startar analys av ${selected.length} pooler...\n`);
 
-  const poolBar = new cliProgress.SingleBar({
-    format: 'Pool {mint} | {bar} {percentage}% | {value}/{total}',
-    hideCursor: true,
-    autopadding: true,
-    barsize: 30,
-  }, cliProgress.Presets.shades_classic);
+  for (const [i, pool] of selected.entries()) {
+    console.log(`\n🔸 [${i + 1}/${selected.length}] Pool ${pool.mint}`);
+    const start = performance.now();
 
-  poolBar.start(selected.length, 0, { mint: '' });
+    const result = await fetchWindowForPool(pool, blockCache);
 
-  let poolCount = 0;
-  for (const pool of selected) {
-    const slotBar = new cliProgress.SingleBar({
-      format: `  Slot Scan | {bar} {percentage}% | {value}/{total}`,
-      hideCursor: true,
-      autopadding: true,
-      barsize: 30,
-    }, cliProgress.Presets.shades_classic);
+    const outPath = path.join(__dirname, `../../data/pool_chunks/${pool.mint}.json`);
+    await fs.mkdir(path.dirname(outPath), { recursive: true });
+    await fs.writeFile(outPath, JSON.stringify(result, null, 2));
 
-    poolBar.update({ mint: pool.mint });
-    output[pool.mint] = await fetchWindowForPool(pool, blockCache, slotBar);
-    poolCount++;
-    poolBar.update(poolCount);
-
-    console.log(`💾 Sparar resultat för pool ${pool.mint}`);
-    await fs.writeFile(outPath, JSON.stringify(output, null, 2));
+    const duration = ((performance.now() - start) / 1000).toFixed(1);
+    console.log(`💾 Sparad till: ${outPath}`);
+    console.log(`⏱️  Klar på ${duration}s`);
 
     global.gc?.();
   }
 
-  poolBar.stop();
-  console.log(`📦 Slutresultat sparat till ${outPath}`);
+  console.log('\n✅ Alla pooler färdigscannade.');
 }
 
 if (require.main === module) {
