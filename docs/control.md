@@ -1,5 +1,5 @@
 # 📘 Koppsnipern – Operativt Styrdokument
-**Version:** 1.2 (optimerad för kort systeminstruktion, 2025-08-08)  
+**Version:** 1.3 (optimerad för kort systeminstruktion, 2025-08-08)  
 **Source of Truth:** Detta dokument är den enda källan för alla operativa regler, filter, roadmap och formateringskrav.  
 
 ---
@@ -134,5 +134,24 @@ Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
 5. **JSON-exempel**: indrag med 4 mellanslag.
 6. Kodrutan får inte brytas eller delas upp.
 7. Vid export till fil: inga specialtaggar eller metadata som kan orsaka formatfel.
+
+---
+
+## 10. Självtest vid uppstart
+- Vid varje start ska botten utföra en simulerad trade mot Devnet eller intern mock-pool.
+- Resultatet loggas till Discord med:
+    {
+        "timestamp": "ISO8601",
+        "selftest": "PASS|FAIL",
+        "latency": "ms",
+        "remarks": "string"
+    }
+- Om självtest misslyckas → starta inte trading och logga `"SELFTEST_FAIL"`.
+
+---
+
+## 11. Konflikthantering mellan regler
+- Vid konflikt mellan två regler i detta dokument gäller alltid högsta säkerhetsnivå.
+- Om osäkerhet kvarstår → ingen trade utförs och händelsen loggas.
 
 ---
