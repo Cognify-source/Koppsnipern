@@ -5,12 +5,10 @@ export interface TradeSignal {
 }
 
 export class TradePlanner {
-  constructor() {
-    // Init-logik om det behövs
-  }
+  constructor() {}
 
   async shouldTrigger(poolEvent: any): Promise<TradeSignal | null> {
-    // TODO: implementera riktig triggerlogik baserat på t.ex. Cupsyy-detektion
+    // TODO: riktig logik baserat på Cupsyy-trigger
     const triggered = true;
     return triggered ? { amount: 2 } : null;
   }
