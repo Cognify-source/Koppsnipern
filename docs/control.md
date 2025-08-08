@@ -169,3 +169,11 @@ Flöde:
 4. Vid godkännande leverera ny kod.  
 
 Syfte: undvika onödiga filskrivningar, spara tokens och hålla chatten responsiv.
+
+**Förbättringsplan för nästa session:**
+1. **Strikt separera kod och konversation** – inga svar i dokumentfältet om det inte är en explicit kodändring.
+2. **Följa "ändra endast på begäran"-principen** – aldrig röra filen utan tydlig instruktion.
+3. **Minimera upprepning** – endast visa relevanta kodavsnitt istället för hela filer, om inte hela filen begärs.
+4. **Tokenoptimering** – undvika onödiga omskrivningar och långa irrelevanta block.
+5. **Konsekvent loggning av ändringar** – alltid tydliggöra vad som ändras och varför.
+6. **Checkpoints** – sammanfatta status vid kritiska steg så vi kan återuppta arbetet enkelt vid avbrott.

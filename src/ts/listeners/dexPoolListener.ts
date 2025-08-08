@@ -1,4 +1,4 @@
-// Uppdaterad lyssnare med HTTP + WSS anslutning och minsta filter för att snabbt hitta pooler
+// Uppdaterad lyssnare med HTTP + WSS anslutning och filter för att snabbt hitta pooler
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
 import { checkPoolSafety } from '../services/safetyService';
 import dotenv from 'dotenv';
@@ -48,20 +48,23 @@ async function listenForNewPools() {
     if (!matchingProgram) return;
 
     const poolData = await extractPoolDataFromLog(log);
-    if (!poolData || poolData.lpSol < 2) return; // Minimalfilter: minst 2 SOL i LP
+    if (!poolData || poolData.lpSol < 5) return; // Filtrera bort pooler under 5 SOL
 
-    console.log(`\n📊 [${poolData.source}] Ny pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
     const safetyResult = await checkPoolSafety(poolData);
-    console.log(`📋 Safety status: ${safetyResult.status}`);
 
-    if (process.env.DISCORD_WEBHOOK_URL) {
-      await fetch(process.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: `✅ Ny pooldetektion | ${new Date().toISOString()}\nKälla: ${poolData.source}\nPool: ${poolData.address}\nLP: ${poolData.lpSol.toFixed(2)} SOL | Fee: ${poolData.creatorFee.toFixed(2)}%\nStatus: ${safetyResult.status}`
-        })
-      });
+    if (safetyResult.status !== 'BLOCKED') {
+      console.log(`\n📊 [${poolData.source}] Ny pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
+      console.log(`📋 Safety status: ${safetyResult.status}`);
+
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        await fetch(process.env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: `✅ Ny pooldetektion | ${new Date().toISOString()}\nKälla: ${poolData.source}\nPool: ${poolData.address}\nLP: ${poolData.lpSol.toFixed(2)} SOL | Fee: ${poolData.creatorFee.toFixed(2)}%\nStatus: ${safetyResult.status}`
+          })
+        });
+      }
     }
   });
 
