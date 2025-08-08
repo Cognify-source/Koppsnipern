@@ -21,9 +21,9 @@ const colors = {
 };
 
 async function runTest() {
-  console.log(colors.fgCyan + 'Kör SafetyService test med mock-data...' + colors.reset);
-  console.log(colors.fgYellow + 'Nuvarande arbetsmapp:' + colors.reset, process.cwd());
-  console.log(colors.fgYellow + 'Kör från projektroten med:' + colors.reset, 'npx ts-node src/ts/services/safetyServiceTest.ts');
+  console.log(colors.fgCyan + '🚀 Startar SafetyService test med mock-data...' + colors.reset);
+  console.log(colors.fgYellow + '📂 Nuvarande arbetsmapp:' + colors.reset, process.cwd());
+  console.log(colors.fgYellow + '💡 Kör från projektroten med:' + colors.reset, 'npx ts-node src/ts/services/safetyServiceTest.ts');
 
   const mockPool = {
     address: 'TestPool123',
@@ -52,8 +52,17 @@ async function runTest() {
 
     // Skicka till Discord
     if (DISCORD_WEBHOOK_URL) {
+      const emoji = result.status === 'SAFE' ? '✅' : '⛔';
       const discordMessage = {
-        content: `**Säkerhetskontrollresultat**\n\nStatus: ${result.status === 'SAFE' ? '✅ SAFE' : '⛔ BLOCKED'}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``
+        content: `${emoji} **Säkerhetskontrollresultat**\n` +
+                 `**Timestamp:** ${result.timestamp}\n` +
+                 `**Status:** ${result.status}\n` +
+                 `**Pool:** ${result.pool}\n` +
+                 `**LP:** ${result.lp} SOL\n` +
+                 `**Creator Fee:** ${result.creator_fee}%\n` +
+                 `**Slippage:** ${result.slippage}%\n` +
+                 `**Latency:** ${result.latency} ms` +
+                 (result.reasons.length ? `\n**Reasons:** ${result.reasons.join(', ')}` : '')
       };
       await fetch(DISCORD_WEBHOOK_URL, {
         method: 'POST',
