@@ -58,7 +58,17 @@ async function main(): Promise<void> {
 
   const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
   const keyJson = process.env.PAYER_SECRET_KEY!;
-  const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(keyJson)));
+  console.log("🧪 keyJson-innehåll:", keyJson);
+  let payer: Keypair;
+
+  try {
+    const parsedKey = JSON.parse(keyJson);
+    payer = Keypair.fromSecretKey(Uint8Array.from(parsedKey));
+  } catch (err) {
+    console.error("🚫 Kunde inte parsa PAYER_SECRET_KEY:", keyJson);
+    throw err;
+  }
+
   const connection = new Connection(rpcUrl, { commitment: "confirmed" });
 
   const tradeSvc = new TradeService({
