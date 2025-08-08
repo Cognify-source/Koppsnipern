@@ -1,2 +1,6 @@
 {"timestamp":"2025-08-08T17:48:23.394Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
 {"timestamp":"2025-08-08T17:49:00.772Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
+{"timestamp":"2025-08-08T17:55:30.517Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
+{"timestamp":"2025-08-08T17:56:31.623Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
+{"timestamp":"2025-08-08T17:57:07.469Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
+{"timestamp":"2025-08-08T17:58:07.229Z","pool":"TestPool123","status":"SAFE","latency":0,"lp":42,"creator_fee":3,"slippage":2.5,"reasons":[]}
