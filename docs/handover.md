@@ -1,5 +1,8 @@
 # Koppsnipern – Handover Playbook
 
+**Version:** 1.0  
+**Senast uppdaterad:** 2025-08-08
+
 ## 1. ÖVERGRIPANDE STATUS
 
 - **Kodbas**: Typescript-projekt under `src/ts`, med Jest-tester under `tests/unit/ts` + `tests/integration`.
@@ -55,15 +58,33 @@
 
 ## 8. MODULÖVERSIKT & ANSVAR
 
-Modulnamn | Fil | Ansvar
-----------|-----|-------
-**StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events, triggar `onNewPool`
-**SafetyService** | `services/safetyService.ts` | Kör rug-checks (renounced, mint/freeze revoked, LP-range)
-**TradePlanner** | `services/tradePlanner.ts` | Lyssnar på Cupsyy-signal, latency, pre-swap
-**TradeService** | `services/tradeService.ts` | Skapar & skickar swaps
-**RiskManager** | `services/riskManager.ts` | Stop-loss, riskcap, TP
-**BundleSender** | `services/bundleSender.ts` | Jito bundle integration
-**Orchestrator** | `src/ts/index.ts` | Huvudflöde
+Modulnamn | Fil | Ansvar  
+----------|-----|-------  
+**StreamListener** | `services/streamListener.ts` | Tar emot Geyser-events, triggar `onNewPool`  
+**SafetyService** | `services/safetyService.ts` | Kör rug-checks (renounced, mint/freeze revoked, LP-range)  
+**TradePlanner** | `services/tradePlanner.ts` | Lyssnar på Cupsyy-signal, latency, pre-swap  
+**TradeService** | `services/tradeService.ts` | Skapar & skickar swaps  
+**RiskManager** | `services/riskManager.ts` | Stop-loss, riskcap, TP  
+**BundleSender** | `services/bundleSender.ts` | Jito bundle integration  
+**Orchestrator** | `src/ts/index.ts` | Huvudflöde  
+
+---
+
+## 8.1 TEKNISK ARKITEKTUR (Modulgränssnitt & beroenden)
+
+    StreamListener ──▶ SafetyService ──▶ TradePlanner ──▶ TradeService ──▶ BundleSender
+        │                 │                   │                │                 │
+        ▼                 ▼                   ▼                ▼                 ▼
+     Geyser/WS     Rug checks & LP     Cupsyy-signal,      Swap-prep,       JITO-bundle
+     events        range filter        latency check       signering        execution
+
+- **Inputs/Outputs definieras:**  
+  - **StreamListener → SafetyService:** Poolmetadata (JSON)  
+  - **SafetyService → TradePlanner:** Poolstatus, rug_score  
+  - **TradePlanner → TradeService:** Bekräftad trigger, swap-parametrar  
+  - **TradeService → BundleSender:** Signerad transaktion
+
+---
 
 ## 9. ROADMAP
 
@@ -77,3 +98,24 @@ Modulnamn | Fil | Ansvar
 ## 10. SENASTE AKTIVITET
 
 - Säkerställt att huvudstrategin är optimerad för hastighet och enkelhet med regelbaserad filtrering + Cupsyy-trigger.
+
+---
+
+## 11. BILAGA – STANDARDISERAD LOGGSTRUKTUR
+
+Alla loggar till Discord ska följa JSON-formatet nedan (indraget istället för kodblock):
+
+    {
+      "timestamp": "ISO8601",
+      "pool_address": "string",
+      "rug_score": "number",
+      "latency": "ms",
+      "outcome": "SUCCESS|FAIL|SKIPPED",
+      "slot_lag": "number",
+      "fee_ratio": "number",
+      "roi": "percentage"
+    }
+
+- **timestamp:** UTC ISO8601  
+- **latency:** E2E mätt i millisekunder  
+- **outcome:** Resultatklassificering
