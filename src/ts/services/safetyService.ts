@@ -88,6 +88,11 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 }
 
 async function logResult(result: SafetyResult): Promise<void> {
+  // Se till att loggmapp finns
+  if (!fs.existsSync('./logs')) {
+    fs.mkdirSync('./logs', { recursive: true });
+  }
+
   // Log to file
   fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
 
@@ -102,7 +107,7 @@ async function logResult(result: SafetyResult): Promise<void> {
   };
 
   try {
-    await fetch(DISCORD_WEBHOOK_URL as string, {
+    await fetch(DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(discordMessage)
