@@ -1,5 +1,5 @@
 # 📘 Koppsnipern – Operativt Styrdokument
-**Version:** 1.3 (optimerad för kort systeminstruktion, 2025-08-08)  
+**Version:** 1.4 (uppdaterad för nya loggregler och utvecklingsläge, 2025-08-08)  
 **Source of Truth:** Detta dokument är den enda källan för alla operativa regler, filter, roadmap och formateringskrav.  
 
 ---
@@ -21,13 +21,13 @@ Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att ag
 ---
 
 ## 2. Operativt huvudflöde
-1. Upptäck ny pool via Geyser/WebSocket
-2. Bekräfta LaunchLab-initiering (Raydium `Initialize`) inom 2 sekunder
-3. Kör hårda filter och rug checks
-4. Förbered signerad swap
-5. Vänta på Cupsyy-signal (10–45 sek från poolskapande)
-6. Skicka transaktion som Jito-bundle
-7. Exit enligt definierade exitregler
+1. Upptäck ny pool via Geyser/WebSocket  
+2. Bekräfta LaunchLab-initiering (Raydium `Initialize`) inom 2 sekunder  
+3. Kör hårda filter och rug checks  
+4. Förbered signerad swap  
+5. Vänta på Cupsyy-signal (10–45 sek från poolskapande)  
+6. Skicka transaktion som Jito-bundle  
+7. Exit enligt definierade exitregler  
 
 ---
 
@@ -42,6 +42,8 @@ Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att ag
 - **Slippage-estimat:** ≤ 3 %
 - **RTT:** ≤ 150 ms
 - **Maxpositioner:** 2 trades per wallet
+
+*(Utvecklingsläge: Temporärt bredare källor – LaunchLab, Raydium, Orca, Meteora, Aldrin – och vissa filter kan vara avstängda för att få fler träffar.)*
 
 ### 3.2 Scoring-algoritm
 Viktning:
@@ -111,7 +113,8 @@ Pausa botten vid:
 ---
 
 ## 8. Loggstruktur
-Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
+Alla loggar till Discord ska vara **klartext** (lättlästa statusmeddelanden).  
+JSON-format används endast för lokal loggfil, enligt följande struktur:
 
     {
         "timestamp": "ISO8601",
@@ -139,7 +142,8 @@ Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
 
 ## 10. Självtest vid uppstart
 - Vid varje start ska botten utföra en simulerad trade mot Devnet eller intern mock-pool.
-- Resultatet loggas till Discord med:
+- Resultatet loggas till Discord (klartext) och sparas som JSON i loggfil:
+
     {
         "timestamp": "ISO8601",
         "selftest": "PASS|FAIL",
@@ -155,3 +159,13 @@ Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
 - Om osäkerhet kvarstår → ingen trade utförs och händelsen loggas.
 
 ---
+
+## 12. Kodändringsflöde
+Vid arbete med kod i Canvas ska ChatGPT endast uppdatera filer när användaren uttryckligen ber om det eller godkänner nästa steg.  
+Flöde:
+1. Presentera uppdaterad fil eller kodförslag.  
+2. Vänta på användarens feedback och godkännande.  
+3. Föreslå nästa steg.  
+4. Vid godkännande leverera ny kod.  
+
+Syfte: undvika onödiga filskrivningar, spara tokens och hålla chatten responsiv.
