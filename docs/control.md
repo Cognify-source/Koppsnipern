@@ -1,16 +1,17 @@
 # 📘 Koppsnipern – Operativt Styrdokument
-**Version:** 1.1 (sammanfogad 2025-08-08)
+**Version:** 1.2 (optimerad för kort systeminstruktion, 2025-08-08)  
+**Source of Truth:** Detta dokument är den enda källan för alla operativa regler, filter, roadmap och formateringskrav.  
 
 ---
 
 ## 1. Syfte & Strategi
-Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att exekvera strax efter Cupsyy och maximera lönsamhet med minimal risk.
+Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att agera strax efter Cupsyy och maximera lönsamhet med minimal risk.  
 
 **Målsättning:**
 - 90–95 % precision
 - End-to-end latens < 350 ms
 - Stabil daglig nettovinst
-- Maximal risk: 50 SOL per dag
+- Max risk: 50 SOL per dag
 
 **Kärnstrategi:**
 - Regelbaserad filtrering + Cupsyy-trigger
@@ -19,16 +20,7 @@ Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att ex
 
 ---
 
-## 2. Startsekvens vid ny session
-1. Läs roadmap och nuvarande status (se avsnitt 6)
-2. Identifiera nästa steg i roadmapen
-3. Lista alla filer som berör steget och hämta senaste commits
-4. Starta arbete omedelbart enligt prioritet
-5. Vid fel (GitHub-API, RPC, .env) → avbryt
-
----
-
-## 3. Operativt huvudflöde
+## 2. Operativt huvudflöde
 1. Upptäck ny pool via Geyser/WebSocket
 2. Bekräfta LaunchLab-initiering (Raydium `Initialize`) inom 2 sekunder
 3. Kör hårda filter och rug checks
@@ -39,9 +31,9 @@ Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att ex
 
 ---
 
-## 4. Filter, triggers & scoring
+## 3. Filter, triggers & scoring
 
-### 4.1 Hårda filter (måste uppfyllas)
+### 3.1 Hårda filter (måste uppfyllas)
 - **WSOL-LP:** ≥ 20 SOL
 - **Creator fee:** ≤ 5 %
 - **Mint authority:** none
@@ -51,7 +43,7 @@ Koppsnipern är en sniper-bot för Solana LaunchLab-pooler, designad för att ex
 - **RTT:** ≤ 150 ms
 - **Maxpositioner:** 2 trades per wallet
 
-### 4.2 Scoring-algoritm (för kvalificerade pooler)
+### 3.2 Scoring-algoritm
 Viktning:
 - LP: 40 %
 - Dev-trigger: 30 %
@@ -64,16 +56,16 @@ Formel (LP_norm är LP normaliserat till 0–1, min=20, max=150):
 
 ---
 
-## 5. Risk- & exitregler
+## 4. Risk- & exitregler
 
-### 5.1 Riskkontroll
-Botten pausar vid:
+### 4.1 Riskkontroll
+Pausa botten vid:
 - Precision (senaste 50 trades) < 85 %
 - Dags-P&L < –2 % av wallet
 - RTT > 150 ms i 3 trades i följd
 - Max riskcap: 50 SOL/dag
 
-### 5.2 Exitregler
+### 4.2 Exitregler
 - **Stop Loss:** –4 % eller 45 sek timeout (om TP ej aktiverad)
 - **Trailing Take Profit:**
   - Aktiveras vid +12 % ROI
@@ -82,15 +74,15 @@ Botten pausar vid:
 
 ---
 
-## 6. Roadmap & nuvarande status
+## 5. Roadmap & Status
 
-### 6.1 Status (2025-08-08)
+### 5.1 Status (2025-08-08)
 - SafetyService: påbörjad, ej komplett
 - TradePlanner: påbörjad, ej komplett
 - BundleSender: klar i stub, ej integrerad i pipeline
 - Metrics/monitoring: saknas
 
-### 6.2 Prioriterad roadmap
+### 5.2 Prioriterad roadmap
 1. Implementera SafetyService (rug checks, metadata, blacklist)
 2. Implementera TradePlanner (Cupsyy-trigger, latency, pre-swap)
 3. Integrera BundleSender i orchestratorn
@@ -100,9 +92,9 @@ Botten pausar vid:
 
 ---
 
-## 7. Tekniska krav & latencybudget
+## 6. Tekniska krav & latencybudget
 - All prestandakritisk kod ska köras i Node-process
-- Modulär kodstruktur med separata tjänster (StreamListener, SafetyService, TradePlanner, TradeService, RiskManager, BundleSender)
+- Modulär kodstruktur: StreamListener, SafetyService, TradePlanner, TradeService, RiskManager, BundleSender
 
 **Latencybudget:**
 - Geyser → bot: < 150 ms
@@ -111,14 +103,14 @@ Botten pausar vid:
 
 ---
 
-## 8. Felhantering & fallback
-- Om GitHub-API, Solana RPC eller `.env` saknas → avbryt analys/trade
+## 7. Felhantering & fallback
 - Om modul kraschar (ex. SafetyService) → logga till Discord och avbryt botten
 - Fallback: försök ansluta mot sekundär RPC/JITO-endpoint innan avbrott
+- Om båda endpoints misslyckas → avbryt omedelbart
 
 ---
 
-## 9. Loggstruktur
+## 8. Loggstruktur
 Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
 
     {
@@ -132,21 +124,15 @@ Alla loggar till Discord ska följa JSON-formatet nedan (indraget):
         "roi": "percentage"
     }
 
-- **timestamp:** UTC ISO8601
-- **latency:** End-to-end, ms
-- **outcome:** Resultatklassificering
-
 ---
 
-## 10. Formatterings- & outputregler
-För all textoutput som genereras i samband med utveckling, analys eller koddelning:
-
+## 9. Formatterings- & outputregler
 1. **En kodruta per fil** – hela filinnehållet omsluten av en enda triple-backtick-ruta från början till slut.
-2. **Inga inre backticks** inom filinnehållet – använd istället indragna textblock (4 mellanslag) för JSON, exempeldata, diagram och ASCII-flöden.
-3. **Språkmarkering** ska anges i öppningen av kodrutan (`markdown`, `ts`, `json` etc.).
-4. **Diagram och ASCII**: alltid indragna textblock (ej kodruta om inte explicit behövs för körning).
-5. **JSON-exempel**: indrag med 4 mellanslag, ej kodruta med backticks.
-6. **Visuell helhetskoll**: Kodrutan får inte brytas eller delas upp.
-7. Vid export till fil: inga specialtaggar, metadata eller extra symboler som kan orsaka formatfel.
+2. **Inga inre backticks** – använd indragna textblock (4 mellanslag) för JSON, exempeldata, diagram, ASCII-flöden.
+3. **Språkmarkering** ska anges (`markdown`, `ts`, `json` etc.).
+4. **Diagram och ASCII**: alltid indragna textblock.
+5. **JSON-exempel**: indrag med 4 mellanslag.
+6. Kodrutan får inte brytas eller delas upp.
+7. Vid export till fil: inga specialtaggar eller metadata som kan orsaka formatfel.
 
 ---
