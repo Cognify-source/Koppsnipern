@@ -1,20 +1,42 @@
-// safetyService.js
+// safetyService.ts
 // SafetyService v1 – snabb rug check + loggning till Discord och lokal JSONL-fil
 
 import fs from 'fs';
 import fetch from 'node-fetch';
 
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_WEBHOOK_URL: string = process.env.DISCORD_WEBHOOK_URL || '';
 const LOG_FILE = './logs/safety_checks.jsonl';
 
+// Typdefinitioner
+interface PoolData {
+  address: string;
+  mint: string;
+  mintAuthority: string | null;
+  freezeAuthority: string | null;
+  lpSol: number;
+  creatorFee: number;
+  estimatedSlippage: number;
+}
+
+interface SafetyResult {
+  timestamp: string;
+  pool: string;
+  status: 'SAFE' | 'BLOCKED';
+  latency: number;
+  lp: number;
+  creator_fee: number;
+  slippage: number;
+  reasons: string[];
+}
+
 // Blacklist – kan laddas från fil eller API
-const BLACKLIST = new Set([
+const BLACKLIST = new Set<string>([
   'mintAddress1',
   'mintAddress2'
 ]);
 
-export async function checkPoolSafety(pool) {
-  const reasons = [];
+export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
+  const reasons: string[] = [];
   const start = performance.now();
 
   // Mint authority
@@ -47,10 +69,10 @@ export async function checkPoolSafety(pool) {
     reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   }
 
-  const status = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
+  const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
   const latency = Math.round(performance.now() - start);
 
-  const result = {
+  const result: SafetyResult = {
     timestamp: new Date().toISOString(),
     pool: pool.address,
     status,
@@ -65,17 +87,22 @@ export async function checkPoolSafety(pool) {
   return result;
 }
 
-async function logResult(result) {
+async function logResult(result: SafetyResult): Promise<void> {
   // Log to file
   fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
 
   // Log to Discord
+  if (!DISCORD_WEBHOOK_URL) {
+    console.warn('No Discord webhook URL provided, skipping Discord log');
+    return;
+  }
+
   const discordMessage = {
     content: `${result.status === 'SAFE' ? '✅' : '⛔'} ${result.status} – Pool: ${result.pool}\n\n\`\`\`json\n${JSON.stringify(result, null, 4)}\n\`\`\``
   };
 
   try {
-    await fetch(DISCORD_WEBHOOK_URL, {
+    await fetch(DISCORD_WEBHOOK_URL as string, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(discordMessage)
