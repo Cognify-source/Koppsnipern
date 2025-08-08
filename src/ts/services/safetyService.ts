@@ -1,4 +1,4 @@
-// safetyService.ts
+// safetyService.ts (utvecklingsläge)
 // SafetyService v1 – snabb rug check + loggning till Discord och lokal JSONL-fil
 
 import fs from 'fs';
@@ -7,7 +7,6 @@ import fetch from 'node-fetch';
 const DISCORD_WEBHOOK_URL: string = process.env.DISCORD_WEBHOOK_URL || '';
 const LOG_FILE = './logs/safety_checks.jsonl';
 
-// Typdefinitioner
 interface PoolData {
   address: string;
   mint: string;
@@ -29,7 +28,6 @@ interface SafetyResult {
   reasons: string[];
 }
 
-// Blacklist – kan laddas från fil eller API
 const BLACKLIST = new Set<string>([
   'mintAddress1',
   'mintAddress2'
@@ -49,13 +47,13 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     reasons.push('Freeze authority present');
   }
 
-  // LP check
-  if (pool.lpSol < 20) {
+  // LP check (utvecklingsläge: sänkt till 2 SOL)
+  if (pool.lpSol < 2) {
     reasons.push(`LP too low (${pool.lpSol} SOL)`);
   }
 
-  // Creator fee
-  if (pool.creatorFee > 5) {
+  // Creator fee (utvecklingsläge: höjd till max 10 %)
+  if (pool.creatorFee > 10) {
     reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
   }
 
@@ -64,7 +62,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     reasons.push('Mint is blacklisted');
   }
 
-  // Slippage check
+  // Slippage check (behåll ≤ 3 % gräns)
   if (pool.estimatedSlippage > 3) {
     reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   }
@@ -88,15 +86,12 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 }
 
 async function logResult(result: SafetyResult): Promise<void> {
-  // Se till att loggmapp finns
   if (!fs.existsSync('./logs')) {
     fs.mkdirSync('./logs', { recursive: true });
   }
 
-  // Log to file
   fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
 
-  // Log to Discord
   if (!DISCORD_WEBHOOK_URL) {
     console.warn('No Discord webhook URL provided, skipping Discord log');
     return;
