@@ -2,7 +2,10 @@
 node_modules/
 dist/
 
-# Python
+# TypeScript
+*.tsbuildinfo
+
+# Python (legacy ML)
 .venv/
 .venv-1/
 *.pyc
@@ -14,6 +17,16 @@ __pycache__/
 # Environment
 .env
 
-# Ignorera lokal datafil
+# Logs
+*.log
+
+# Oanvänd kod
+unused/
+
+# Lokal data
+data/
+tests/integration/data/
+
+# Specifika filer (om dessa inte ska spåras)
 data/cupsyy_pools.json
 data/quick_history_report.json
