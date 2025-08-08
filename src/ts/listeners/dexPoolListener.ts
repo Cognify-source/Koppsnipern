@@ -1,4 +1,4 @@
-// Uppdaterad lyssnare med HTTP + WSS anslutning och filter för att snabbt hitta pooler
+// Uppdaterad lyssnare för LaunchLab med LP-gräns på 10 SOL
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
 import { checkPoolSafety } from '../services/safetyService';
 import dotenv from 'dotenv';
@@ -33,14 +33,11 @@ const httpConnection = new Connection(HTTP_RPC_URL, 'confirmed');
 const wsConnection = new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsEndpoint: WSS_RPC_URL } as any);
 
 async function listenForNewPools() {
-  console.log('🚀 Lyssnar på DEX-pooler...');
+  console.log('🚀 Lyssnar på LaunchLab-pooler...');
 
+  // Endast LaunchLab-programmet
   const dexPrograms = [
-    new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj'),
-    new PublicKey('RVKd61ztZW9J7oH9FUCwG5HLeU5kSRyRkzE9j5pqDqC'),
-    new PublicKey('9W959DqZx2dVcKfS7oKJFwgDDqPrE1xKkG4i7C7CkCFt'),
-    new PublicKey('METeoraqVjZt5pCQ4wLqqpkkpJ5hY6j3XJt7UfgHQ8L'),
-    new PublicKey('ALDRiNzL1m5a6zCsVz3iLzHzvV2gJroRbyHDPaZZxkQH'),
+    new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj')
   ];
 
   wsConnection.onLogs('all', async (log: Logs) => {
@@ -48,7 +45,7 @@ async function listenForNewPools() {
     if (!matchingProgram) return;
 
     const poolData = await extractPoolDataFromLog(log);
-    if (!poolData || poolData.lpSol < 5) return; // Filtrera bort pooler under 5 SOL
+    if (!poolData || poolData.lpSol < 10) return; // Filtrera bort pooler under 10 SOL
 
     const safetyResult = await checkPoolSafety(poolData);
 
@@ -75,10 +72,6 @@ async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
   const logText = log.logs.join(' ');
   let source = 'UNKNOWN';
   if (logText.includes('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj')) source = 'LaunchLab';
-  if (logText.includes('RVKd61ztZW9J7oH9FUCwG5HLeU5kSRyRkzE9j5pqDqC')) source = 'Raydium';
-  if (logText.includes('9W959DqZx2dVcKfS7oKJFwgDDqPrE1xKkG4i7C7CkCFt')) source = 'Orca';
-  if (logText.includes('METeoraqVjZt5pCQ4wLqqpkkpJ5hY6j3XJt7UfgHQ8L')) source = 'Meteora';
-  if (logText.includes('ALDRiNzL1m5a6zCsVz3iLzHzvV2gJroRbyHDPaZZxkQH')) source = 'Aldrin';
 
   return {
     address: log.signature || `unknown-${Date.now()}`,

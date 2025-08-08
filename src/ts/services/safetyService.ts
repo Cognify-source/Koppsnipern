@@ -47,13 +47,13 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     reasons.push('Freeze authority present');
   }
 
-  // LP check (utvecklingsläge: sänkt till 2 SOL)
-  if (pool.lpSol < 2) {
+  // LP check (utvecklingsläge: sänkt till 10 SOL)
+  if (pool.lpSol < 10) {
     reasons.push(`LP too low (${pool.lpSol} SOL)`);
   }
 
-  // Creator fee (utvecklingsläge: höjd till max 10 %)
-  if (pool.creatorFee > 10) {
+  // Creator fee (utvecklingsläge: max 5 %)
+  if (pool.creatorFee > 5) {
     reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
   }
 
