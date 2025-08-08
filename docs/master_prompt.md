@@ -5,7 +5,6 @@ Detta dokument är den **enda startprompten** för Koppsnipern.
 Den ersätter `docs/startprompt.txt` och kombinerar nyckelinsikter från:
 - `docs/handover.md` (roadmap & status)
 - `docs/sniper_playbook.md` (tradingregler)
-- `docs/GPT-INSTRUKTIONER.txt` (arbetsinstruktioner)
 
 Målet är att snabbt och träffsäkert starta och driva utvecklingen utan att växla mellan flera styrdokument.
 
@@ -54,7 +53,6 @@ Målet är att snabbt och träffsäkert starta och driva utvecklingen utan att v
 - **Master Prompt (detta dokument):** Startinstruktioner + arbetsflöde.
 - **handover.md:** Roadmap & aktuell status.
 - **sniper_playbook.md:** Fullständig strategi och riskregler.
-- **GPT-INSTRUKTIONER.txt:** Djupgående arbetsinstruktioner och repo-hantering.
 
 ---
 
