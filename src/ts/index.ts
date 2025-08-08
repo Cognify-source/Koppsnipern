@@ -9,6 +9,7 @@ import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
 import { SafetyService } from "./services/safetyService";
+import { notifyDiscord } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
 
 const isStub = process.env.USE_STUB === "true";
@@ -52,6 +53,8 @@ async function handleSlot(
 
 async function main(): Promise<void> {
   console.log("🚀 Orchestrator startar", isStub ? "(stub-mode)" : "");
+
+  await notifyDiscord("🤖 Koppsnipern är online");
 
   const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
   const keyJson = process.env.PAYER_SECRET_KEY!;
