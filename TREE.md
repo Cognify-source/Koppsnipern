@@ -4,8 +4,8 @@
 │   ├── GPT-INSTRUKTIONER.txt
 │   ├── handover.md
 │   ├── historic_pool_analysis.md
-│   ├── sniper_playbook.md
-│   └── startprompt.txt
+│   ├── master_prompt.md
+│   └── sniper_playbook.md
 ├── jest.config.js
 ├── package-lock.json
 ├── package.json
