@@ -1,7 +1,5 @@
 .
 ├── TREE.md
-├── data
-│   └── cupsyy_pool_prices.json
 ├── docs
 │   ├── GPT-INSTRUKTIONER.txt
 │   ├── handover.md
@@ -9,49 +7,27 @@
 │   ├── sniper_playbook.md
 │   └── startprompt.txt
 ├── jest.config.js
-├── ml
-│   ├── ML-KB.md
-│   ├── data
-│   │   └── snipes.jsonl
-│   └── scripts
-│       └── should_retrain.py
 ├── package-lock.json
 ├── package.json
-├── pytest.ini
-├── requirements.txt
 ├── scripts
-│   ├── airdrop.ts
-│   ├── unused
-│   │   ├── data
-│   │   ├── fetch_launchlab_from_moralis.ts
-│   │   ├── fetch_launchlab_methods.ts
-│   │   ├── fetch_launchlab_pools.ts
-│   │   ├── fetch_launchlab_tx_debug.ts
-│   │   ├── fetch_price_movement.ts
-│   │   ├── filter_cupsyy_participation.ts
-│   │   ├── filter_cupsyy_pools.ts
-│   │   ├── filterjson.py
-│   │   ├── inspect_mint_origin.ts
-│   │   ├── quick_history_scan.ts
-│   │   ├── scan_cupyy_swaps.ts
-│   │   └── scan_launchlab_rpc.ts
-│   └── utils
-│       ├── backtest_strategy.ts
-│       ├── fetch_price_window.ts
-│       └── trace_cupsyy_history.ts
+│   └── unused
+│       ├── data
+│       ├── fetch_launchlab_from_moralis.ts
+│       ├── fetch_launchlab_methods.ts
+│       ├── fetch_launchlab_pools.ts
+│       ├── fetch_launchlab_tx_debug.ts
+│       ├── fetch_price_movement.ts
+│       ├── filter_cupsyy_participation.ts
+│       ├── filter_cupsyy_pools.ts
+│       ├── filterjson.py
+│       ├── inspect_mint_origin.ts
+│       ├── quick_history_scan.ts
+│       ├── scan_cupyy_swaps.ts
+│       └── scan_launchlab_rpc.ts
 ├── src
-│   ├── __init__.py
 │   ├── config
 │   │   ├── default.ts
 │   │   └── jito.config.ts
-│   ├── ml
-│   │   ├── __init__.py
-│   │   ├── config
-│   │   ├── extract.py
-│   │   ├── features.py
-│   │   ├── ml_model.py
-│   │   ├── predict.py
-│   │   └── train.py
 │   ├── ts
 │   │   ├── api
 │   │   ├── index.ts
@@ -62,15 +38,34 @@
 │       ├── raydium-sdk
 │       └── raydium-sdk.d.ts
 ├── tests
-│   ├── conftest.py
 │   ├── integration
 │   │   ├── data
 │   │   ├── orchestrator.test.ts
 │   │   ├── streamListener.e2e.test.ts
 │   │   └── tradeService.devnet.test.ts
 │   └── unit
-│       ├── ml
 │       └── ts
-└── tsconfig.json
+├── tsconfig.json
+└── unused
+    ├── data
+    │   ├── cupsyy_pool_prices.json
+    │   ├── cupsyy_pools.json
+    │   └── quick_history_report.json
+    ├── ml
+    │   ├── ML-KB.md
+    │   ├── data
+    │   └── scripts
+    ├── pytest.ini
+    ├── requirements.txt
+    ├── scripts
+    │   ├── airdrop.ts
+    │   └── utils
+    ├── src
+    │   ├── __init__.py
+    │   ├── ml
+    │   └── ts
+    └── tests
+        ├── conftest.py
+        └── unit
 
-26 directories, 48 files
+30 directories, 39 files
