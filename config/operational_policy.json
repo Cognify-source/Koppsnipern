@@ -115,6 +115,17 @@
       "roi_percent": "number"
     }
   },
+  "document_lifecycle": {
+    "type": "versioned_and_iterative",
+    "description": "Denna policy är ett levande dokument som används som utvecklingsstöd för sniper-boten. Policyn uppdateras löpande när nya insikter, förbättringar eller ändringar i botens design framkommer under utvecklingsprocessen.",
+    "update_protocol": [
+      "Alla ändringar ska versioneras med tydlig versionsbeteckning (t.ex. 1.8 → 1.9).",
+      "Tidigare versioner arkiveras för full historik och spårbarhet.",
+      "Ändringar ska dokumenteras kortfattat i en changelog med datum och ansvarig.",
+      "OP används endast som referens vid utveckling och har ingen direkt påverkan på botens realtidsdrift."
+    ],
+    "review_cycle": "Minst en gång per utvecklingscykel eller vid större arkitekturändring."
+  },
   "conflict_handling": [
     "Högsta säkerhetsnivå gäller alltid.",
     "Vid osäkerhet → ingen trade, logga händelsen."
