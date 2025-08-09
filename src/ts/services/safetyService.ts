@@ -1,5 +1,5 @@
 // safetyService.ts (utvecklingsläge)
-// SafetyService v1 – snabb rug check + loggning till Discord och lokal JSONL-fil
+// SafetyService v1 – snabb rug check + loggning till Discord och lokal JSONL-fil (endast SAFE)
 
 import fs from 'fs';
 import fetch from 'node-fetch';
@@ -47,7 +47,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.freezeAuthority !== null) {
     reasons.push('Freeze authority present');
   }
-  if (pool.lpSol < 10) {
+  if (pool.lpSol < 5) { // ändrat från 10 till 5
     reasons.push(`LP too low (${pool.lpSol} SOL)`);
   }
   if (pool.creatorFee > 5) {
@@ -75,12 +75,15 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     source: pool.source || 'unknown'
   };
 
-  await logResult(result);
+  // Endast logga SAFE-pooler – BLOCKED ignoreras helt
+  if (status === 'SAFE') {
+    await logResult(result);
+  }
+
   return result;
 }
 
 async function logResult(result: SafetyResult): Promise<void> {
-  // Se till att logg skrivs till fil oavsett Discord
   try {
     if (!fs.existsSync('./logs')) {
       fs.mkdirSync('./logs', { recursive: true });
@@ -91,15 +94,13 @@ async function logResult(result: SafetyResult): Promise<void> {
     console.error('Kunde inte skriva till lokal loggfil:', err);
   }
 
-  // Läs webhook dynamiskt
   const discordWebhook = process.env.DISCORD_WEBHOOK_URL?.trim();
   if (!discordWebhook) {
-    console.warn('⚠️ Ingen Discord-webhook angiven – hoppar över Discord-loggning.');
-    return;
+    return; // ingen varning om webhook saknas för att undvika onödig output
   }
 
   const discordMessage = {
-    content: `${result.status === 'SAFE' ? '✅ SAFE' : '⛔ BLOCKED'} – Källa: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(2)} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`
+    content: `✅ SAFE – Källa: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(2)} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`
   };
 
   try {
@@ -108,12 +109,10 @@ async function logResult(result: SafetyResult): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(discordMessage)
     });
-    if (!res.ok) {
-      console.error(`Discord-webhook svarade med fel: ${res.status} ${res.statusText}`);
-    } else {
+    if (res.ok) {
       console.log(`📨 Discord-logg skickad: ${result.status} – ${result.pool}`);
     }
-  } catch (err) {
-    console.error('Failed to log to Discord:', err);
+  } catch {
+    // Tyst felhantering för att undvika spam
   }
 }

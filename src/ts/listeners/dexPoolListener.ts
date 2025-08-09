@@ -42,9 +42,9 @@ async function listenForNewPools() {
   wsConnection.onLogs('all', async (log: Logs) => {
     const matchingProgram = dexPrograms.find((p) => log.logs.some((l) => l.includes(p.toBase58())));
     if (!matchingProgram) return;
-
+    
     const poolData = await extractPoolDataFromLog(log);
-    if (!poolData || poolData.lpSol < 10) return;
+    if (!poolData || poolData.lpSol < 5) return; // ändrat från 10 till 5
 
     const safetyResult = await checkPoolSafety(poolData);
 
