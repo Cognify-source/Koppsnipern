@@ -1,13 +1,13 @@
 {
-  "version": "1.7",
-  "policy_name": "Koppsnipern – Operativ Policy (synkad med systeminstruktioner)",
+  "version": "1.8",
+  "policy_name": "Koppsnipern – Operativ Policy (endast botdrift)",
 
   "references": {
-    "system_instructions": "Alla procedurer, kodändringsregler, självtestflöde och felhantering styrs av GPT-systeminstruktionerna. Policyn definierar endast parametrar och regler för drift.",
-    "authority_rule": "Vid konflikt mellan parametrar och procedurer gäller följande: Parametrar & regelvärden (t.ex. filtergränser, risknivåer, scoringformler) → Operational Policy har högsta auktoritet. Procedurer & beteende (t.ex. arbetsflöden, kodändringsprocess, felhantering, självtest) → Systeminstruktionerna har högsta auktoritet. Om osäkerhet uppstår kring vilken kategori något tillhör → behandla det som en parameter och följ policyn."
+    "system_instructions": "Systeminstruktionerna gäller endast GPT-assistentens arbetsmetod och ansvar. Denna policy gäller endast sniper-botens drift.",
+    "authority_rule": "Vid konflikt mellan GPT:s arbetsmetod och botens drift: GPT följer Systeminstruktionerna, boten följer denna policy."
   },
 
-  "strategy": {
+  "objectives": {
     "precision_target": "90-95%",
     "latency_target_ms": 350,
     "max_daily_risk_SOL": 50,
@@ -16,6 +16,14 @@
       "Säkerhet (rug checks) prioriteras före hastighet",
       "Skalning sker först efter validerad precision"
     ]
+  },
+
+  "initialization": {
+    "load_policy_at_start": true,
+    "confirm_version": true,
+    "run_selftest": true,
+    "selftest_environment": "Devnet/mock",
+    "on_selftest_fail": "Stop trading and log SELFTEST_FAIL"
   },
 
   "operational_flow": [
@@ -65,6 +73,12 @@
         "stop_loss_follow_percent": 3
       }
     }
+  },
+
+  "error_handling": {
+    "module_fail": "Logga till Discord och stoppa bot",
+    "rpc_or_jito_fail": "Byt till sekundär endpoint",
+    "double_endpoint_fail": "Stoppa bot"
   },
 
   "roadmap_priority": [
