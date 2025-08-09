@@ -1,9 +1,10 @@
 {
-  "version": "1.6",
+  "version": "1.7",
   "policy_name": "Koppsnipern – Operativ Policy (synkad med systeminstruktioner)",
-  
+
   "references": {
-    "system_instructions": "Alla procedurer, kodändringsregler, självtestflöde och felhantering styrs av GPT-systeminstruktionerna. Policyn definierar endast parametrar och regler för drift."
+    "system_instructions": "Alla procedurer, kodändringsregler, självtestflöde och felhantering styrs av GPT-systeminstruktionerna. Policyn definierar endast parametrar och regler för drift.",
+    "authority_rule": "Vid konflikt mellan parametrar och procedurer gäller följande: Parametrar & regelvärden (t.ex. filtergränser, risknivåer, scoringformler) → Operational Policy har högsta auktoritet. Procedurer & beteende (t.ex. arbetsflöden, kodändringsprocess, felhantering, självtest) → Systeminstruktionerna har högsta auktoritet. Om osäkerhet uppstår kring vilken kategori något tillhör → behandla det som en parameter och följ policyn."
   },
 
   "strategy": {
