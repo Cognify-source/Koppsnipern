@@ -1,0 +1,129 @@
+{
+  "version": "1.5",
+  "policy_name": "Koppsnipern – Full Operativ Policy",
+  "code_change_policy": {
+    "priority": "highest",
+    "rules": [
+      "Ändra filer endast på uttrycklig begäran från användaren.",
+      "Presentera kodförslag och invänta godkännande innan ändring sker.",
+      "All kommunikation om ändringar sker endast i chatten.",
+      "Visa endast relevanta kodavsnitt för att spara tokens.",
+      "Logga alla ändringar (även små justeringar).",
+      "Använd checkpoints vid större steg.",
+      "Innan varje kodändring ska intern kontroll bekräfta att policyn följs."
+    ],
+    "fail_action": "Avbryt omedelbart och logga till Discord med tag 'POLICY_VIOLATION'"
+  },
+  "strategy": {
+    "precision_target": "90-95%",
+    "latency_target_ms": 350,
+    "max_daily_risk_SOL": 50,
+    "core_strategy": [
+      "Cupsyy-trigger + regelbaserad filtrering",
+      "Säkerhet (rug checks) prioriteras före hastighet",
+      "Skalning sker först efter validerad precision"
+    ]
+  },
+  "operational_flow": [
+    "Upptäck ny pool via Geyser/WebSocket",
+    "Bekräfta LaunchLab-initiering (Raydium Initialize) inom 2 sekunder",
+    "Kör hårda filter och rug checks",
+    "Förbered signerad swap",
+    "Vänta på Cupsyy-signal (10–45 sek efter poolskapande)",
+    "Skicka transaktion som Jito-bundle",
+    "Exit enligt exitregler"
+  ],
+  "filters": {
+    "hard_filters": {
+      "WSOL_LP_min_SOL": 20,
+      "creator_fee_max_percent": 5,
+      "mint_authority": "none",
+      "freeze_authority": "none",
+      "dev_trigger_min_SOL": 1,
+      "dev_trigger_time_sec": 10,
+      "slippage_estimate_max_percent": 3,
+      "RTT_max_ms": 150,
+      "max_positions_per_wallet": 2
+    }
+  },
+  "scoring": {
+    "formula": "(LP_norm * 0.4) + (dev_trigger * 0.3) + (rug_score/100 * 0.2) + (ROI_est * 0.1)",
+    "variables": {
+      "LP_norm": "Normaliserat LP 0–1 (min=20, max=150)",
+      "dev_trigger": "Binärt (1 eller 0)"
+    }
+  },
+  "risk_exit": {
+    "pause_conditions": [
+      "Precision (senaste 50 trades) < 85%",
+      "Dags-P&L < -2% av wallet",
+      "RTT > 150 ms i 3 trades i rad",
+      "Daglig riskcap nådd (50 SOL)"
+    ],
+    "exit_rules": {
+      "stop_loss": "-4% eller 45 sek timeout",
+      "trailing_tp": {
+        "activate_at_ROI_percent": 12,
+        "lock_profit_percent": 6,
+        "stop_loss_follow_percent": 3
+      }
+    }
+  },
+  "roadmap_priority": [
+    "SafetyService (rug checks, metadata, blacklist)",
+    "TradePlanner (Cupsyy-trigger, latency, pre-swap)",
+    "BundleSender-integration",
+    "CI med Devnet-integrationstester",
+    "Health-check + metrics",
+    "Backtest mot historiska Cupsyy-pooler"
+  ],
+  "technical_requirements": {
+    "performance": "Prestandakritisk kod körs i Node-process",
+    "modules": [
+      "StreamListener",
+      "SafetyService",
+      "TradePlanner",
+      "TradeService",
+      "RiskManager",
+      "BundleSender"
+    ],
+    "latency_budget_ms": {
+      "geyser_to_bot": 150,
+      "sign_and_send": 50,
+      "jito_bundle_execution": 100
+    }
+  },
+  "error_handling": [
+    "Vid modulfel → logga till Discord och stoppa bot.",
+    "Vid RPC/JITO-fel → växla till sekundär endpoint.",
+    "Vid dubbel endpoint-fail → stoppa bot."
+  ],
+  "logging": {
+    "log_only_safe_pools": true,
+    "discord_format": "klartext",
+    "local_json_schema": {
+      "timestamp": "ISO8601",
+      "pool_address": "string",
+      "rug_score": "number",
+      "latency_ms": "number",
+      "outcome": "SUCCESS|FAIL|SKIPPED",
+      "slot_lag": "number",
+      "fee_ratio": "number",
+      "roi_percent": "number"
+    }
+  },
+  "self_test": {
+    "procedure": "Kör simulerad trade mot Devnet/mock-pool vid uppstart",
+    "fail_action": "Stoppa trading och logga SELFTEST_FAIL",
+    "json_schema": {
+      "timestamp": "ISO8601",
+      "selftest": "PASS|FAIL",
+      "latency_ms": "number",
+      "remarks": "string"
+    }
+  },
+  "conflict_handling": [
+    "Högsta säkerhetsnivå gäller alltid.",
+    "Vid osäkerhet → ingen trade, logga händelsen."
+  ]
+}
