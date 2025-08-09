@@ -1,4 +1,4 @@
-// Uppdaterad lyssnare för LaunchLab med LP-gräns på 10 SOL
+// Lyssnare för LaunchLab med LP-gräns på 10 SOL – loggar endast SAFE-pooler och skickar till Discord
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
 import { checkPoolSafety } from '../services/safetyService';
 import dotenv from 'dotenv';
@@ -35,7 +35,6 @@ const wsConnection = new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsE
 async function listenForNewPools() {
   console.log('🚀 Lyssnar på LaunchLab-pooler...');
 
-  // Endast LaunchLab-programmet
   const dexPrograms = [
     new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj')
   ];
@@ -45,22 +44,33 @@ async function listenForNewPools() {
     if (!matchingProgram) return;
 
     const poolData = await extractPoolDataFromLog(log);
-    if (!poolData || poolData.lpSol < 10) return; // Filtrera bort pooler under 10 SOL
+    if (!poolData || poolData.lpSol < 10) return;
 
     const safetyResult = await checkPoolSafety(poolData);
 
-    if (safetyResult.status !== 'BLOCKED') {
-      console.log(`\n📊 [${poolData.source}] Ny pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
-      console.log(`📋 Safety status: ${safetyResult.status}`);
+    // Endast SAFE-pooler loggas och skickas
+    if (safetyResult.status !== 'SAFE') return;
 
-      if (process.env.DISCORD_WEBHOOK_URL) {
-        await fetch(process.env.DISCORD_WEBHOOK_URL, {
+    console.log(`\n📊 [${poolData.source}] Ny pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
+    console.log(`📋 Safety status: ${safetyResult.status}`);
+
+    if (process.env.DISCORD_WEBHOOK_URL && process.env.DISCORD_WEBHOOK_URL.trim().length > 0) {
+      try {
+        const res = await fetch(process.env.DISCORD_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content: `✅ Ny pooldetektion | ${new Date().toISOString()}\nKälla: ${poolData.source}\nPool: ${poolData.address}\nLP: ${poolData.lpSol.toFixed(2)} SOL | Fee: ${poolData.creatorFee.toFixed(2)}%\nStatus: ${safetyResult.status}`
           })
         });
+
+        if (!res.ok) {
+          console.error(`⚠️ Discord-webhook fel: ${res.status} ${res.statusText}`);
+        } else {
+          console.log(`📨 Discord-logg skickad (${safetyResult.status})`);
+        }
+      } catch (err) {
+        console.error(`⚠️ Kunde inte skicka till Discord-webhook:`, err);
       }
     }
   });

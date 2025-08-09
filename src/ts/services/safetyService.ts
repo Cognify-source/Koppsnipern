@@ -3,8 +3,10 @@
 
 import fs from 'fs';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 
-const DISCORD_WEBHOOK_URL: string = process.env.DISCORD_WEBHOOK_URL || '';
+dotenv.config({ override: true, debug: false });
+
 const LOG_FILE = './logs/safety_checks.jsonl';
 
 interface PoolData {
@@ -15,6 +17,7 @@ interface PoolData {
   lpSol: number;
   creatorFee: number;
   estimatedSlippage: number;
+  source?: string;
 }
 
 interface SafetyResult {
@@ -26,6 +29,7 @@ interface SafetyResult {
   creator_fee: number;
   slippage: number;
   reasons: string[];
+  source?: string;
 }
 
 const BLACKLIST = new Set<string>([
@@ -37,32 +41,21 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const reasons: string[] = [];
   const start = performance.now();
 
-  // Mint authority
   if (pool.mintAuthority !== null) {
     reasons.push('Mint authority present');
   }
-
-  // Freeze authority
   if (pool.freezeAuthority !== null) {
     reasons.push('Freeze authority present');
   }
-
-  // LP check (utvecklingsläge: sänkt till 10 SOL)
   if (pool.lpSol < 10) {
     reasons.push(`LP too low (${pool.lpSol} SOL)`);
   }
-
-  // Creator fee (utvecklingsläge: max 5 %)
   if (pool.creatorFee > 5) {
     reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
   }
-
-  // Blacklist check
   if (BLACKLIST.has(pool.mint)) {
     reasons.push('Mint is blacklisted');
   }
-
-  // Slippage check (behåll ≤ 3 % gräns)
   if (pool.estimatedSlippage > 3) {
     reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   }
@@ -78,7 +71,8 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     lp: pool.lpSol,
     creator_fee: pool.creatorFee,
     slippage: pool.estimatedSlippage,
-    reasons
+    reasons,
+    source: pool.source || 'unknown'
   };
 
   await logResult(result);
@@ -86,27 +80,39 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 }
 
 async function logResult(result: SafetyResult): Promise<void> {
-  if (!fs.existsSync('./logs')) {
-    fs.mkdirSync('./logs', { recursive: true });
+  // Se till att logg skrivs till fil oavsett Discord
+  try {
+    if (!fs.existsSync('./logs')) {
+      fs.mkdirSync('./logs', { recursive: true });
+    }
+    fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
+    console.log(`💾 Loggad lokalt: ${result.status} – ${result.pool}`);
+  } catch (err) {
+    console.error('Kunde inte skriva till lokal loggfil:', err);
   }
 
-  fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
-
-  if (!DISCORD_WEBHOOK_URL) {
-    console.warn('No Discord webhook URL provided, skipping Discord log');
+  // Läs webhook dynamiskt
+  const discordWebhook = process.env.DISCORD_WEBHOOK_URL?.trim();
+  if (!discordWebhook) {
+    console.warn('⚠️ Ingen Discord-webhook angiven – hoppar över Discord-loggning.');
     return;
   }
 
   const discordMessage = {
-    content: `${result.status === 'SAFE' ? '✅' : '⛔'} ${result.status} – Pool: ${result.pool}\n\n\`\`\`json\n${JSON.stringify(result, null, 4)}\n\`\`\``
+    content: `${result.status === 'SAFE' ? '✅ SAFE' : '⛔ BLOCKED'} – Källa: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(2)} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`
   };
 
   try {
-    await fetch(DISCORD_WEBHOOK_URL, {
+    const res = await fetch(discordWebhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(discordMessage)
     });
+    if (!res.ok) {
+      console.error(`Discord-webhook svarade med fel: ${res.status} ${res.statusText}`);
+    } else {
+      console.log(`📨 Discord-logg skickad: ${result.status} – ${result.pool}`);
+    }
   } catch (err) {
     console.error('Failed to log to Discord:', err);
   }
