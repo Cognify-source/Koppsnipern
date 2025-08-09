@@ -1,5 +1,5 @@
 // safetyService.ts – utvecklingsläge
-// SafetyService med modulära rug checks och loggning av endast SAFE-pooler
+// SafetyService med modulära rug checks, batch-RPC, latency per check, blockering av ogiltiga nycklar och blockloggning
 
 import fs from 'fs';
 import fetch from 'node-fetch';
@@ -9,6 +9,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 dotenv.config({ override: true, debug: false });
 
 const LOG_FILE = './logs/safety_checks.jsonl';
+const BLOCK_LOG_FILE = './logs/blocked_pools.jsonl';
 const BLACKLIST_FILE = './config/creator_blacklist.json';
 const LOCKERS_FILE = './config/lp_lockers.json';
 
@@ -36,7 +37,7 @@ interface PoolData {
   lpSol: number;
   creatorFee: number;
   estimatedSlippage: number;
-  creator?: string; // lägg till creator wallet
+  creator?: string;
   source?: string;
 }
 
@@ -52,50 +53,55 @@ interface SafetyResult {
   source?: string;
 }
 
-const BLACKLIST = new Set<string>([
-  'mintAddress1',
-  'mintAddress2'
-]);
+const BLACKLIST = new Set<string>(['mintAddress1', 'mintAddress2']);
+const DEBUG_RUG_CHECKS = process.env.DEBUG_RUG_CHECKS === 'true';
+const connection = new Connection(
+  process.env.SOLANA_HTTP_RPC_URL || 'https://api.mainnet-beta.solana.com',
+  'confirmed'
+);
 
-const connection = new Connection(process.env.SOLANA_HTTP_RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+function isValidPublicKey(key: string | undefined | null): boolean {
+  if (!key) return false;
+  try {
+    new PublicKey(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const reasons: string[] = [];
-  const start = performance.now();
+  const startAll = performance.now();
 
-  // Grundläggande OP-baserade checks
-  if (pool.mintAuthority !== null) {
-    reasons.push('Mint authority present');
+  // Blockera direkt om ogiltiga nycklar
+  if (!isValidPublicKey(pool.mint)) {
+    reasons.push('Invalid mint public key');
   }
-  if (pool.freezeAuthority !== null) {
-    reasons.push('Freeze authority present');
-  }
-  if (pool.lpSol < 10) { // enligt din nya min-gräns
-    reasons.push(`LP too low (${pool.lpSol} SOL)`);
-  }
-  if (pool.creatorFee > 5) {
-    reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
-  }
-  if (BLACKLIST.has(pool.mint)) {
-    reasons.push('Mint is blacklisted');
-  }
-  if (pool.estimatedSlippage > 3) {
-    reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
+  if (!isValidPublicKey(pool.address)) {
+    reasons.push('Invalid LP address');
   }
 
-  // Nya rug checks
-  if (await failsHolderDistribution(pool.mint)) {
-    reasons.push('Top token holders own too much supply');
-  }
-  if (failsCreatorWalletRisk(pool.creator)) {
-    reasons.push('Creator wallet is blacklisted');
-  }
-  if (await failsLiquidityLock(pool.address)) {
-    reasons.push('LP tokens are not locked in a trusted locker');
+  // Grundläggande OP-baserade checks (ingen RPC)
+  const startBasic = performance.now();
+  if (pool.mintAuthority !== null) reasons.push('Mint authority present');
+  if (pool.freezeAuthority !== null) reasons.push('Freeze authority present');
+  if (pool.lpSol < 10) reasons.push(`LP too low (${pool.lpSol} SOL)`);
+  if (pool.creatorFee > 5) reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
+  if (BLACKLIST.has(pool.mint)) reasons.push('Mint is blacklisted');
+  if (pool.estimatedSlippage > 3) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
+  if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
+
+  // Hoppa RPC om vi redan blockerat
+  if (reasons.length === 0) {
+    const startBatch = performance.now();
+    const extraReasons = await runAdvancedChecks(pool);
+    reasons.push(...extraReasons);
+    if (DEBUG_RUG_CHECKS) console.log(`⏱ Advanced checks (batch RPC): ${(performance.now() - startBatch).toFixed(1)} ms`);
   }
 
   const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
-  const latency = Math.round(performance.now() - start);
+  const latency = Math.round(performance.now() - startAll);
 
   const result: SafetyResult = {
     timestamp: new Date().toISOString(),
@@ -109,59 +115,88 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     source: pool.source || 'unknown'
   };
 
-  // Endast logga SAFE-pooler
   if (status === 'SAFE') {
     await logResult(result);
+  } else {
+    await logBlockedPool(result, pool);
   }
 
   return result;
 }
 
+async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
+  const reasons: string[] = [];
+
+  const mintPk = new PublicKey(pool.mint);
+  const accountsToFetch: PublicKey[] = [mintPk];
+
+  let poolPk: PublicKey | null = null;
+  if (LP_LOCKERS.length > 0) {
+    poolPk = new PublicKey(pool.address);
+    accountsToFetch.push(poolPk);
+  }
+
+  const startRpc = performance.now();
+  const accounts = await connection.getMultipleAccountsInfo(accountsToFetch);
+  if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
+
+  // #2 Holder distribution check
+  const startHolder = performance.now();
+  if (await failsHolderDistribution(mintPk)) {
+    reasons.push('Top token holders own too much supply');
+  }
+  if (DEBUG_RUG_CHECKS) console.log(`⏱ Holder distribution: ${(performance.now() - startHolder).toFixed(1)} ms`);
+
+  // #4 Creator wallet risk
+  const startCreator = performance.now();
+  if (failsCreatorWalletRisk(pool.creator)) {
+    reasons.push('Creator wallet is blacklisted');
+  }
+  if (DEBUG_RUG_CHECKS) console.log(`⏱ Creator wallet risk: ${(performance.now() - startCreator).toFixed(1)} ms`);
+
+  // #5 Liquidity lock
+  if (poolPk) {
+    const startLock = performance.now();
+    const lpAccountIndex = accountsToFetch.length - 1;
+    const accountInfo = accounts[lpAccountIndex];
+    if (accountInfo) {
+      const owner = accountInfo.owner.toBase58();
+      if (!LP_LOCKERS.includes(owner)) {
+        reasons.push('LP tokens are not locked in a trusted locker');
+      }
+    } else {
+      reasons.push('LP account info not found');
+    }
+    if (DEBUG_RUG_CHECKS) console.log(`⏱ Liquidity lock: ${(performance.now() - startLock).toFixed(1)} ms`);
+  }
+
+  return reasons;
+}
+
 // #2 Holder distribution check
-async function failsHolderDistribution(mint: string): Promise<boolean> {
+async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {
   try {
-    const mintPk = new PublicKey(mint);
+    const largestAccounts = await connection.getTokenLargestAccounts(mintPk);
     const supplyInfo = await connection.getTokenSupply(mintPk);
     const totalSupply = Number(supplyInfo.value.amount);
-    if (!totalSupply || totalSupply <= 0) return false;
-
-    const largestAccounts = await connection.getTokenLargestAccounts(mintPk);
+    if (!totalSupply) return false;
     const topThree = largestAccounts.value.slice(0, 3).reduce((sum, acc) => sum + Number(acc.amount), 0);
-    const percentTopThree = (topThree / totalSupply) * 100;
-
-    return percentTopThree > 50; // Blockera om topp 3 äger mer än 50%
+    return (topThree / totalSupply) * 100 > 50;
   } catch {
-    return false; // Misslyckad fetch = inte blockera
+    return false;
   }
 }
 
 // #4 Creator wallet risk
 function failsCreatorWalletRisk(creator?: string): boolean {
-  if (!creator) return false;
-  if (CREATOR_BLACKLIST.length === 0) return false;
+  if (!creator || CREATOR_BLACKLIST.length === 0) return false;
   return CREATOR_BLACKLIST.includes(creator);
 }
 
-// #5 Liquidity lock check
-async function failsLiquidityLock(poolAddress: string): Promise<boolean> {
-  if (LP_LOCKERS.length === 0) return false;
-
-  try {
-    const poolPk = new PublicKey(poolAddress);
-    const accountInfo = await connection.getAccountInfo(poolPk);
-    if (!accountInfo) return true; // ingen info = osäkert
-    const owner = accountInfo.owner.toBase58();
-    return !LP_LOCKERS.includes(owner);
-  } catch {
-    return true; // vid fel, anta osäkert
-  }
-}
-
+// Logga SAFE
 async function logResult(result: SafetyResult): Promise<void> {
   try {
-    if (!fs.existsSync('./logs')) {
-      fs.mkdirSync('./logs', { recursive: true });
-    }
+    if (!fs.existsSync('./logs')) fs.mkdirSync('./logs', { recursive: true });
     fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
     console.log(`💾 Loggad lokalt: ${result.status} – ${result.pool}`);
   } catch (err) {
@@ -169,9 +204,7 @@ async function logResult(result: SafetyResult): Promise<void> {
   }
 
   const discordWebhook = process.env.DISCORD_WEBHOOK_URL?.trim();
-  if (!discordWebhook) {
-    return;
-  }
+  if (!discordWebhook) return;
 
   const discordMessage = {
     content: `✅ SAFE – Källa: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(2)} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`
@@ -183,10 +216,24 @@ async function logResult(result: SafetyResult): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(discordMessage)
     });
-    if (res.ok) {
-      console.log(`📨 Discord-logg skickad: ${result.status} – ${result.pool}`);
-    }
-  } catch {
-    // Tyst felhantering
+    if (res.ok) console.log(`📨 Discord-logg skickad: ${result.status} – ${result.pool}`);
+  } catch {}
+}
+
+// Logga BLOCKED
+async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<void> {
+  try {
+    if (!fs.existsSync('./logs')) fs.mkdirSync('./logs', { recursive: true });
+    const logEntry = {
+      timestamp: result.timestamp,
+      pool: pool.address,
+      mint: pool.mint,
+      reasons: result.reasons,
+      source: pool.source || 'unknown'
+    };
+    fs.appendFileSync(BLOCK_LOG_FILE, JSON.stringify(logEntry) + '\n');
+    console.log(`🚫 Blockerad pool loggad: ${pool.address}`);
+  } catch (err) {
+    console.error('Kunde inte skriva till blocked_pools-logg:', err);
   }
 }
