@@ -1,0 +1,1 @@
+Test automatisk with detailed logging for git pull.
