@@ -33,4 +33,13 @@ jobs:
         if: steps.findspace.outputs.codespace_name != ''
         run: |
           echo "Syncing codespace: ${{ steps.findspace.outputs.codespace_name }}"
-          gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- 'cd /workspaces/Koppsnipern && git pull'
+          gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- '
+            REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+            if [ -n "$REPO_DIR" ]; then
+              echo "Found repository at: $REPO_DIR"
+              cd "$REPO_DIR" && git pull
+            else
+              echo "❌ No git repository found in current Codespace."
+              exit 1
+            fi
+          '
