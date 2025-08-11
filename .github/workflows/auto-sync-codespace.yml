@@ -4,29 +4,33 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Install GitHub CLI
-        run: sudo apt-get install gh -y
-
-      - name: Authenticate GitHub CLI
-        env:
-          MY_CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-        run: echo "${MY_CODESPACE_PAT}" | gh auth login --with-token
-
-      - name: Get Codespace Name
+      - name: Set up GitHub CLI
         run: |
-          echo "Listing available Codespaces..."
-          gh codespace list --json name,state,repository
-          CS_NAME=$(gh codespace list --json name --jq '.[0].name')
-          echo "Codespace name: $CS_NAME"
-          echo "codespace_name=$CS_NAME" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y jq
+          type -p curl >/dev/null || sudo apt-get install curl -y
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install gh -y
 
-      - name: Pull latest changes in Codespace
+      - name: Authenticate with PAT
+        run: echo "${{ secrets.CODESPACE_PAT }}" | gh auth login --with-token
+
+      - name: Find active Codespace
+        id: findspace
         run: |
-          echo "Attempting to pull latest changes in Codespace..."
-          gh codespace ssh --codespace ${{ env.codespace_name }} -- 'cd /workspaces/Koppsnipern && git pull origin main'
+          CS_NAME=$(gh codespace list --json name,state --jq '.[] | select(.state=="Available") | .name' | head -n 1)
+          echo "codespace_name=$CS_NAME" >> $GITHUB_OUTPUT
+
+      - name: Git Pull in Codespace
+        if: steps.findspace.outputs.codespace_name != ''
+        run: |
+          echo "Syncing codespace: ${{ steps.findspace.outputs.codespace_name }}"
+          gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- 'cd /workspaces/${GITHUB_REPOSITORY##*/} && git pull'
