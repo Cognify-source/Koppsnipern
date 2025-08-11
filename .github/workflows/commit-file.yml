@@ -1,0 +1,36 @@
+name: Commit File to Main
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: "Path to file"
+        required: true
+      file_content:
+        description: "Base64-encoded file content"
+        required: true
+      commit_message:
+        description: "Commit message"
+        required: true
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ACTIONS_COMMIT_PAT }}
+          ref: main
+
+      - name: Decode and write file
+        run: |
+          echo "${{ github.event.inputs.file_content }}" | base64 --decode > "${{ github.event.inputs.file_path }}"
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ github.event.inputs.file_path }}"
+          git commit -m "${{ github.event.inputs.commit_message }}"
+          git push origin main
