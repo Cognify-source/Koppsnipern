@@ -29,15 +29,17 @@ jobs:
           CS_NAME=$(gh codespace list --json name,state,lastUsedAt --jq 'sort_by(.lastUsedAt) | reverse | .[] | select(.state=="Available") | .name' | head -n 1)
           echo "codespace_name=$CS_NAME" >> $GITHUB_OUTPUT
 
-      - name: Git Pull in Codespace
+      - name: Git Pull in Codespace with detailed log
         if: steps.findspace.outputs.codespace_name != ''
         run: |
           echo "Syncing codespace: ${{ steps.findspace.outputs.codespace_name }}"
           gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- '
+            echo "Searching for repo root in /workspaces..."
             REPO_DIR=$(find /workspaces -name ".git" -type d -exec dirname {} \; | head -n 1)
             if [ -n "$REPO_DIR" ]; then
-              echo "Found repository at: $REPO_DIR"
-              cd "$REPO_DIR" && git pull
+              echo "✅ Found repository at: $REPO_DIR"
+              echo "📡 Running git pull..."
+              git -C "$REPO_DIR" pull --verbose
             else
               echo "❌ No git repository found in /workspaces."
               exit 1
