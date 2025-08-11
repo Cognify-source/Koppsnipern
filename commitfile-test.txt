@@ -1,0 +1,1 @@
+Detta är en testcommit via GPT commitFile-metoden utan godkŘnnandeklick.
