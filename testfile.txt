@@ -2,5 +2,5 @@ This is a fresh test file from scratch.
 Line 2.
 Line 3.
 Line 4.
-YXKAL YXLAN ALLA BALLA
+BOLLKALLE
 Line 6.
