@@ -2,5 +2,4 @@ This is a fresh test file from scratch.
 Line 2.
 Line 3.
 GLASSBIL
-BOLLKALLLE
-\LOSSSSA
+BOLLKALLLEBLOSSSSA
