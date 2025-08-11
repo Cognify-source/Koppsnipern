@@ -5,33 +5,37 @@ const crypto = require("crypto");
 
 const app = express();
 
-// Läser in raw body för signaturverifiering
 app.use(express.json({ type: "*/*", verify: (req, res, buf) => { req.rawBody = buf; }}));
 
 const PORT = process.env.WEBHOOK_PORT || 3000;
 const SECRET = process.env.WEBHOOK_SECRET || "";
 
-// Verifiera GitHub-signatur
 function verifySignature(req) {
-  if (!SECRET) return true; // Ingen secret -> hoppa verifiering
+  if (!SECRET) return true;
 
   const signature = req.headers["x-hub-signature-256"];
-  if (!signature) return false;
+  if (!signature) {
+    console.log("⚠️ Ingen signatur mottagen i requesten");
+    return false;
+  }
 
   const hmac = crypto.createHmac("sha256", SECRET);
   hmac.update(req.rawBody);
   const expected = `sha256=${hmac.digest("hex")}`;
 
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
+  // Loggar alltid vid mismatch
+  if (signature !== expected) {
+    console.log("❌ Signatur mismatch!");
+    console.log("   Mottagen signatur:", signature);
+    console.log("   Beräknad signatur:", expected);
     return false;
   }
+
+  return true;
 }
 
 app.post("/github-webhook", (req, res) => {
   if (!verifySignature(req)) {
-    console.log("❌ Ogiltig signatur – förfrågan nekas");
     return res.status(401).send("Invalid signature");
   }
 
