@@ -1,10 +1,11 @@
 {
+  "name": "Koppsnipern Dev",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
       "label": "Webhook Server",
-      "onAutoForward": "openBrowser",
-      "visibility": "public"
+      "onAutoForward": "notify"
     }
-  }
+  },
+  "postStartCommand": "gh codespace ports visibility 3000:public -c $CODESPACE_NAME && nohup node webhook-server.js > webhook.log 2>&1 &"
 }
