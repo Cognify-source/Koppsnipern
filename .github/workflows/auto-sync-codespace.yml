@@ -21,7 +21,7 @@ jobs:
       - name: Get Codespace Name
         run: |
           echo "Listing available Codespaces..."
-          gh codespace list --json name,state
+          gh codespace list --json name,state,repository
           CS_NAME=$(gh codespace list --json name --jq '.[0].name')
           echo "Codespace name: $CS_NAME"
           echo "codespace_name=$CS_NAME" >> $GITHUB_ENV
@@ -29,4 +29,4 @@ jobs:
       - name: Pull latest changes in Codespace
         run: |
           echo "Attempting to pull latest changes in Codespace..."
-          gh codespace ssh --codespace ${{ env.codespace_name }} --command "cd /workspaces/Koppsnipern && git pull origin main"
+          gh codespace ssh --codespace ${{ env.codespace_name }} -- 'cd /workspaces/Koppsnipern && git pull origin main'
