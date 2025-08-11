@@ -1,2 +1,3 @@
 Testfil skriven av Koppsnipern.
 Detta rad har lagts till.
+Turde rad tre.
