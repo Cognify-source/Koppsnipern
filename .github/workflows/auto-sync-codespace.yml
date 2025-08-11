@@ -33,4 +33,4 @@ jobs:
         if: steps.findspace.outputs.codespace_name != ''
         run: |
           echo "Syncing codespace: ${{ steps.findspace.outputs.codespace_name }}"
-          gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- 'cd /workspaces/${GITHUB_REPOSITORY##*/} && git pull'
+          gh codespace ssh -c "${{ steps.findspace.outputs.codespace_name }}" -- 'cd /workspaces/Koppsnipern && git pull'
