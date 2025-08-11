@@ -2,5 +2,5 @@ This is a fresh test file from scratch.
 Line 2 - TEST
 Line 3 - VERIFIED
 GLASSBIL - FINALTEST
-BOLLKALLLE
+BOLLKALLLE SUPER
 LOSSSSSA
