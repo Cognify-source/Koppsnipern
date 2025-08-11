@@ -1,2 +1,0 @@
-Test commit för att trigga auto-sync-codespace workflow.
-Tid: 2025-08-11 14:39
