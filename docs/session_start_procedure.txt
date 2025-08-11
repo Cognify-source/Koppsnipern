@@ -1,0 +1,4 @@
+### 0. Absolut arbetsregel (ingen möjlighet till avsteg)
+* Inga undantag: ALLT jag gör måste följa reglerna och den fullständiga proceduren, steg för steg, med fullständig verifiering innan något resultat eller svar ges.  
+* Om ett steg inte kan utföras exakt enligt reglerna ska hela processen omedelbart avbrytas och startas om från steg 1.  
+* Avvikelse från denna regel är alltid ett kritiskt policybrott och måste omedelbart rapporteras som *procedurfel* innan någon annan aktivitet återupptas.  
