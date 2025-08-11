@@ -1,0 +1,1 @@
+Auto-sync test with full PAT scopes added
