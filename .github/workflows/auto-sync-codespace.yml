@@ -1,0 +1,28 @@
+name: Auto Sync Codespace
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Authenticate GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: echo "${GH_TOKEN}" | gh auth login --with-token
+
+      - name: Get Codespace Name
+        id: get_cs
+        run: |
+          CS_NAME=$(gh codespace list --json name --jq '.[0].name')
+          echo "codespace_name=$CS_NAME" >> $GITHUB_ENV
+
+      - name: Pull latest changes in Codespace
+        run: |
+          gh codespace ssh --codespace ${{ env.codespace_name }} --command "cd /workspaces/Koppsnipern && git pull origin main"
