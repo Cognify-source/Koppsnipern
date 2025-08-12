@@ -75,7 +75,7 @@ async function listenForNewPools() {
   process.stdin.resume();
 }
 
-  @@ async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
+   async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
    const source = 'LaunchLab';
 
    if (!log.signature) return null;
@@ -95,7 +95,7 @@ async function listenForNewPools() {
 
    return {
      address: log.signature,
-     mint: tokenAMint,
+     mint: tokenAMint.toBase58(),
      mintAuthority: null,
      freezeAuthority: null,
      lpSol: Math.random() * 20,
