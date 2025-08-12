@@ -75,20 +75,34 @@ async function listenForNewPools() {
   process.stdin.resume();
 }
 
-async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
-  const logText = log.logs.join(' ');
-  let source = 'LaunchLab';
+  @@ async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
+   const source = 'LaunchLab';
 
-  return {
-    address: log.signature || `unknown-${Date.now()}`,
-    mint: '11111111111111111111111111111111',
-    mintAuthority: null,
-    freezeAuthority: null,
-    lpSol: Math.random() * 20, // TODO: ersätt med riktig LP-data
-    creatorFee: Math.random() * 10,
-    estimatedSlippage: Math.random() * 5,
-    source
-  };
+   if (!log.signature) return null;
+
+   const tx = await httpConnection.getParsedTransaction(log.signature, { commitment: 'confirmed' });
+   if (!tx || !tx.transaction.message.instructions) return null;
+
+   const initInstr = tx.transaction.message.instructions.find((ix) =>
+     'parsed' in ix && typeof ix.parsed === 'object' && 'type' in ix.parsed && ix.parsed.type === 'initialize2'
+   );
+   if (!initInstr || !('accounts' in initInstr)) return null;
+
+   const accounts = initInstr.accounts;
+   const tokenAMint = accounts[8];
+   const tokenBMint = accounts[9];
+   if (!tokenAMint || !tokenBMint) return null;
+
+   return {
+     address: log.signature,
+     mint: tokenAMint,
+     mintAuthority: null,
+     freezeAuthority: null,
+     lpSol: Math.random() * 20,
+     creatorFee: Math.random() * 10,
+     estimatedSlippage: Math.random() * 5,
+     source
+   };
 }
 
 if (require.main === module) {
