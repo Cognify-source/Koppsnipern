@@ -1,11 +1,10 @@
 {
-  "last_updated": "2025-08-12T14:53:04.258665Z",
+  "last_updated": "2025-08-12T14:58:20.591411Z",
   "rules": [
     "Vid radnummerfrågor: räkna rader programmatiskt",
     "Aldrig gissa värden i JSON eller kod",
     "Vid Base64-commit: följ 8-stegsproceduren exakt",
-    "Vid kodändringar: endast ändra uttryckligen begärda rader",
-    "Main är alltid standardbranch, ange endast om annat ska användas"
+    "Vid kodändringar: endast ändra uttryckligen begärda rader"
   ],
   "violations": [
     {
@@ -15,8 +14,8 @@
     },
     {
       "date": "2025-08-12",
-      "type": "Branch",
-      "description": "Angav main explicit trots att den är standard enligt instruktion"
+      "type": "Sökväg",
+      "description": "Felaktigt försök att läsa .devcontainer/devcontainer.json när korrekt sökväg är .devcontainer/.devcontainer.json"
     }
   ],
   "meta_instructions": [
