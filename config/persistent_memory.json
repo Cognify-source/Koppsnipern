@@ -1,10 +1,16 @@
 {
-  "last_updated": "2025-08-12T14:50:00Z",
+  "last_updated": "2025-08-12T14:55:00Z",
   "rules": [
     "Vid radnammerfragor: raknla rader programatisk",
     "Aldrig gissa tävarden i json eller kod",
     "Vid Base64-commit: föj 8-stegsproceduren exakt",
     "Vid kodändringa: endast åndra uttryckligen begårda rader"
   ],
-  "violations": []
+  "violations": [
+    {
+      "date": "2025-08-12",
+      "type": "Radnummer",
+      "description": "Svarade visuelt p%C3%A0l rad 22 i package.json utan att rkkät av rader"
+    }
+   ]
 }
