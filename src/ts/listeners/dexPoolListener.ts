@@ -80,7 +80,11 @@ async function listenForNewPools() {
 
    if (!log.signature) return null;
 
-   const tx = await httpConnection.getParsedTransaction(log.signature, { commitment: 'confirmed' });
+   const tx = await httpConnection.getParsedTransaction(log.signature, {
+  commitment: 'confirmed',
+  maxSupportedTransactionVersion: 0
+});
+
    if (!tx || !tx.transaction.message.instructions) return null;
 
    const initInstr = tx.transaction.message.instructions.find((ix) =>
