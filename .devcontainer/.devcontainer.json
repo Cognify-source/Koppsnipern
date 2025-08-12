@@ -7,5 +7,5 @@
       "onAutoForward": "notify"
     }
   },
-  "postStartCommand": "gh codespace ports visibility 3000:public -c $CODESPACE_NAME && nohup node webhook-server.js > webhook.log 2>&1 &"
+  "postStartCommand": "node sync-server.js"
 }
