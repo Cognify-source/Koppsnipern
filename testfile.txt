@@ -2,7 +2,7 @@ This is a fresh test file from scratch.
 Line 2 - TEST
 MAGOOOO
 BOLKALLLE SUPER
-BEIGAS
+Brizlari
 GOGGLAZ
 SJUTTANBRUTTAN
 ACHTUNG ACHT
