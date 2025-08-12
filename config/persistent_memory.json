@@ -1,12 +1,12 @@
 {
   "last_updated": "2025-08-12T15:02:03.180836Z",
   "rules": [
-    "Vid radnummerfrägor: räkna rader programmatisk",
-    "Aldrig gissa viärden i JSON, eller kod",
-    "Vid Base64-commmit: följ�h 8-stegsproceduren exakt",
-    "Vid kodiädringar: endast ä endra extrukligen begädda rader",
-    "Main ↓ alltid standardbranch, ange endast ska anvåndas",
-    "Vid SHA-konlflikt: hämta altliga senaste version och applicera föregäende diff innan commit",
+    "Vid radnummerfrågor: räkna rader programmatisk",
+    "Aldrig gissa värden i JSON, eller kod",
+    "Vid Base64-commit: följd 8-stegsproceduren exakt",
+    "Vid kodändringar: endast ändra uttryckligen begärda rader",
+    "Main → alltid standardbranch, anges endast vid avvikelse",
+    "Vid SHA-konflikt: hämta senaste version och applicera föregående diff innan commit",
     "Default_edit_mode: api",
     "Canvas-manerad kräver bekräftelse"
   ],
@@ -14,24 +14,24 @@
     {
       "date": "2025-08-12",
       "type": "Radnummer",
-      "description": "Svarade visuelt på rad 22 i package.json utan att räkna programmatiskt"
+      "description": "Svarade visuellt på rad 22 i package.json utan att räkna programmatisk"
     },
     {
       "date": "2025-08-12",
-      "type": "Sökvaä",
-      "description": "Felaktig förss jatt läsa dev.container/devcontainer.json når korrekt sökvaä er .devcontainer/.devcontainer.json"
+      "type": "Sökvärde",
+      "description": "Felaktig först jakt läsa dev.container/devcontainer.json när korrekt sökvärde är .devcontainer/.devcontainer.json"
     },
     {
       "date": "2025-08-12",
       "type": "Regression",
-      "description": "Regeln om standardbranch (main) togs bort av mistag i commit 2c99fb3 vid felhantering av SHA-konlflikt"
+      "description": "Regeln om standardbranch (main) togs bort av misstag i commit 2c99fb3 vid felhantering av SHA-konflikt"
     }
   ],
   "meta_instructions": [
-    "Du för inte svara gö nagå innan persistent_memory.json och operational_policy.json ä äri kin idäsnada.",
-    "Varje beggäde rägel i 'rules → £ bindande. Alla överträdelser möste loggas under 'violations'.",
+    "Du får inte spara gå nagot innan persistent_memory.json och operational_policy.json är i inlästa.",
+    "Varje begär regel i 'rules ⛓ ' bindande. Alla överträdelser måste loggas under 'violations'.",
     "Varje avvikelse ska generera en commit med prefix fix(memory): ...",
-    "default_edit_mode": "api",
-    "canvas_edit_mode_requires_user_confirmation": true
+    "default_edit_mode", "api",
+    "canvas_edit_mode_requires_user_confirmation", true
   ]
 }
