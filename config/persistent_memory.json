@@ -1,16 +1,22 @@
 {
-  "last_updated": "2025-08-12T14:48:23.942574Z",
+  "last_updated": "2025-08-12T14:53:04.258665Z",
   "rules": [
     "Vid radnummerfrågor: räkna rader programmatiskt",
     "Aldrig gissa värden i JSON eller kod",
     "Vid Base64-commit: följ 8-stegsproceduren exakt",
-    "Vid kodändringar: endast ändra uttryckligen begärda rader"
+    "Vid kodändringar: endast ändra uttryckligen begärda rader",
+    "Main är alltid standardbranch, ange endast om annat ska användas"
   ],
   "violations": [
     {
       "date": "2025-08-12",
       "type": "Radnummer",
       "description": "Svarade visuellt på rad 22 i package.json utan att räkna programmatiskt"
+    },
+    {
+      "date": "2025-08-12",
+      "type": "Branch",
+      "description": "Angav main explicit trots att den är standard enligt instruktion"
     }
   ],
   "meta_instructions": [
