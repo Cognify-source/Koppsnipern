@@ -86,7 +86,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.estimatedSlippage > 3) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
 
-  const metadataWarnings = await getTokenMetadataWarnings(pool.mint);
+  const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), connection);
   if (metadataWarnings.length > 0) {
     reasons.push(...metadataWarnings);
     pool.source = (pool.source || 'unknown') + ' +metadata';
