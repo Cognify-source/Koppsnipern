@@ -5,6 +5,7 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { Metaplex } from '@metaplex-foundation/js';
 import { getTokenMetadataWarnings } from '@utils/tokenMetadataUtils';
 
 dotenv.config({ override: true, debug: false });
@@ -73,6 +74,7 @@ function isValidPublicKey(key: string | undefined | null): boolean {
 export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const reasons: string[] = [];
   const startAll = performance.now();
+  const metaplex = Metaplex.make(connection);
 
   if (!isValidPublicKey(pool.mint)) reasons.push('Invalid mint public key');
   if (!isValidPublicKey(pool.address)) reasons.push('Invalid LP address');
@@ -86,7 +88,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.estimatedSlippage > 3) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
 
-  const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), connection);
+  const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), metaplex);;
   if (metadataWarnings.length > 0) {
     reasons.push(...metadataWarnings);
     pool.source = (pool.source || 'unknown') + ' +metadata';
