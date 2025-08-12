@@ -9,10 +9,7 @@
     "Vid SHA-konlflikt: hämta alltid senaste version och applicera diff innan commit",
     "Endast API-ändringar tillåtna – Canvas får aldrig användas utan explicit instruktion",
     "Använd aldrig pattern \".*\" i kodfiler – det ersätter hela innehållet och förstör logik",
-    "Default_edit_mode: api",
     "Jobba aldrig i canvas om inte användaren uttryckligen ber om det",
-    "default_edit_mode: api",
-    "canvas_edit_mode_requires_user_confirmation : true",
     "Du får inte svara på något innan persistent_memory.json och operational_policy.json är inlästa.",
     "Varje begärd regel i 'rules ⛓' är bindande. Alla överträdelser måste loggas under 'violations'.",
     "Varje avvikelse ska generera en commit med prefix fix(memory): ..."
