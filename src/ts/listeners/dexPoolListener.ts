@@ -81,7 +81,7 @@ async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
 
   return {
     address: log.signature || `unknown-${Date.now()}`,
-    mint: 'unknownMint',
+    mint: '11111111111111111111111111111111',
     mintAuthority: null,
     freezeAuthority: null,
     lpSol: Math.random() * 20, // TODO: ersätt med riktig LP-data

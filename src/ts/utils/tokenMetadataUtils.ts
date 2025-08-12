@@ -8,7 +8,7 @@ export async function getTokenMetadataWarnings(
   const warnings: string[] = [];
 
   try {
-    const metadata: Nft = await metaplex.nfts().findByMint({ mint });
+    const metadata = await metaplex.nfts().findByMint({ mintAddress: mint });
 
     if (!metadata) {
       warnings.push("Token metadata not found");
