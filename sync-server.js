@@ -6,7 +6,7 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const PORT = 3000;
 const app = express();
 
-// Behåll rå body för signaturverifiering
+// Behåll rå payload för verifiering
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
@@ -23,34 +23,22 @@ function verifySignature(req) {
 
 app.post("/webhook", (req, res) => {
   if (!verifySignature(req)) {
-    console.warn("⚠️ Ogiltig signatur – avvisar request");
     return res.status(401).send("Invalid signature");
   }
 
-  const commitSha = req.body?.after || "okänd";
-  console.log(`🔔 Push-event mottaget – commit: ${commitSha}`);
-
-  // Svara GitHub direkt
+  // Svara direkt
   res.status(200).send("OK");
 
   // Kör synken i bakgrunden
-  exec("git fetch origin main && git reset --hard origin/main", (error, stdout, stderr) => {
-    if (error) {
-      console.error(`❌ Synk misslyckades: ${error.message}`);
-      return;
-    }
-    console.log(`✅ Synk klar ${new Date().toLocaleTimeString()} – commit: ${commitSha}`);
-    if (stdout) console.log(stdout);
-    if (stderr) console.error(stderr);
-  });
+  exec("git fetch origin main && git reset --hard origin/main");
 });
 
 app.listen(PORT, () => {
   const codespaceName = process.env.CODESPACE_NAME;
   if (codespaceName) {
-    console.log(`🚀 Sync-server lyssnar på port ${PORT}`);
+    console.log(`🚀 Sync-server igång (port ${PORT})`);
     console.log(`🌐 Publik webhook-URL: https://${codespaceName}-${PORT}.app.github.dev/webhook`);
   } else {
-    console.log(`🚀 Sync-server lyssnar på port ${PORT} (lokalt)`);
+    console.log(`🚀 Sync-server igång lokalt (port ${PORT})`);
   }
 });
