@@ -5,13 +5,14 @@ const crypto = require("crypto");
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
-  console.error("❌ Ingen WEBHOOK_SECRET hittades. Sätt den i .env eller som miljövariabel.");
+  console.error("❌ Ingen WEBHOOK_SECRET hittades. Lägg till den i .env eller som miljövariabel.");
   process.exit(1);
 }
 
 const PORT = 3000;
 const app = express();
 
+// Behåll rå payload för verifiering
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;
@@ -35,11 +36,5 @@ app.post("/webhook", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  const codespaceName = process.env.CODESPACE_NAME;
-  if (codespaceName) {
-    console.log(`🚀 Sync-server igång (port ${PORT})`);
-    console.log(`🌐 Publik webhook-URL: https://${codespaceName}-${PORT}.app.github.dev/webhook`);
-  } else {
-    console.log(`🚀 Sync-server igång lokalt (port ${PORT})`);
-  }
+  console.log(`🚀 Sync-server igång på port ${PORT}`);
 });
