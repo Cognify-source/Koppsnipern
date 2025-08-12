@@ -1,15 +1,14 @@
 import { PublicKey } from "@solana/web3.js";
-import { Metaplex, Nft } from "@metaplex-foundation/js";
+import type { Metaplex, Nft } from "@metaplex-foundation/js";
 
 export async function getTokenMetadataWarnings(
   mint: PublicKey,
   metaplex: Metaplex
-[
-  ]): Promise<string[]> {
+): Promise<string[]> {
   const warnings: string[] = [];
 
   try {
-    const metadata = await metaplex.nfts().findByMint({m mint });
+    const metadata: Nft = await metaplex.nfts().findByMint({ mint });
 
     if (!metadata) {
       warnings.push("Token metadata not found");
@@ -20,7 +19,7 @@ export async function getTokenMetadataWarnings(
       warnings.push("Metadata name/symbol/URI is empty");
     }
 
-    const hasVerifiedCreator = metadata.creators?.some((c: any) => c.verified);
+    const hasVerifiedCreator = metadata.creators?.some((c: { verified: boolean }) => c.verified);
     if (!hasVerifiedCreator) {
       warnings.push("Token has no verified creators");
     }
@@ -28,5 +27,4 @@ export async function getTokenMetadataWarnings(
     warnings.push("Error loading token metadata: " + (err as Error).message);
   }
 
-  return warnings;
-}
+  return warnings;}
