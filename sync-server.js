@@ -6,8 +6,10 @@ app.use(express.json());
 
 app.post("/webhook", (req, res) => {
   try {
-    console.log("🔔 Push-event mottaget – drar senaste kod...");
+    const commitSha = req.body?.after || "okänd";
+    console.log(`🔔 Push-event mottaget – commit: ${commitSha}`);
     execSync("git fetch origin main && git reset --hard origin/main", { stdio: "inherit" });
+    console.log("✅ Synk klar");
     res.status(200).send("✅ Synk klar");
   } catch (err) {
     console.error("❌ Synk misslyckades:", err.message);
@@ -16,4 +18,12 @@ app.post("/webhook", (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Sync-server lyssnar på port ${PORT}`));
+app.listen(PORT, () => {
+  const codespaceName = process.env.CODESPACE_NAME;
+  if (codespaceName) {
+    console.log(`🚀 Sync-server lyssnar på port ${PORT}`);
+    console.log(`🌐 Publik webhook-URL: https://${codespaceName}-${PORT}.app.github.dev/webhook`);
+  } else {
+    console.log(`🚀 Sync-server lyssnar på port ${PORT} (lokalt)`);
+  }
+});
