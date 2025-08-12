@@ -1,10 +1,11 @@
 {
-  "last_updated": "2025-08-12T14:58:20.591411Z",
+  "last_updated": "2025-08-12T15:00:35.078946Z",
   "rules": [
     "Vid radnummerfrågor: räkna rader programmatiskt",
     "Aldrig gissa värden i JSON eller kod",
     "Vid Base64-commit: följ 8-stegsproceduren exakt",
-    "Vid kodändringar: endast ändra uttryckligen begärda rader"
+    "Vid kodändringar: endast ändra uttryckligen begärda rader",
+    "Main är alltid standardbranch, ange endast om annat ska användas"
   ],
   "violations": [
     {
@@ -16,6 +17,11 @@
       "date": "2025-08-12",
       "type": "Sökväg",
       "description": "Felaktigt försök att läsa .devcontainer/devcontainer.json när korrekt sökväg är .devcontainer/.devcontainer.json"
+    },
+    {
+      "date": "2025-08-12",
+      "type": "Regression",
+      "description": "Regeln om standardbranch (main) togs bort av misstag i commit 2c99fb3 vid felhantering av SHA-konflikt"
     }
   ],
   "meta_instructions": [
