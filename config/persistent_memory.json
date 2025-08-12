@@ -1,11 +1,12 @@
 {
-  "last_updated": "2025-08-12T15:00:35.078946Z",
+  "last_updated": "2025-08-12T15:02:03.180836Z",
   "rules": [
     "Vid radnummerfrågor: räkna rader programmatiskt",
     "Aldrig gissa värden i JSON eller kod",
     "Vid Base64-commit: följ 8-stegsproceduren exakt",
     "Vid kodändringar: endast ändra uttryckligen begärda rader",
-    "Main är alltid standardbranch, ange endast om annat ska användas"
+    "Main är alltid standardbranch, ange endast om annat ska användas",
+    "Vid SHA-konflikt: hämta alltid senaste version och applicera föregående diff innan commit"
   ],
   "violations": [
     {
