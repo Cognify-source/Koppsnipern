@@ -7,6 +7,8 @@
     "Vid kodändringar: endast ä endra extrukligen begädda rader",
     "Main är alltid standardbranch om inget annat uttryckligen anges",
     "Vid SHA-konlflikt: hämta alltid senaste version och applicera diff innan commit",
+    "Endast API-ändringar tillåtna – Canvas får aldrig användas utan explicit instruktion",
+    "Använd aldrig pattern \".*\" i kodfiler – det ersätter hela innehållet och förstör logik",
     "Default_edit_mode: api",
     "Jobba aldrig i canvas om inte användaren uttryckligen ber om det",
     "default_edit_mode: api",
