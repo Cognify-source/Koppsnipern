@@ -12,7 +12,8 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@raydium-io/raydium-sdk": ["src/types/raydium-sdk/index.d.ts"]
+      "@raydium-io/raydium-sdk": ["src/types/raydium-sdk/index.d.ts"],
+      "@utils/*": ["src/ts/utils/*"]
     },
     "typeRoots": ["src/types", "node_modules/@types"]
   },
