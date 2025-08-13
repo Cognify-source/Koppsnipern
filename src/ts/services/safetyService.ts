@@ -88,11 +88,13 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.estimatedSlippage > 3) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
 
+  /*
   const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), metaplex);;
   if (metadataWarnings.length > 0) {
     reasons.push(...metadataWarnings);
     pool.source = (pool.source || 'unknown') + ' +metadata';
   }
+  */
 
   if (reasons.length === 0) {
     const startBatch = performance.now();
@@ -140,11 +142,13 @@ async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
   const accounts = await connection.getMultipleAccountsInfo(accountsToFetch);
   if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
 
+  /*
   const startHolder = performance.now();
   if (await failsHolderDistribution(mintPk)) {
     reasons.push('Top token holders own too much supply');
   }
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Holder distribution: ${(performance.now() - startHolder).toFixed(1)} ms`);
+  */
 
   const startCreator = performance.now();
   if (failsCreatorWalletRisk(pool.creator)) {
@@ -168,7 +172,7 @@ async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
 
   return reasons;
 }
-
+/*
 async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {
   try {
     const largestAccounts = await connection.getTokenLargestAccounts(mintPk);
@@ -181,7 +185,7 @@ async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {
     return false;
   }
 }
-
+*/
 function failsCreatorWalletRisk(creator?: string): boolean {
   if (!creator || CREATOR_BLACKLIST.length === 0) return false;
   return CREATOR_BLACKLIST.includes(creator);
