@@ -34,21 +34,30 @@ const httpConnection = new Connection(HTTP_RPC_URL, 'confirmed');
 const wsConnection = WSS_RPC_URL ? new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsEndpoint: WSS_RPC_URL } as any) : null;
 
 async function processLog(log: Logs | any) {
+  console.log(`\n[DEBUG] Logg mottagen. Signature: ${log.signature}`);
   const poolData = await extractPoolDataFromLog(log);
 
   if (!poolData) {
+    // Tyst i live-läge, men logga i stub-läge
+    if (process.env.USE_STUB_LISTENER === 'true') {
+      console.log(`[STUB_DEBUG] Kunde inte extrahera pooldata från logg.`);
+    }
     return;
   }
+
+  console.log(`[DEBUG] Pooldata extraherad: LP=${poolData.lpSol.toFixed(2)} SOL, Fee=${poolData.creatorFee.toFixed(2)}%`);
 
   // Initial LP filter
   const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 10;
   if (poolData.lpSol < minLpSol) {
+    console.log(`[DEBUG] Pool bortfiltrerad: För lite LP (${poolData.lpSol.toFixed(2)} SOL).`);
     return;
   }
 
   const safetyResult = await checkPoolSafety(poolData);
 
   if (safetyResult.status !== 'SAFE') {
+    console.log(`[DEBUG] Pool bortfiltrerad av safetyService: ${safetyResult.reasons.join(', ')}`);
     return;
   }
 
