@@ -95,38 +95,65 @@ async function listenForNewPools() {
   process.stdin.resume();
 }
 
-   async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
-   const source = 'LaunchLab';
+async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
+  const source = 'LaunchLab';
 
-   if (!log.signature) return null;
+  if (!log.signature) {
+    console.log('[DEBUG_EXTRACT] Log saknar signatur.');
+    return null;
+  }
 
-   const tx = await httpConnection.getParsedTransaction(log.signature, {
-  commitment: 'confirmed',
-  maxSupportedTransactionVersion: 0
-});
+  const tx = await httpConnection.getParsedTransaction(log.signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0
+  });
 
-   if (!tx || !tx.transaction.message.instructions) return null;
+  // För djupare analys, avkommentera följande rad för att se hela transaktionsobjektet:
+  // console.log('[DEBUG_EXTRACT] Hela transaktionsobjektet:', JSON.stringify(tx, null, 2));
 
-   const initInstr = tx.transaction.message.instructions.find((ix) =>
-     'parsed' in ix && typeof ix.parsed === 'object' && 'type' in ix.parsed && ix.parsed.type === 'initialize2'
-   );
-   if (!initInstr || !('accounts' in initInstr)) return null;
+  if (!tx) {
+    console.log('[DEBUG_EXTRACT] Transaktionen (tx) är null.');
+    return null;
+  }
 
-   const accounts = initInstr.accounts;
-   const tokenAMint = accounts[8];
-   const tokenBMint = accounts[9];
-   if (!tokenAMint || !tokenBMint) return null;
+  if (!tx.transaction || !tx.transaction.message || !tx.transaction.message.instructions) {
+    console.log('[DEBUG_EXTRACT] Transaktionens instruktioner (eller delar av sökvägen dit) saknas.');
+    return null;
+  }
 
-   return {
-     address: log.signature,
-     mint: tokenAMint.toBase58(),
-     mintAuthority: null,
-     freezeAuthority: null,
-     lpSol: Math.random() * 20,
-     creatorFee: Math.random() * 10,
-     estimatedSlippage: Math.random() * 5,
-     source
-   };
+  const initInstr = tx.transaction.message.instructions.find((ix) =>
+    'parsed' in ix && typeof ix.parsed === 'object' && ix.parsed !== null && 'type' in ix.parsed && ix.parsed.type === 'initialize2'
+  );
+
+  if (!initInstr) {
+    console.log('[DEBUG_EXTRACT] Hittade inte instruktionen `initialize2`.');
+    return null;
+  }
+
+  if (!('accounts' in initInstr) || !initInstr.accounts) {
+    console.log('[DEBUG_EXTRACT] `initialize2`-instruktionen saknar `accounts`.');
+    return null;
+  }
+
+  const accounts = initInstr.accounts;
+  const tokenAMint = accounts[8];
+  const tokenBMint = accounts[9];
+
+  if (!tokenAMint || !tokenBMint) {
+    console.log('[DEBUG_EXTRACT] Mint-adresser (A eller B) saknas i kontona.');
+    return null;
+  }
+
+  return {
+    address: log.signature,
+    mint: tokenAMint.toBase58(),
+    mintAuthority: null,
+    freezeAuthority: null,
+    lpSol: Math.random() * 20, // Mock-värde
+    creatorFee: Math.random() * 10, // Mock-värde
+    estimatedSlippage: Math.random() * 5, // Mock-värde
+    source
+  };
 }
 
 if (require.main === module) {
