@@ -100,9 +100,12 @@ async function listenForNewPools() {
 async function extractPoolDataFromLog(log: any): Promise<PoolData | null> {
   if (log.mockPoolData) {
     console.log('[STUB_EXTRACT] Använder mock-data för poolen.');
+    // Använd giltiga publika nycklar som platshållare för att passera validering
+    const validAddress = 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX';
+    const validMint = 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk';
     return {
-      address: log.signature,
-      mint: `MOCK_MINT_FOR_${log.signature}`,
+      address: validAddress,
+      mint: validMint,
       source: 'stub',
       ...log.mockPoolData,
       estimatedSlippage: log.mockPoolData.estimatedSlippage || 0,
