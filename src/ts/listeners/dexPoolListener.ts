@@ -128,7 +128,7 @@ async function extractPoolDataFromLog(log: any): Promise<PoolData | null> {
 
   if (!initInstr) return null;
 
-  const accounts = initInstr.accounts;
+  const accounts = (initInstr as any).accounts;
   if (!accounts || accounts.length < 10) return null;
 
   const tokenAMint = accounts[8];
