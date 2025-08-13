@@ -92,17 +92,19 @@ async function listenForNewPools() {
     if (!wsConnection) {
       throw new Error("WebSocket-anslutning är inte tillgänglig för live-läge.");
     }
-    const launchLabProgram = new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj');
-    wsConnection.onLogs(launchLabProgram, processLog);
+    const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+    console.log(`[INFO] Lyssnar på Pump.fun V1 programmet.`);
+    wsConnection.onLogs(pumpV1ProgramId, processLog);
   }
 
   process.stdin.resume();
 }
 
+const PUMP_V1_PROGRAM_ID = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
+
 async function extractPoolDataFromLog(log: any): Promise<PoolData | null> {
   if (log.mockPoolData) {
     console.log('[STUB_EXTRACT] Använder mock-data för poolen.');
-    // Använd giltiga publika nycklar som platshållare för att passera validering
     const validAddress = 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX';
     const validMint = 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk';
     return {
@@ -115,43 +117,41 @@ async function extractPoolDataFromLog(log: any): Promise<PoolData | null> {
     };
   }
 
-  const source = 'LaunchLab';
   if (!log.signature) return null;
 
-  const tx = log.txData as ParsedTransactionWithMeta || await httpConnection.getParsedTransaction(log.signature, {
+  const tx = await httpConnection.getParsedTransaction(log.signature, {
     commitment: 'confirmed',
     maxSupportedTransactionVersion: 0
   });
 
-  if (!tx || !tx.transaction || !tx.transaction.message || !tx.transaction.message.instructions) {
+  if (!tx) {
     return null;
   }
 
-  const initInstr = tx.transaction.message.instructions.find((ix: any) =>
-    ix.parsed?.type === 'initialize2'
-  );
+  const isNewPumpV1Pool = (tx.meta?.preTokenBalances?.length ?? -1) === 0;
 
-  if (!initInstr) return null;
+  if (isNewPumpV1Pool) {
+    console.log(`[SUCCESS] Ny Pump.fun V1-pool identifierad! Signature: ${log.signature}`);
 
-  const accounts = (initInstr as any).accounts;
-  if (!accounts || accounts.length < 10) return null;
+    const wsolMint = 'So11111111111111111111111111111111111111112';
+    const postTokenBalances = tx.meta?.postTokenBalances ?? [];
+    const newPoolMint = postTokenBalances.find(balance => balance.mint !== wsolMint);
 
-  const tokenAMint = accounts[8];
-  const tokenBMint = accounts[9];
+    if (newPoolMint) {
+      return {
+        address: log.signature,
+        mint: newPoolMint.mint,
+        source: 'PumpV1',
+        mintAuthority: null, // Pump.fun revokes authorities
+        freezeAuthority: null, // Pump.fun revokes authorities
+        lpSol: 0, // Pump.fun uses a bonding curve, not a traditional LP. Value is not directly available.
+        creatorFee: 0, // Not directly available, assuming 0 for now
+        estimatedSlippage: 0, // Not applicable in the same way
+      };
+    }
+  }
 
-  if (!tokenAMint || !tokenBMint) return null;
-
-  // Denna del är fortfarande en platshållare eftersom live-data inte är en ny pool
-  return {
-    address: log.signature,
-    mint: tokenAMint.toBase58(),
-    mintAuthority: null,
-    freezeAuthority: null,
-    lpSol: Math.random() * 20,
-    creatorFee: Math.random() * 10,
-    estimatedSlippage: Math.random() * 5,
-    source
-  };
+  return null;
 }
 
 if (require.main === module) {
