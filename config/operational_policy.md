@@ -2,8 +2,7 @@
   "version": "1.8",
   "policy_name": "Koppsnipern – Operativ Policy (endast botdrift, optimerad)",
   "references": {
-    "system_instructions": "Systeminstruktionerna gäller endast GPT-assistentens arbetsmetod och ansvar. Denna policy gäller endast sniper-botens drift.",
-    "authority_rule": "Vid konflikt mellan GPT:s arbetsmetod och botens drift: GPT följer Systeminstruktionerna, boten följer denna policy."
+    "system_instructions": "Systeminstruktionerna gäller endast din arbetsmetod och ansvar. Denna policy gäller endast sniper-botens drift.",
   },
   "objectives": {
     "precision_target": "90-95%",
@@ -11,21 +10,18 @@
     "latency_target_ms": 350,
     "max_daily_risk_SOL": 50,
     "core_strategy": [
+      "lyssna på stream via Chainstack RPC efter nyskapade pooler som skapats via Launchlab, Pump V1 och Pump AMM"
       "Cupsyy-trigger + regelbaserad filtrering",
       "Säkerhet (rug checks) prioriteras före hastighet",
       "Skalning sker först efter validerad precision"
     ]
   },
   "initialization": {
-    "load_policy_at_start": true,
-    "confirm_version": true,
-    "run_selftest": true,
-    "selftest_environment": "Devnet/mock",
     "on_selftest_fail": "Stop trading and log SELFTEST_FAIL"
   },
   "operational_flow": [
     "Upptäck ny pool via Geyser/WebSocket",
-    "Bekräfta LaunchLab-initiering (Raydium Initialize) inom 2 sekunder",
+    "Bekräfta pool-initiering inom 2 sekunder",
     "Kör hårda filter och rug checks",
     "Förbered signerad swap",
     "Vänta på Cupsyy-signal (10–45 sek efter poolskapande, justerbart vid marknadsförändring)",
