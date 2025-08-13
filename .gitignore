@@ -15,10 +15,3 @@ dist/
 # Oanvänd kod och arkiv
 unused/
 scripts/unused/
-
-# Test-output
-coverage/
-
-# Loggar
-logs/
-*.log
