@@ -18,3 +18,7 @@ scripts/unused/
 
 # Test-output
 coverage/
+
+# Loggar
+logs/
+*.log
