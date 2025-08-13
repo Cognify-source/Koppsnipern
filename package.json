@@ -8,8 +8,7 @@
     "build": "tsc",
     "test": "npm run build && jest --passWithNoTests",
     "test:unit": "jest tests/unit --forceExit --detectOpenHandles --passWithNoTests",
-    "test:integration": "npm run build && jest tests/integration --passWithNoTests",
-    "prepare": "npm run build"
+    "test:integration": "npm run build && jest tests/integration --passWithNoTests"
   },
   "dependencies": {
     "@metaplex-foundation/js": "^0.19.5",
@@ -33,7 +32,7 @@
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.4.5"
   },
   "directories": {
     "doc": "docs",
