@@ -109,7 +109,7 @@ async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
   });
 
   // För djupare analys, avkommentera följande rad för att se hela transaktionsobjektet:
-  // console.log('[DEBUG_EXTRACT] Hela transaktionsobjektet:', JSON.stringify(tx, null, 2));
+  console.log('[DEBUG_EXTRACT] Hela transaktionsobjektet:', JSON.stringify(tx, null, 2));
 
   if (!tx) {
     console.log('[DEBUG_EXTRACT] Transaktionen (tx) är null.');
