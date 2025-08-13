@@ -84,13 +84,9 @@ Botens primära strategi är att agera som "lead-trader" genom att systematiskt 
 Strategin exekveras i fem steg:
 
 1.  **Prediktion:** Boten övervakar kontinuerligt nya Solana-pooler och tillämpar ett prediktivt filter baserat på Cupsyy's kända investeringsmönster (t.ex. min. LP, dev-aktivitet). Pooler som matchar mönstret flaggas som potentiella mål.
-
 2.  **Förberedelse (Staging):** För varje potentiellt mål förbereds och pre-signeras en komplett köptransaktion. Dessa transaktioner hålls redo för omedelbar exekvering.
-
 3.  **Trigger:** Den enda händelsen som utlöser en köporder är en bekräftad transaktion från Cupsyy's plånbok (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) i en av de förberedda målpoolerna.
-
 4.  **Exekvering:** Vid en giltig trigger skickas den förberedda transaktionen omedelbart via en Jito-bundle. Detta görs för att optimera hastigheten och öka sannolikheten för att transaktionen inkluderas i blocket direkt efter Cupsyy's.
-
 5.  **Exit:** Positionen hanteras enligt definierade exit-regler (se sektion "Risk & Exit"), med en grundinställning mot snabba exits för att realisera vinst från den initiala volatiliteten.
 
 ----
@@ -131,8 +127,8 @@ Boten består av följande logiska moduler:
 - `poolAddress` (string)
 - `outcome` (string: `SUCCESS | FAIL_RPC | FAIL_RISK | SKIPPED_FILTER | SKIPPED_NO_TRIGGER`)
 - `latencyMs`:
-    - `prediction` (number)
-    - `execution` (number)
+- `prediction` (number)
+- `execution` (number)
 - `roiPercent` (number)
 - `isLeadTrade` (boolean): `true` om triggad av Cupsyy.
 - `triggerTx` (string, optional): Transaktions-ID för Cupsyy's köp.
@@ -147,7 +143,6 @@ Boten består av följande logiska moduler:
 1.  **Versionera:** Öka versionsnumret (t.ex., 1.8 → 1.9).
 2.  **Logga:** Skriv en kort sammanfattning av ändringen, med datum, i en changelog.
 3.  **Arkivera:** Spara den föregående versionen av dokumentet.
-
 *Policyn fungerar som kravspecifikation. Kod och konfiguration måste uppdateras för att reflektera ändringar innan de anses vara i drift.*
 
 ---
@@ -155,7 +150,7 @@ Boten består av följande logiska moduler:
 ## Gyllene regel: Säkerhet först
 *Detta är min viktigaste princip och övertrumfar alla andra regler.*
 
-Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT**. Logga händelsen för manuell granskning. Ingen trade är bättre än en dålig trade.
+Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT PLANERAD TRADE**. Logga händelsen för manuell granskning. INGEN TRADE är bättre än en dålig trade.
 
 ---
 
