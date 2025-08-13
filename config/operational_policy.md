@@ -82,7 +82,6 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 Botens primära strategi är att agera som "lead-trader" genom att systematiskt placera en köporder omedelbart efter en känd, inflytelserik trader ("Cupsyy"), men före dennes community av copy-traders. Målet är att kapitalisera på den förväntade prisuppgång som följarna skapar.
 
 Strategin exekveras i fem steg:
-
 1.  **Prediktion:** Boten övervakar kontinuerligt nya Solana-pooler och tillämpar ett prediktivt filter baserat på Cupsyy's kända investeringsmönster (t.ex. min. LP, dev-aktivitet). Pooler som matchar mönstret flaggas som potentiella mål.
 2.  **Förberedelse (Staging):** För varje potentiellt mål förbereds och pre-signeras en komplett köptransaktion. Dessa transaktioner hålls redo för omedelbar exekvering.
 3.  **Trigger:** Den enda händelsen som utlöser en köporder är en bekräftad transaktion från Cupsyy's plånbok (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) i en av de förberedda målpoolerna.
@@ -148,7 +147,7 @@ Boten består av följande logiska moduler:
 ---
 
 ## Gyllene regel: Säkerhet först
-*Detta är min viktigaste princip och övertrumfar alla andra regler.*
+*Detta är botens viktigaste princip och övertrumfar alla andra regler.*
 
 Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT PLANERAD TRADE**. Logga händelsen för manuell granskning. INGEN TRADE är bättre än en dålig trade.
 
