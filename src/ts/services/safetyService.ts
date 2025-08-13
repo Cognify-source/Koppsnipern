@@ -82,10 +82,18 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const startBasic = performance.now();
   if (pool.mintAuthority !== null) reasons.push('Mint authority present');
   if (pool.freezeAuthority !== null) reasons.push('Freeze authority present');
-  if (pool.lpSol < 10) reasons.push(`LP too low (${pool.lpSol} SOL)`);
-  if (pool.creatorFee > 5) reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
+
+  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 10;
+  if (pool.lpSol < minLpSol) reasons.push(`LP too low (${pool.lpSol} SOL)`);
+
+  const maxCreatorFee = Number(process.env.FILTER_MAX_CREATOR_FEE_PERCENT) || 5;
+  if (pool.creatorFee > maxCreatorFee) reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
+
   if (BLACKLIST.has(pool.mint)) reasons.push('Mint is blacklisted');
-  if (pool.estimatedSlippage > 3) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
+
+  const maxSlippage = Number(process.env.FILTER_MAX_SLIPPAGE_PERCENT) || 3;
+  if (pool.estimatedSlippage > maxSlippage) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
+
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
 
   /*

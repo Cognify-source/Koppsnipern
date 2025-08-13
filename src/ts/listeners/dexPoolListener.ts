@@ -41,7 +41,8 @@ async function processLog(log: Logs | any) {
   }
 
   // Initial LP filter
-  if (poolData.lpSol < 10) {
+  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 10;
+  if (poolData.lpSol < minLpSol) {
     return;
   }
 
