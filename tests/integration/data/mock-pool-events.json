@@ -1,0 +1,107 @@
+[
+  {
+    "signature": "MOCK_SIGNATURE_PERFECT_POOL",
+    "logs": [
+      "Program log: Instruction: Initialize"
+    ],
+    "err": null,
+    "txData": {
+      "transaction": {
+        "message": {
+          "instructions": [
+            {
+              "parsed": {
+                "type": "initialize2",
+                "info": {},
+                "accounts": [
+                  "...", "...", "...", "...", "...", "...", "...", "...",
+                  "MINT_ADDRESS_PERFECT_POOL_A",
+                  "MINT_ADDRESS_PERFECT_POOL_B"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "meta": {
+        "err": null
+      }
+    },
+    "mockPoolData": {
+      "lpSol": 50,
+      "creatorFee": 1,
+      "mintAuthority": null,
+      "freezeAuthority": null
+    }
+  },
+  {
+    "signature": "MOCK_SIGNATURE_LOW_LP_POOL",
+    "logs": [
+      "Program log: Instruction: Initialize"
+    ],
+    "err": null,
+    "txData": {
+      "transaction": {
+        "message": {
+          "instructions": [
+            {
+              "parsed": {
+                "type": "initialize2",
+                "info": {},
+                "accounts": [
+                  "...", "...", "...", "...", "...", "...", "...", "...",
+                  "MINT_ADDRESS_LOW_LP_A",
+                  "MINT_ADDRESS_LOW_LP_B"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "meta": {
+        "err": null
+      }
+    },
+    "mockPoolData": {
+      "lpSol": 5,
+      "creatorFee": 1,
+      "mintAuthority": null,
+      "freezeAuthority": null
+    }
+  },
+  {
+    "signature": "MOCK_SIGNATURE_BAD_AUTHORITY_POOL",
+    "logs": [
+      "Program log: Instruction: Initialize"
+    ],
+    "err": null,
+    "txData": {
+      "transaction": {
+        "message": {
+          "instructions": [
+            {
+              "parsed": {
+                "type": "initialize2",
+                "info": {},
+                "accounts": [
+                  "...", "...", "...", "...", "...", "...", "...", "...",
+                  "MINT_ADDRESS_BAD_AUTH_A",
+                  "MINT_ADDRESS_BAD_AUTH_B"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "meta": {
+        "err": null
+      }
+    },
+    "mockPoolData": {
+      "lpSol": 30,
+      "creatorFee": 1,
+      "mintAuthority": "SOME_MINT_AUTHORITY_KEY",
+      "freezeAuthority": null
+    }
+  }
+]
