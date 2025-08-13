@@ -8,7 +8,7 @@ import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
-import { SafetyService } from "./services/safetyService";
+import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
 
@@ -24,9 +24,19 @@ async function handleSlot(
 ): Promise<void> {
   console.log(`🕵️‍♂️ Ny slot: ${slot}`);
 
-  const poolEvent = {}; // TODO: Hämta riktig Geyser-event
+  // TODO: Hämta riktig Geyser-event
+  const poolEvent: PoolData = {
+    address: "mockAddress",
+    mint: "mockMint",
+    mintAuthority: null,
+    freezeAuthority: null,
+    lpSol: 100,
+    creatorFee: 0,
+    estimatedSlippage: 0,
+    source: "mock",
+  };
 
-  if (!safety.isPoolSafe(poolEvent)) {
+  if (!await safety.isPoolSafe(poolEvent)) {
     console.log("⚠️ Poolen underkänd i safety checks");
     return;
   }

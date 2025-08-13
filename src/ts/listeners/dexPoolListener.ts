@@ -34,6 +34,12 @@ const wsConnection = new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsE
 async function listenForNewPools() {
   console.log('🚀 Lyssnar på LaunchLab-pooler (direktfilter aktiverat)...');
 
+  let heartbeatCounter = 1;
+  setInterval(() => {
+    console.log(`👂 DexPoolListener är aktiv och lyssnar... (kontroll #${heartbeatCounter})`);
+    heartbeatCounter++;
+  }, 30000);
+
   // Direkt prenumeration på LaunchLab-programmet
   const launchLabProgram = new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj');
 

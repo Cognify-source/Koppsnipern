@@ -30,7 +30,7 @@ if (LP_LOCKERS.length === 0) {
   console.log('ℹ️ LP-lockers-listan är tom – ingen blockering på denna check.');
 }
 
-interface PoolData {
+export interface PoolData {
   address: string;
   mint: string;
   mintAuthority: string | null;
@@ -227,5 +227,12 @@ async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<voi
     console.log(`🚫 Blockerad pool loggad: ${pool.address}`);
   } catch (err) {
     console.error('Kunde inte skriva till blocked_pools-logg:', err);
+  }
+}
+
+export class SafetyService {
+  public async isPoolSafe(pool: PoolData): Promise<boolean> {
+    const result = await checkPoolSafety(pool);
+    return result.status === 'SAFE';
   }
 }
