@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
 import { checkPoolSafety } from '../services/safetyService';
 import dotenv from 'dotenv';
-import * as mockPoolEvents from '../../tests/integration/data/mock-pool-events.json';
+import * as mockPoolEvents from '../../../tests/integration/data/mock-pool-events.json';
 import * as fs from 'fs';
 
 dotenv.config({ override: true, debug: false });
