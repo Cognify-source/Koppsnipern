@@ -4,140 +4,182 @@
 Denna policy styr drift av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. 
 Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner. Policyn gäller endast botens realtidsdrift.
 
+---
 
-## Kort sammanfattning
-* **Prioritering:** säkerhet och hastighet.
-* **Precisionmål:** 90–95 % (formel: `(framgångsrika_trades / totala_trades) * 100`).
-* **Latensmål (end‑to‑end):** 350 ms.
-* **Max daglig risk:** 50 SOL.
-
-## Initiering
-* Vid misslyckad självtest: **stoppa trading** och logga `SELFTEST_FAIL`.
-
-## Operativt handelsflöde (steg för steg)
-1. Upptäckt: ny pool hittas via Geyser/WebSocket. Vi scannar efter Launchlab, Pump V1 och Pump AMM.
-2. Bekräftelse: verifiera pool‑initiering inom **2 sekunder**.
-3. Kör hårda filter och rug‑checks.
-4. Förbered och signera swap‑transaktionen (pre‑signed).
-5. Vänta på Cupsyy‑signal (wallet suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK) — normalt **10–45 sek** efter poolskapande (justerbart).
-6. Skicka transaktionen som en Jito‑bundle.
-7. Exit: följ exit‑regler (se Risk & Exit).
-8. Varje trade loggas till fil logs/finished_trades.json med info om insats, PnL, timestamp och vilken pool det gäller.
-
-## Hårda filter (måste passeras)
-* Minimalt WSOL‑LP:** 10 SOL.
-* Max creator fee:** 5 %.
-* Mint authority:** måste vara `none` (annars skippas pool).
-* Freeze authority:** måste vara `none` (annars skippas pool).
-* Max slippage‑estimat:** 3 %.
-* RTT (round‑trip time) max:** 150 ms.
-* Max öppna positioner per wallet:** 2.
-
-(Om något filter missas → avbryt handel för den poolen.)
+* **Huvudprincip:** Säkerhet före hastighet.
+* **Mål (precision):** 90–95 %.
+* **Mål (latens E2E):** < 350 ms.
+* **Mål (max risk/dag):** 50 SOL.
 
 ---
 
-## Riskhantering & exitregler
+## Startvillkor
+* **Självtest:** Måste passera. Vid fel: avbryt start och logga `SELFTEST_FAIL`.
 
-**Paus-/safety‑villkor (stoppa trading):**
+---
 
-* Precision senaste `max(50 trades, 24 h)` < 85%.
-* Daglig P\&L <−2% av wallet.
-* RTT > 150 ms i 3 trades i rad.
-* Daglig riskcap: 50 SOL nådd.
+## Handelsflöde
+1.  **Upptäckt:** Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM).
+2.  **Verifiering:** Bekräfta att poolen är initierad (< 2 sekunder).
+3.  **Säkerhetskontroll:** Validera mot hårda filter och rug‑checks.
+4.  **Förberedelse:** Pre-signera swap-transaktion.
+5.  **Signal:** Invänta trigger från Cupsyy-wallet (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`).
+    **Tidsfönster:* 10–45 sekunder efter pool-initiering.
+6.  **Exekvering:** Skicka transaktion via Jito bundle.
+7.  **Avslut:** Hantera position enligt definierade exit-regler.
 
-**Exitregler per trade:**
+---
 
-**Stop‑loss:**
-Sälj vid −4% eller om trade når 45s timeout.
+## Obligatoriska filter
+*En pool måste passera samtliga filter för att handel ska kunna initieras.*
 
-**Trailing take‑profit:**
+- **Likviditet (WSOL):** > 10 SOL
+- **Creator Fee:** < 5 %
+- **Mint Authority:** Avsagd (`None`)
+- **Freeze Authority:** Avsagd (`None`)
+- **Slippage (estimerad):** < 3 %
+- **Round-Trip Time (RTT):** < 150 ms
+- **Öppna Positioner:** < 2 (per wallet)
 
-* Aktivera vid ROI ≥ 12%.
-* Lås vinst vid +6%.
-* Stop‑loss följer med med 3% från toppen efter aktivering.
+---
+
+## Risk & Exit
+*Regler som styr avslut av trades och paus av boten.*
+
+### Globala skyddsregler (trading pausas)
+*Om något av följande inträffar pausas all ny trading.*
+- **Precision:** < 85 % (baserat på senaste `max(50 trades, 24h)`).
+- **Kapitalförlust:** < -2 % av total wallet (per dag).
+- **Latens (RTT):** > 150 ms (för 3 trades i rad).
+- **Risk-tak (förlust):** 50 SOL (per dag).
+
+### Exit-regler (per trade)
+*Varje position hanteras enligt följande regler.*
+1.  **Hard Stop-Loss:**
+    - Sälj omedelbart om ROI når -4 %.
+
+2.  **Trailing Take-Profit (TTP):**
+    - **a) Aktivering:** TTP aktiveras när ROI når +12 %.
+    - **b) Initialt vinstlås:** Vid aktivering flyttas stop-loss direkt till +6 % ROI.
+    - **c) Medföljande stopp:** Därefter flyttas stop-loss uppåt och hålls alltid 3 % under den högsta uppnådda ROI. (Ex: om ROI når +20 %, är stop-loss +17 %)
 
 ---
 
 ## Felhantering
-* Modul‑fel:** logga till Discord och stoppa boten.
-* RPC eller Jito‑fel: växla automatiskt till sekundär endpoint.
-* Både primär och sekundär endpoint misslyckas:** stoppa boten.
+*Hantering av kritiska tekniska fel under drift.*
+
+- **Vid internt modul-fel:**
+    1. Logga felinformation till Discord.
+    2. Stoppa boten omedelbart.
+
+- **Vid anslutningsfel (RPC/Jito):**
+    1. Växla automatiskt till sekundär endpoint.
+    2. Om sekundär endpoint också misslyckas: stoppa boten.
+	
+---
+
+## Kärnstrategi: Lead-Trading
+Botens primära strategi är att agera som "lead-trader" genom att systematiskt placera en köporder omedelbart efter en känd, inflytelserik trader ("Cupsyy"), men före dennes community av copy-traders. Målet är att kapitalisera på den förväntade prisuppgång som följarna skapar.
+
+Strategin exekveras i fem steg:
+
+1.  **Prediktion:** Boten övervakar kontinuerligt nya Solana-pooler och tillämpar ett prediktivt filter baserat på Cupsyy's kända investeringsmönster (t.ex. min. LP, dev-aktivitet). Pooler som matchar mönstret flaggas som potentiella mål.
+
+2.  **Förberedelse (Staging):** För varje potentiellt mål förbereds och pre-signeras en komplett köptransaktion. Dessa transaktioner hålls redo för omedelbar exekvering.
+
+3.  **Trigger:** Den enda händelsen som utlöser en köporder är en bekräftad transaktion från Cupsyy's plånbok (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) i en av de förberedda målpoolerna.
+
+4.  **Exekvering:** Vid en giltig trigger skickas den förberedda transaktionen omedelbart via en Jito-bundle. Detta görs för att optimera hastigheten och öka sannolikheten för att transaktionen inkluderas i blocket direkt efter Cupsyy's.
+
+5.  **Exit:** Positionen hanteras enligt definierade exit-regler (se sektion "Risk & Exit"), med en grundinställning mot snabba exits för att realisera vinst från den initiala volatiliteten.
+
+----
+
+## Teknisk arkitektur & prestanda
+
+### Systemkrav
+- **Runtime:** Prestandakritisk logik körs i en Node.js-process.
+- **Infrastruktur:** Boten driftas på en dedikerad VPS co-located nära Solanas RPC-servrar (t.ex. Frankfurt) för att minimera nätverkslatens.
+- **Anslutning:** Använder en privat, låglatens RPC-endpoint och gRPC via Geyser.
+
+### Modulär design
+Boten består av följande logiska moduler:
+- **dexPoolListener:** Tar emot och avkodar data från Geyser.
+- **PredictionEngine:** Analyserar pooler, applicerar filter och hanterar "staged" trades.
+- **SafetyService:** Utför rug-checks och validerar säkerhet.
+- **ExecutionService:** Övervakar trigger-plånboken och skickar transaktioner via Jito.
+- **RiskManager:** Applicerar globala och trade-specifika riskregler.
+
+### Latensbudget (end-to-end)
+*Målet är att gå från pool-upptäckt till skickad bundle på **under 100 ms**.*
+- **Geyser → Bot:** < 40 ms
+- **Intern processering (prediktion & signering):** < 10 ms
+- **Trigger-detektion → Skickad bundle:** < 50 ms
 
 ---
 
-## Roadmap (prioriteringar)
+## Loggning & Övervakning
 
-*Senast uppdaterad: \[fyll i datum]* — prioriterade items:
+### Logg-nivåer och syfte
+- **Interna loggar (DEBUG):** Detaljerad information om varje steg i processen, inklusive prediktionslogik, "staged" trades och trigger-events. Används för felsökning. Mål: `logs/internal_debug.log`.
+- **Transaktionsloggar (INFO):** En post för varje slutförd, misslyckad eller skippad trade. Används för prestanda-analys. Mål: `logs/trades.json`.
+- **Publika notiser (NOTIFY):** Lättlästa notiser till Discord för realtidsövervakning av viktiga händelser (t.ex. lyckad trade, aktivering av skyddsregel).
 
-1. SafetyService (rug‑checks, metadata, blacklist).
-2. TradePlanner (Cupsyy‑trigger, latens, pre‑swap).
-3. BundleSender‑integration (Jito).
-4. CI med Devnet‑integrationstester.
-5. Health‑checks och metrics.
-6. Backtest mot historiska Cupsyy‑pooler.
-
----
-
-## Tekniska krav
-
-* Prestandakritisk logik körs i Node‑process.
-* Moduler: StreamListener, SafetyService, TradePlanner, TradeService, RiskManager, BundleSender.
-* Latensbudget (ms):
-
-  * Geyser → bot: **150 ms**.
-  * Signera & skicka: **50 ms**.
-  * Jito bundle execution: **100 ms**.
-    (Totalt mål ≈ 300–350 ms.)
+### JSON-schema för transaktionslogg (`trades.json`)
+*Alla fält är obligatoriska.*
+- `timestamp` (string, ISO8601)
+- `poolAddress` (string)
+- `outcome` (string: `SUCCESS | FAIL_RPC | FAIL_RISK | SKIPPED_FILTER | SKIPPED_NO_TRIGGER`)
+- `latencyMs`:
+    - `prediction` (number)
+    - `execution` (number)
+- `roiPercent` (number)
+- `isLeadTrade` (boolean): `true` om triggad av Cupsyy.
+- `triggerTx` (string, optional): Transaktions-ID för Cupsyy's köp.
+- `slotLag` (number)
 
 ---
 
-## Loggning
+## Policy-hantering
+*Denna policy är ett levande dokument och ska hållas uppdaterad.*
 
-* All handel loggas internt.
-* Publika loggar visar endast säkra pools.
-* Discord‑notiser i klartext.
-* Lokalt JSON‑schema för loggar (fält):
+**Vid ändringar:**
+1.  **Versionera:** Öka versionsnumret (t.ex., 1.8 → 1.9).
+2.  **Logga:** Skriv en kort sammanfattning av ändringen, med datum, i en changelog.
+3.  **Arkivera:** Spara den föregående versionen av dokumentet.
 
-  * `timestamp` (ISO8601)
-  * `pool_address` (string)
-  * `rug_score` (number)
-  * `latency_ms` (number)
-  * `outcome` (SUCCESS | FAIL | SKIPPED)
-  * `slot_lag` (number)
-  * `fee_ratio` (number)
-  * `roi_percent` (number)
+*Policyn fungerar som kravspecifikation. Kod och konfiguration måste uppdateras för att reflektera ändringar innan de anses vara i drift.*
 
 ---
 
-## Dokumenthantering
+## Gyllene regel: Säkerhet först
+*Detta är min viktigaste princip och övertrumfar alla andra regler.*
 
-* Dokumentet är **versionerat och iterativt**.
-* Uppdateringsprotokoll:
-
-  * Versionera vid ändring (t.ex. 1.8 → 1.9).
-  * Arkivera tidigare versioner.
-  * Skriv kort changelog med datum och ansvarig.
-  * OP är referens för utveckling — ändringar påverkar inte drift förrän kod/konfig uppdaterats.
-* Review: minst en gång per utvecklingscykel eller vid större arkitekturändring.
+Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT**. Logga händelsen för manuell granskning. Ingen trade är bättre än en dålig trade.
 
 ---
 
-## Konflikthantering
+## Checklista före start
+*En sista kontroll innan boten aktiveras i live-läge.*
 
-* Högsta säkerhetsnivå gäller alltid.
-* Vid osäkerhet → **ingen trade**, logga för manuell granskning.
-
----
-
-## Snabb‑checklista innan drift
-
-* [ ] Självtest grönt (annars stoppa).
-* [ ] Kontrollera precision (50 trades / 24 h).
-* [ ] Primär + sekundär RPC konfigurerad och testad.
-* [ ] Health‑checks och metrics aktiva.
-* [ ] Changelog/version uppdaterad i repo.
+- **[ ] Startvillkor:** Har självtestet kört och passerat utan fel?
+- **[ ] Anslutning:** Är primär och sekundär RPC-endpoint bekräftat nåbara och snabba?
+- **[ ] Övervakning:** Är systemet för health-checks och metrics aktivt och synligt?
+- **[ ] Riskstatus:** Är alla globala skyddsregler (precision, daglig P&L) inom sina normala gränser?
+- **[ ] Policy-synk:** Om policyn nyligen ändrats, är versionsnummer och changelog uppdaterade?
 
 ---
 
-**Anmärkning:** Detta dokument fungerar som drift‑referens. Vid ändringar: uppdatera versionsnummer, skriv changelog och kör fullständiga integrationstester (gärna mot Devnet) innan release.
+## Roadmap: Prioriterade utvecklingsfaser
+*Boten utvecklas iterativt med fokus på testbarhet, säkerhet och hastighet för att framgångsrikt kunna agera "lead-trader".*
+
+**Fas 1: Infrastruktur & Validering**
+1.  **Backtesting-ramverk:** Bygg ett system för att köra och validera vår prediktionsmodell och handelsstrategi mot historisk data. *Mål: Riskfri finjustering av strategin.*
+2.  **CI & Devnet-tester:** Sätt upp en automatiserad test-pipeline (Continuous Integration) mot Devnet. *Mål: Garantera kodkvalitet och tillförlitlighet kontinuerligt.*
+
+**Fas 2: Kärnlogik & Exekvering**
+3.  **Kärnmoduler (Prediction & Safety):** Utveckla `dexPoolListener` och `safetyService` för att identifiera och säkerhetsgranska potentiella målpooler enligt vår strategi. *Validering: Testas löpande mot backtesting-ramverket.*
+4.  **Exekvering (Jito):** Integrera `tradeService` för att hantera "staging" av transaktioner och omedelbar exekvering via Jito när triggern (`suqh5s...`) detekteras. *Validering: Testas mot Devnet via CI-pipelinen.*
+
+**Fas 3: Drift & Övervakning**
+5.  **Metrics & Health Checks:** Implementera detaljerad realtidsövervakning av prestanda (latens, P&L) och systemhälsa. *Mål: Full insyn under live-drift.*
