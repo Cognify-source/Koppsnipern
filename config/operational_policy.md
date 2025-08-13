@@ -2,7 +2,7 @@
 
 **Syfte:**
 Denna policy styr drift och utveckling av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. Din uppgift är att bistå vid utvecklingen av denna bot.
-Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner. Policyn gäller endast botens realtidsdrift.
+Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner.
 
 ---
 
