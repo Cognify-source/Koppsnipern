@@ -4,6 +4,8 @@
 Denna policy styr drift och utveckling av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. Din uppgift är att bistå vid utvecklingen av denna bot.
 Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner.
 
+Du jobbar alltid i repots branch jules.
+
 ---
 
 * **Huvudprincip:** Säkerhet före hastighet.
@@ -13,7 +15,7 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 
 ---
 
-## Startvillkor
+## Startvillkor för boten
 * **Självtest:** Måste passera. Vid fel: avbryt start och logga `SELFTEST_FAIL`.
 
 ---
