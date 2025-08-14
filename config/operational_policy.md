@@ -193,3 +193,30 @@ Verifiering & Testning: Innan en ändring anses färdig, ska den verifieras med 
 Loggformat:
 Säkra pooler (SAFE) loggas som en JSON-array till logs/safe_pools.json.
 Blockerade pooler (BLOCKED) loggas som JSON Lines till logs/blocked_pools.jsonl.
+
+---
+
+# INFO OM HUR NYA POOLER SKAPAS PÅ PUMP AMM, PUMP V1, LAUNCHLAB OCH METEORA DBC (VIRTUAL CURVE)
+Metoder för att skapa nya pooler (och framförallt tracka dem i min bot):
+Alla metoder lyssnar på loggar via en websocket-anslutning till min Solana RPC-nod. 
+Datan parsas för att leta efter specifika events, eller i vissa fall, en kedja av events.
+
+1. Pump AMM:
+Program-ID: pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+Metod: CreatePoolEvent.
+
+2. Pump V1 (pump.fun):
+Program-ID: 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P
+Metod: Allt sker i en enda stor transaktion med tre steg:
+* Den anropar programmet med en Create-instruktion
+* Token skapas med InializeMint2
+* Första Buy-anropet görs.
+Det absolut tydligaste och enklaste tecknet är en transaktion som anropar programmet 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P och där preTokenBalances-listan i transaktionsdatan är tom. Jag vet inte om det räcker med att lyssna efter InitializeMint2, men det kan vi lista ut.
+
+3. Launchlab:
+Program-ID: LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj
+Metod: PoolCreateEvent.
+
+4. Meteora DBC (Virtual Curve):
+Program-ID: dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN
+Metod: InitializeVirtualPoolWithSplToken.
