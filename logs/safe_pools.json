@@ -20,5 +20,27 @@
     "slippage": 1,
     "reasons": [],
     "source": "stub-safe"
+  },
+  {
+    "timestamp": "2025-08-14T10:38:47.849Z",
+    "pool": "So11111111111111111111111111111111111111112",
+    "status": "SAFE",
+    "latency": 123,
+    "lp": 25,
+    "creator_fee": 3,
+    "slippage": 1,
+    "reasons": [],
+    "source": "stub-safe"
+  },
+  {
+    "timestamp": "2025-08-14T10:38:57.789Z",
+    "pool": "So11111111111111111111111111111111111111112",
+    "status": "SAFE",
+    "latency": 59,
+    "lp": 25,
+    "creator_fee": 3,
+    "slippage": 1,
+    "reasons": [],
+    "source": "stub-safe"
   }
 ]
