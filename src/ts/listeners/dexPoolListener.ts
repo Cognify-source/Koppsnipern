@@ -3,6 +3,7 @@ import { IPoolListener, NewPoolCallback } from './iPoolListener';
 import { PumpV1Listener } from './sources/pumpV1Listener';
 import { PumpAmmListener } from './sources/pumpAmmListener';
 import { LaunchLabListener } from './sources/launchLabListener';
+import { MeteoraDbcListener } from './sources/meteoraDbcListener';
 // Future listeners for other DEXes like Meteora can be imported here.
 // import { MeteoraListener } from './sources/meteoraListener';
 
@@ -19,6 +20,7 @@ export class DexPoolListener {
     this.listeners.push(new PumpV1Listener(newPoolCallback));
     this.listeners.push(new PumpAmmListener(newPoolCallback));
     this.listeners.push(new LaunchLabListener(newPoolCallback));
+    this.listeners.push(new MeteoraDbcListener(newPoolCallback));
     // Example for the future:
     // this.listeners.push(new MeteoraListener(newPoolCallback));
   }
