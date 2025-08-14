@@ -182,3 +182,14 @@ Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett tr
 
 **Fas 3: Drift & Övervakning**
 5.  **Metrics & Health Checks:** Implementera detaljerad realtidsövervakning av prestanda (latens, P&L) och systemhälsa. *Mål: Full insyn under live-drift.*
+
+---
+
+## Development & Testing Workflow
+Språk i kodbasen: All ny kod, kommentarer och loggmeddelanden ska skrivas på engelska för att upprätthålla en konsekvent stil i projektet.
+
+Verifiering & Testning: Innan en ändring anses färdig, ska den verifieras med hjälp av stub-lyssnaren. Detta görs genom att sätta USE_STUB_LISTENER=true i .env-filen och använda den dedikerade test-plånboken.
+
+Loggformat:
+Säkra pooler (SAFE) loggas som en JSON-array till logs/safe_pools.json.
+Blockerade pooler (BLOCKED) loggas som JSON Lines till logs/blocked_pools.jsonl.
