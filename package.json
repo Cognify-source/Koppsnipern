@@ -6,6 +6,7 @@
   "scripts": {
     "lint": "eslint \"src/ts/**/*.ts\"",
     "build": "tsc",
+    "start": "ts-node src/ts/index.ts",
     "test": "npm run build && jest --passWithNoTests",
     "test:unit": "jest tests/unit --forceExit --detectOpenHandles --passWithNoTests",
     "test:integration": "npm run build && jest tests/integration --passWithNoTests"
