@@ -4,7 +4,10 @@
 Denna policy styr drift och utveckling av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. Din uppgift är att bistå vid utvecklingen av denna bot.
 Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner.
 
-Du jobbar alltid i repots branch Jules.
+---
+
+## Git & Agent-Workflow
+Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras direkt till Jules-branchen om inte annat uttryckligen specificeras.
 
 ---
 
