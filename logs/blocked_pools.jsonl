@@ -3,3 +3,18 @@
 {"timestamp":"2025-08-14T12:02:48.043Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
 {"timestamp":"2025-08-14T12:09:21.632Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
 {"timestamp":"2025-08-14T12:10:21.686Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
+{"timestamp":"2025-08-14T18:15:39.451Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:15:49.459Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:15:59.457Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:09.455Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:19.457Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:29.457Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:39.464Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:49.469Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:16:59.470Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:09.474Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:19.477Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:29.483Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:39.489Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:49.495Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T18:17:59.501Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
