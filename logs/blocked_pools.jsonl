@@ -1,0 +1,5 @@
+{"timestamp":"2025-08-14T12:02:42.983Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T12:02:43.040Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T12:02:48.043Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
+{"timestamp":"2025-08-14T12:09:21.632Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
+{"timestamp":"2025-08-14T12:10:21.686Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
