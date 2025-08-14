@@ -1,7 +1,7 @@
 // src/ts/index.ts
 
 import * as dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ override: true });
 
 import { DexPoolListener } from "./listeners/dexPoolListener";
 import { TradeService } from "./services/tradeService";
