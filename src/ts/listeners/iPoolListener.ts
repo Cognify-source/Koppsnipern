@@ -10,7 +10,6 @@ export type NewPoolCallback = (poolData: PoolData) => void;
 export interface IPoolListener {
   /**
    * Starts the listener.
-   * @param callback The function to call with data for each new pool found.
    */
-  start(callback: NewPoolCallback): void;
+  start(): void;
 }
