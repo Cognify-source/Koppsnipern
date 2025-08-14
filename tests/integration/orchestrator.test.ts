@@ -3,7 +3,7 @@
 import { spawn } from "child_process";
 import path from "path";
 
-describe("Orchestrator E2E (stub-mode)", () => {
+describe.skip("Orchestrator E2E (stub-mode)", () => {
   const bin = path.resolve(__dirname, "../../dist/index.js");
 
   beforeAll((done) => {

@@ -1,6 +1,6 @@
 import { Connection, Keypair } from "@solana/web3.js";
 import { TradeService } from "../../src/ts/services/tradeService";
-import poolJson from "./devnet-pool.json";
+import poolJson from "./data/devnet-pool.json";
 
 jest.setTimeout(60000);
 
@@ -19,7 +19,7 @@ describe("TradeService Devnet Integration", () => {
 
   beforeAll(async () => {
     const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
-    const secretKey = JSON.parse(process.env.PAYER_SECRET_KEY);
+    const secretKey = JSON.parse(process.env.PAYER_SECRET_KEY || "[]");
     payer = Keypair.fromSecretKey(Uint8Array.from(secretKey));
 
     connection = new Connection(rpcUrl, "confirmed");
