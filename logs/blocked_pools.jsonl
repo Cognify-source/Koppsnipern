@@ -1,20 +1,3 @@
-{"timestamp":"2025-08-14T10:49:19.974Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
-{"timestamp":"2025-08-14T10:49:24.955Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:24.978Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:29.987Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
-{"timestamp":"2025-08-14T10:49:34.962Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:34.995Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:39.994Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
-{"timestamp":"2025-08-14T10:49:44.966Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:44.997Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:50.002Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
-{"timestamp":"2025-08-14T10:49:54.970Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:49:55.006Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:52:45.062Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:52:45.153Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:53:15.075Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:53:15.185Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:53:20.191Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
-{"timestamp":"2025-08-14T10:53:25.078Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:53:25.196Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
-{"timestamp":"2025-08-14T10:53:30.200Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}
+{"timestamp":"2025-08-14T12:02:42.983Z","pool":"11111111111111111111111111111111","mint":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","reasons":["Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T12:02:43.040Z","pool":"BLOCKED_POOL_ADDRESS_ABCDE","mint":"BLOCKED_MINT_ADDRESS_FGHIJ","reasons":["Invalid mint public key","Invalid LP address","Mint authority present"],"source":"stub-blocked"}
+{"timestamp":"2025-08-14T12:02:48.043Z","pool":"SAFE_POOL_ADDRESS_12345","mint":"SAFE_MINT_ADDRESS_67890","reasons":["Invalid mint public key","Invalid LP address"],"source":"stub-safe"}

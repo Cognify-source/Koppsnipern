@@ -1,6 +1,7 @@
 import { PoolData } from '../services/safetyService';
 import { IPoolListener, NewPoolCallback } from './iPoolListener';
 import { PumpV1Listener } from './sources/pumpV1Listener';
+import { PumpAmmListener } from './sources/pumpAmmListener';
 // Future listeners for other DEXes like Meteora can be imported here.
 // import { MeteoraListener } from './sources/meteoraListener';
 
@@ -15,6 +16,7 @@ export class DexPoolListener {
     // Instantiate all the different DEX listeners and add them to the array.
     // This makes it easy to add or remove sources in the future.
     this.listeners.push(new PumpV1Listener(newPoolCallback));
+    this.listeners.push(new PumpAmmListener(newPoolCallback));
     // Example for the future:
     // this.listeners.push(new MeteoraListener(newPoolCallback));
   }

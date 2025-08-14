@@ -1,64 +1,9 @@
 [
   {
-    "timestamp": "2025-08-14T10:49:20.083Z",
+    "timestamp": "2025-08-14T12:02:48.149Z",
     "pool": "So11111111111111111111111111111111111111112",
     "status": "SAFE",
-    "latency": 130,
-    "lp": 25,
-    "creator_fee": 3,
-    "slippage": 1,
-    "reasons": [],
-    "source": "stub-safe"
-  },
-  {
-    "timestamp": "2025-08-14T10:49:30.177Z",
-    "pool": "So11111111111111111111111111111111111111112",
-    "status": "SAFE",
-    "latency": 220,
-    "lp": 25,
-    "creator_fee": 3,
-    "slippage": 1,
-    "reasons": [],
-    "source": "stub-safe"
-  },
-  {
-    "timestamp": "2025-08-14T10:49:40.144Z",
-    "pool": "So11111111111111111111111111111111111111112",
-    "status": "SAFE",
-    "latency": 179,
-    "lp": 25,
-    "creator_fee": 3,
-    "slippage": 1,
-    "reasons": [],
-    "source": "stub-safe"
-  },
-  {
-    "timestamp": "2025-08-14T10:49:50.185Z",
-    "pool": "So11111111111111111111111111111111111111112",
-    "status": "SAFE",
-    "latency": 214,
-    "lp": 25,
-    "creator_fee": 3,
-    "slippage": 1,
-    "reasons": [],
-    "source": "stub-safe"
-  },
-  {
-    "timestamp": "2025-08-14T10:53:20.206Z",
-    "pool": "So11111111111111111111111111111111111111112",
-    "status": "SAFE",
-    "latency": 130,
-    "lp": 25,
-    "creator_fee": 3,
-    "slippage": 1,
-    "reasons": [],
-    "source": "stub-safe"
-  },
-  {
-    "timestamp": "2025-08-14T10:53:30.221Z",
-    "pool": "So11111111111111111111111111111111111111112",
-    "status": "SAFE",
-    "latency": 138,
+    "latency": 160,
     "lp": 25,
     "creator_fee": 3,
     "slippage": 1,
