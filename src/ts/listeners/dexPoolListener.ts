@@ -83,18 +83,38 @@ export class DexPoolListener {
   }
 
   private async _extractPoolDataFromLog(log: any): Promise<PoolData | null> {
-    if (log.mockPoolData) {
-      console.log('[STUB_EXTRACT] Using mock data for pool.');
-      return {
-        address: 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX',
-        mint: 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk',
-        source: 'stub',
-        ...log.mockPoolData,
-        estimatedSlippage: log.mockPoolData.estimatedSlippage || 0,
-        creator: log.mockPoolData.creator || 'MockCreator',
-      };
+    if (this._useStubListener) {
+      console.log(`[STUB_EXTRACT] Creating mock pool data for ${log.signature}`);
+      if (log.signature === 'MOCK_PUMPV1_POOL_SUCCESS') {
+        // This pool is designed to PASS the safety checks
+        return {
+          address: 'So11111111111111111111111111111111111111112', // Valid public key
+          mint: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // Valid public key
+          source: 'stub-safe',
+          mintAuthority: null,
+          freezeAuthority: null,
+          lpSol: 25, // check: > 10 SOL
+          creatorFee: 3, // check: < 5 %
+          estimatedSlippage: 1, // check: < 3 %
+          creator: 'SafeCreator',
+        };
+      } else {
+        // This pool is designed to FAIL the safety checks
+        return {
+          address: '11111111111111111111111111111111', // Valid public key
+          mint: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // Valid public key
+          source: 'stub-blocked',
+          mintAuthority: 'SOME_AUTHORITY_KEY', // This will cause the check to fail
+          freezeAuthority: null,
+          lpSol: 50,
+          creatorFee: 2,
+          estimatedSlippage: 1,
+          creator: 'BlockedCreator',
+        };
+      }
     }
 
+    // Live logic (unchanged from original)
     if (!log.signature) return null;
 
     try {

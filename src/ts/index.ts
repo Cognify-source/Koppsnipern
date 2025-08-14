@@ -8,8 +8,8 @@ import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
-import { SafetyService, PoolData } from "./services/safetyService";
-import { notifyDiscord } from "./services/notifyService";
+import { SafetyService, PoolData, SafetyResult } from "./services/safetyService";
+import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
@@ -22,22 +22,28 @@ async function handleNewPool(
   risk: RiskManager,
   bundleSender: BundleSender
 ): Promise<void> {
-  console.log(`\n✅ Ny pool mottagen: ${poolData.address} (${poolData.source})`);
+  console.log(`\n[ORCHESTRATOR] Received new pool: ${poolData.address} (${poolData.source})`);
 
-  if (!await safety.isPoolSafe(poolData)) {
-    console.log(`[ORCHESTRATOR] Pool ${poolData.address} failed safety checks.`);
-    return;
+  const safetyResult = await safety.isPoolSafe(poolData);
+
+  // Log the result using the centralized logging service
+  if (safetyResult.status === 'BLOCKED') {
+    await logBlockedPool(safetyResult, poolData);
+    return; // Stop processing if blocked
   }
-  console.log(`[ORCHESTRATOR] Pool ${poolData.address} passed safety checks.`);
 
+  // If we reach here, the pool is SAFE
+  await logSafePool(safetyResult);
+
+  // Continue with the rest of the trading logic only if the pool is safe
   if (!risk.shouldTrade()) {
-    console.error("[ORCHESTRATOR] Risk control failed, trade aborted.");
+    console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
   }
 
   const tradeSignal = await planner.shouldTrigger(poolData);
   if (!tradeSignal) {
-    console.log("[ORCHESTRATOR] No trade signal from planner.");
+    console.log("[ORCHESTRATOR] No trade signal from planner, skipping.");
     return;
   }
 
@@ -53,7 +59,7 @@ async function handleNewPool(
 async function main(): Promise<void> {
   console.log("🚀 Orchestrator starting", isStub ? "(stub-mode)" : "");
 
-  await notifyDiscord("🤖 Koppsnipern is online");
+  await notifyDiscord("🤖 Koppsnipern bot is online.");
 
   const rpcUrl = process.env.SOLANA_HTTP_RPC_URL || "https://api.devnet.solana.com";
   const keyJson = process.env.PAYER_SECRET_KEY;

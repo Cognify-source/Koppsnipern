@@ -42,7 +42,7 @@ export interface PoolData {
   source?: string;
 }
 
-interface SafetyResult {
+export interface SafetyResult {
   timestamp: string;
   pool: string;
   status: 'SAFE' | 'BLOCKED';
@@ -54,7 +54,6 @@ interface SafetyResult {
   source?: string;
 }
 
-const BLACKLIST = new Set<string>(['mintAddress1', 'mintAddress2']);
 const DEBUG_RUG_CHECKS = process.env.DEBUG_RUG_CHECKS === 'true';
 const connection = new Connection(
   process.env.SOLANA_HTTP_RPC_URL || 'https://api.mainnet-beta.solana.com',
@@ -89,8 +88,6 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const maxCreatorFee = Number(process.env.FILTER_MAX_CREATOR_FEE_PERCENT) || 5;
   if (pool.creatorFee > maxCreatorFee) reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
 
-  if (BLACKLIST.has(pool.mint)) reasons.push('Mint is blacklisted');
-
   const maxSlippage = Number(process.env.FILTER_MAX_SLIPPAGE_PERCENT) || 3;
   if (pool.estimatedSlippage > maxSlippage) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
 
@@ -114,6 +111,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
   const latency = Math.round(performance.now() - startAll);
 
+  // The final result object, without the logging side-effects.
   const result: SafetyResult = {
     timestamp: new Date().toISOString(),
     pool: pool.address,
@@ -125,12 +123,6 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     reasons,
     source: pool.source || 'unknown'
   };
-
-  if (status === 'SAFE') {
-    await logResult(result);
-  } else {
-    await logBlockedPool(result, pool);
-  }
 
   return result;
 }
@@ -199,78 +191,14 @@ function failsCreatorWalletRisk(creator?: string): boolean {
   return CREATOR_BLACKLIST.includes(creator);
 }
 
-async function logResult(result: SafetyResult): Promise<void> {
-  console.log(
-    `[SAFETY] Pool SAFE: ${result.pool}. Source: ${result.source}, LP: ${result.lp.toFixed(
-      2
-    )} SOL, Fee: ${result.creator_fee.toFixed(2)}%`
-  );
-
-  try {
-    if (!fs.existsSync('./logs')) {
-      fs.mkdirSync('./logs', { recursive: true });
-    }
-    let safePools: SafetyResult[] = [];
-    if (fs.existsSync(SAFE_LOG_FILE)) {
-      const fileContent = fs.readFileSync(SAFE_LOG_FILE, 'utf8');
-      if (fileContent) {
-        safePools = JSON.parse(fileContent);
-      }
-    }
-    safePools.push(result);
-    fs.writeFileSync(SAFE_LOG_FILE, JSON.stringify(safePools, null, 2));
-    console.log(`[SAFETY] Successfully logged safe pool to ${SAFE_LOG_FILE}`);
-  } catch (err) {
-    console.error(`[SAFETY] Error writing to log file ${SAFE_LOG_FILE}:`, err);
-  }
-
-  const discordWebhook = process.env.DISCORD_WEBHOOK_URL?.trim();
-  if (!discordWebhook) return;
-
-  const discordMessage = {
-    content: `✅ SAFE – Source: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(
-      2
-    )} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`,
-  };
-
-  try {
-    const res = await fetch(discordWebhook, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(discordMessage),
-    });
-    if (res.ok) {
-      console.log(`[SAFETY] Discord notification sent for pool: ${result.pool}`);
-    }
-  } catch (err) {
-    console.error(`[SAFETY] Failed to send Discord notification for pool: ${result.pool}`, err);
-  }
-}
-
-async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<void> {
-  console.log(`[SAFETY] Pool BLOCKED: ${pool.address}. Reasons: ${result.reasons.join(', ')}`);
-
-  try {
-    if (!fs.existsSync('./logs')) {
-      fs.mkdirSync('./logs', { recursive: true });
-    }
-    const logEntry = {
-      timestamp: result.timestamp,
-      pool: pool.address,
-      mint: pool.mint,
-      reasons: result.reasons,
-      source: pool.source || 'unknown',
-    };
-    fs.appendFileSync(BLOCK_LOG_FILE, JSON.stringify(logEntry) + '\n');
-    console.log(`[SAFETY] Successfully logged blocked pool to ${BLOCK_LOG_FILE}`);
-  } catch (err) {
-    console.error(`[SAFETY] Error writing to blocked pools log file ${BLOCK_LOG_FILE}:`, err);
-  }
-}
-
 export class SafetyService {
-  public async isPoolSafe(pool: PoolData): Promise<boolean> {
-    const result = await checkPoolSafety(pool);
-    return result.status === 'SAFE';
+  /**
+   * Checks if a pool is safe by running a series of checks.
+   * This method is now purely for logic and does not perform any logging.
+   * @param pool The pool data to check.
+   * @returns A SafetyResult object with the outcome of the checks.
+   */
+  public async isPoolSafe(pool: PoolData): Promise<SafetyResult> {
+    return await checkPoolSafety(pool);
   }
 }
