@@ -36,8 +36,6 @@ async function handleNewPool(
   await logSafePool(safetyResult);
 
   // Continue with the rest of the trading logic only if the pool is safe
-  console.log('[ORCHESTRATOR] Trade execution is temporarily disabled for verification.');
-  /*
   if (!risk.shouldTrade()) {
     console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
@@ -56,7 +54,6 @@ async function handleNewPool(
   console.log(`[ORCHESTRATOR] Bundle sent: ${sent}`);
 
   risk.recordTradeOutcome(sent, tradeSignal.amount);
-  */
 }
 
 async function main(): Promise<void> {
