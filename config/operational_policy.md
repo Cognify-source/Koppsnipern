@@ -24,7 +24,7 @@ Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras dir
 ---
 
 ## Handelsflöde
-1.  **Upptäckt:** Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM), Meteora DBC).
+1.  **Upptäckt:** Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM).
 2.  **Verifiering:** Bekräfta att poolen är initierad (< 2 sekunder).
 3.  **Säkerhetskontroll:** Validera mot hårda filter och rug‑checks.
 4.  **Förberedelse:** Pre-signera swap-transaktion.
@@ -32,15 +32,6 @@ Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras dir
     **Tidsfönster:* 10–45 sekunder efter pool-initiering.
 6.  **Exekvering:** Skicka transaktion via Jito bundle.
 7.  **Avslut:** Hantera position enligt definierade exit-regler.
-
----
-
-## Data Sources & Listeners
-Boten använder en modulär design för att lyssna på nya pooler från olika källor. Varje källa har sin egen listener-klass:
-* `PumpV1Listener`:** Upptäcker nya pooler genom att prenumerera på loggar från Pump.fun V1-programmet och analysera transaktionens token-balanser.
-* `PumpAmmListener`:** Upptäcker nya pooler genom att manuellt parsa `CreatePoolEvent` från loggdata som emitteras av Pump.fun AMM-programmet.
-* `LaunchLabListener`:** Upptäcker nya pooler genom att hitta `CreatePool` instruktionen i loggar och sedan analysera transaktionens konton för att extrahera pool-data.
-* `MeteoraDbcListener`:** Använder samma metod som LaunchLab-listenern, men letar efter `InitializeVirtualPoolWithSplToken`-instruktionen.
 
 ---
 

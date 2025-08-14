@@ -4,35 +4,38 @@ import {
   Keypair,
 } from "@solana/web3.js";
 import {
-  jsonInfo2PoolKeys,
   Liquidity,
-  LiquidityPoolJsonInfo,
   LiquidityPoolKeys,
 } from "@raydium-io/raydium-sdk";
 
+// The constructor options are simplified
 export interface TradeServiceOptions {
   connection: Connection;
   payer: Keypair;
-  poolJson: LiquidityPoolJsonInfo;
 }
 
 export class TradeService {
   private connection: Connection;
   private payer: Keypair;
-  private poolKeys: LiquidityPoolKeys;
+  // The static poolKeys property is removed from the class state
 
   constructor(opts: TradeServiceOptions) {
     this.connection = opts.connection;
     this.payer = opts.payer;
-    this.poolKeys = jsonInfo2PoolKeys(opts.poolJson);
+    // No longer setting static poolKeys here
   }
 
+  // executeSwap now takes the dynamic poolKeys for the specific trade
   async executeSwap(
+    poolKeys: LiquidityPoolKeys,
     amountSol: number,
     slippage: number = 0.005
   ): Promise<string> {
     const amountIn = Math.round(amountSol * 1e9);
-    const poolState = await Liquidity.fetchInfo(this.connection, this.poolKeys);
+    // It uses the passed-in poolKeys
+    const poolState = await Liquidity.fetchInfo(this.connection, poolKeys);
+
+    // This part of the logic remains the same as the original file
     const { minAmountOut } = Liquidity.computeAmountOut(
       poolState,
       amountIn,
@@ -40,7 +43,7 @@ export class TradeService {
     );
     const { transaction, signers } = await Liquidity.makeSwapTransaction({
       connection: this.connection,
-      poolKeys: this.poolKeys,
+      poolKeys: poolKeys, // Use the passed-in poolKeys
       userKeys: {
         owner: this.payer.publicKey,
         tokenAccounts: poolState.userTokenAccounts,

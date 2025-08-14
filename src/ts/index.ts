@@ -8,11 +8,32 @@ import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
-import { SafetyService, PoolData, SafetyResult } from "./services/safetyService";
+import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
+import { jsonInfo2PoolKeys, LiquidityPoolJsonInfo } from "@raydium-io/raydium-sdk";
+import fetch from "node-fetch";
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
+let allRaydiumPools: LiquidityPoolJsonInfo[] | null = null;
+
+// Helper function to fetch and cache Raydium pool list
+async function getAllRaydiumPools(): Promise<LiquidityPoolJsonInfo[]> {
+  if (allRaydiumPools) {
+    return allRaydiumPools;
+  }
+  try {
+    const response = await fetch('https://api.raydium.io/v2/sdk/liquidity/mainnet.json');
+    if (!response.ok) throw new Error(`Failed to fetch Raydium pools: ${response.statusText}`);
+    const data = await response.json();
+    allRaydiumPools = [...(data.official || []), ...(data.unOfficial || [])];
+    console.log(`[ORCHESTRATOR] Successfully fetched and cached ${allRaydiumPools.length} Raydium pools.`);
+    return allRaydiumPools;
+  } catch (error) {
+    console.error("[ORCHESTRATOR] Error fetching Raydium pools:", error);
+    return [];
+  }
+}
 
 async function handleNewPool(
   poolData: PoolData,
@@ -26,20 +47,28 @@ async function handleNewPool(
 
   const safetyResult = await safety.isPoolSafe(poolData);
 
-  // Log the result using the centralized logging service
   if (safetyResult.status === 'BLOCKED') {
     await logBlockedPool(safetyResult, poolData);
-    return; // Stop processing if blocked
+    return;
   }
 
-  // If we reach here, the pool is SAFE
   await logSafePool(safetyResult);
 
-  // Continue with the rest of the trading logic only if the pool is safe
   if (!risk.shouldTrade()) {
     console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
   }
+
+  // --- New logic to find pool keys ---
+  const allPools = await getAllRaydiumPools();
+  const poolJsonInfo = allPools.find(p => p.id === poolData.address);
+
+  if (!poolJsonInfo) {
+    console.error(`[ORCHESTRATOR] Pool ${poolData.address} is safe but not found in Raydium's list. Cannot trade.`);
+    return;
+  }
+  const poolKeys = jsonInfo2PoolKeys(poolJsonInfo);
+  // --- End new logic ---
 
   const tradeSignal = await planner.shouldTrigger(poolData);
   if (!tradeSignal) {
@@ -47,7 +76,8 @@ async function handleNewPool(
     return;
   }
 
-  const sig = await tradeSvc.executeSwap(tradeSignal.amount);
+  // Pass the dynamically found poolKeys to the trade service
+  const sig = await tradeSvc.executeSwap(poolKeys, tradeSignal.amount);
   console.log(`[ORCHESTRATOR] Trade executed, signature: ${sig}`);
 
   const sent = await bundleSender.sendBundle({ signature: sig });
@@ -60,6 +90,7 @@ async function main(): Promise<void> {
   console.log("🚀 Orchestrator starting", isStub ? "(stub-mode)" : "");
 
   await notifyDiscord("🤖 Koppsnipern bot is online.");
+  await getAllRaydiumPools(); // Pre-fetch pools at startup
 
   const rpcUrl = process.env.SOLANA_HTTP_RPC_URL || "https://api.devnet.solana.com";
   const keyJson = process.env.PAYER_SECRET_KEY;
@@ -81,7 +112,6 @@ async function main(): Promise<void> {
   const tradeSvc = new TradeService({
     connection,
     payer,
-    poolJson: process.env.TRADE_POOL_JSON ? JSON.parse(process.env.TRADE_POOL_JSON) : {},
   });
 
   const planner = new TradePlanner();
@@ -101,12 +131,10 @@ async function main(): Promise<void> {
     authToken: process.env.JITO_AUTH!,
   });
 
-  // The new DexPoolListener is instantiated with a callback
   const listener = new DexPoolListener(async (poolData: PoolData) => {
     await handleNewPool(poolData, tradeSvc, planner, safety, risk, bundleSender);
   });
 
-  // Start the listener
   await listener.start();
 }
 
