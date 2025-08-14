@@ -1,161 +1,138 @@
-import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
-import { checkPoolSafety } from '../services/safetyService';
+import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
+import { PoolData } from '../services/safetyService'; // Import from authoritative source
 import dotenv from 'dotenv';
 import * as mockPoolEvents from '../../../tests/integration/data/mock-pool-events.json';
-import * as fs from 'fs';
 
 dotenv.config({ override: true, debug: false });
 
-interface PoolData {
-  address: string;
-  mint: string;
-  mintAuthority: string | null;
-  freezeAuthority: string | null;
-  lpSol: number;
-  creatorFee: number;
-  estimatedSlippage: number;
-  source: string;
-  creator?: string;
-}
+// Callback type for notifying the orchestrator of a new pool
+export type NewPoolCallback = (poolData: PoolData) => void;
 
-const HTTP_RPC_URL = process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
-  ? process.env.SOLANA_HTTP_RPC_URL
-  : clusterApiUrl('mainnet-beta');
+export class DexPoolListener {
+  private _httpConnection: Connection;
+  private _wsConnection: Connection | null = null;
+  private _onNewPool: NewPoolCallback;
+  private _useStubListener: boolean;
 
-const WSS_RPC_URL = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
-  ? process.env.SOLANA_WSS_RPC_URL
-  : undefined;
+  constructor(callback: NewPoolCallback) {
+    this._onNewPool = callback;
+    this._useStubListener = process.env.USE_STUB_LISTENER === 'true';
 
-if (!WSS_RPC_URL && process.env.USE_STUB_LISTENER !== 'true') {
-  throw new Error('SOLANA_WSS_RPC_URL måste anges (eller kör i stub-läge)');
-}
+    const httpRpcUrl =
+      process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
+        ? process.env.SOLANA_HTTP_RPC_URL
+        : clusterApiUrl('mainnet-beta');
+    this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
 
-const httpConnection = new Connection(HTTP_RPC_URL, 'confirmed');
-const wsConnection = WSS_RPC_URL ? new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsEndpoint: WSS_RPC_URL } as any) : null;
+    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
+      ? process.env.SOLANA_WSS_RPC_URL
+      : undefined;
 
-async function processLog(log: Logs | any) {
-  console.log(`\n[DEBUG] Logg mottagen. Signature: ${log.signature}`);
-  const poolData = await extractPoolDataFromLog(log);
-
-  if (!poolData) {
-    // Tyst i live-läge, men logga i stub-läge
-    if (process.env.USE_STUB_LISTENER === 'true') {
-      console.log(`[STUB_DEBUG] Kunde inte extrahera pooldata från logg.`);
+    if (!wssRpcUrl && !this._useStubListener) {
+      throw new Error('SOLANA_WSS_RPC_URL must be set in .env for live mode.');
     }
-    return;
+
+    if (wssRpcUrl) {
+      this._wsConnection = new Connection(httpRpcUrl, {
+        commitment: 'confirmed',
+        wsEndpoint: wssRpcUrl,
+      } as any);
+    }
   }
 
-  console.log(`[DEBUG] Pooldata extraherad: LP=${poolData.lpSol.toFixed(2)} SOL, Fee=${poolData.creatorFee.toFixed(2)}%`);
+  public async start() {
+    console.log(`🚀 Starting pool listener... ${this._useStubListener ? '[STUB MODE]' : '[LIVE MODE]'}`);
 
-  // Initial LP filter
-  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 10;
-  if (poolData.lpSol < minLpSol) {
-    console.log(`[DEBUG] Pool bortfiltrerad: För lite LP (${poolData.lpSol.toFixed(2)} SOL).`);
-    return;
+    if (this._useStubListener) {
+      this._startStubListener();
+    } else {
+      this._startLiveListener();
+    }
   }
 
-  const safetyResult = await checkPoolSafety(poolData);
-
-  if (safetyResult.status !== 'SAFE') {
-    console.log(`[DEBUG] Pool bortfiltrerad av safetyService: ${safetyResult.reasons.join(', ')}`);
-    return;
-  }
-
-  console.log(`\n✅ [${poolData.source}] Ny SAFE-pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
-  console.log(`📋 Safety status: ${safetyResult.status}`);
-
-  // ... (resten av logiken för Discord-notis etc.)
-}
-
-async function listenForNewPools() {
-  const useStubListener = process.env.USE_STUB_LISTENER === 'true';
-  console.log(`🚀 Lyssnar på LaunchLab-pooler... ${useStubListener ? '[STUB-LÄGE AKTIVT]' : ''}`);
-
-  setInterval(() => {
-    console.log(`👂 DexPoolListener är aktiv...`);
-  }, 15000);
-
-  if (useStubListener) {
-    console.log('[STUB] Startar stub-lyssnare. Spelar upp händelser från mock-fil...');
+  private _startStubListener() {
+    console.log('[STUB] Reading mock pool events from file...');
     let eventIndex = 0;
-    const intervalId = setInterval(() => {
+    setInterval(() => {
       if (eventIndex >= mockPoolEvents.length) {
-        console.log('[STUB] Alla mock-händelser har spelats upp.');
-        eventIndex = 0; // Loopa om från början
+        console.log('[STUB] All mock events processed. Resetting.');
+        eventIndex = 0;
       }
       const mockLog = mockPoolEvents[eventIndex];
-      console.log(`[STUB] Spelar upp mock-händelse #${eventIndex + 1}: ${mockLog.signature}`);
-      processLog(mockLog);
+      console.log(`[STUB] Processing mock event #${eventIndex + 1}: ${mockLog.signature}`);
+      this._processLog(mockLog);
       eventIndex++;
     }, 5000);
-  } else {
-    if (!wsConnection) {
-      throw new Error("WebSocket-anslutning är inte tillgänglig för live-läge.");
+  }
+
+  private _startLiveListener() {
+    if (!this._wsConnection) {
+      throw new Error('WebSocket connection is not available for live mode.');
     }
     const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-    console.log(`[INFO] Lyssnar på Pump.fun V1 programmet.`);
-    wsConnection.onLogs(pumpV1ProgramId, processLog);
+    console.log(`[LIVE] Listening for logs from Pump.fun V1 program: ${pumpV1ProgramId.toBase58()}`);
+    this._wsConnection.onLogs(pumpV1ProgramId, log => this._processLog(log));
   }
 
-  process.stdin.resume();
-}
-
-const PUMP_V1_PROGRAM_ID = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
-
-async function extractPoolDataFromLog(log: any): Promise<PoolData | null> {
-  if (log.mockPoolData) {
-    console.log('[STUB_EXTRACT] Använder mock-data för poolen.');
-    const validAddress = 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX';
-    const validMint = 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk';
-    return {
-      address: validAddress,
-      mint: validMint,
-      source: 'stub',
-      ...log.mockPoolData,
-      estimatedSlippage: log.mockPoolData.estimatedSlippage || 0,
-      creator: log.mockPoolData.creator || 'MockCreator'
-    };
-  }
-
-  if (!log.signature) return null;
-
-  const tx = await httpConnection.getParsedTransaction(log.signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0
-  });
-
-  if (!tx) {
-    return null;
-  }
-
-  const isNewPumpV1Pool = (tx.meta?.preTokenBalances?.length ?? -1) === 0;
-
-  if (isNewPumpV1Pool) {
-    console.log(`[SUCCESS] Ny Pump.fun V1-pool identifierad! Signature: ${log.signature}`);
-
-    const wsolMint = 'So11111111111111111111111111111111111111112';
-    const postTokenBalances = tx.meta?.postTokenBalances ?? [];
-    const newPoolMint = postTokenBalances.find(balance => balance.mint !== wsolMint);
-
-    if (newPoolMint) {
-      return {
-        address: log.signature,
-        mint: newPoolMint.mint,
-        source: 'PumpV1',
-        mintAuthority: null, // Pump.fun revokes authorities
-        freezeAuthority: null, // Pump.fun revokes authorities
-        lpSol: 0, // Pump.fun uses a bonding curve, not a traditional LP. Value is not directly available.
-        creatorFee: 0, // Not directly available, assuming 0 for now
-        estimatedSlippage: 0, // Not applicable in the same way
-      };
+  private async _processLog(log: Logs | any) {
+    const poolData = await this._extractPoolDataFromLog(log);
+    if (poolData) {
+      console.log(`[LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+      this._onNewPool(poolData);
     }
   }
 
-  return null;
+  private async _extractPoolDataFromLog(log: any): Promise<PoolData | null> {
+    if (log.mockPoolData) {
+      console.log('[STUB_EXTRACT] Using mock data for pool.');
+      return {
+        address: 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX',
+        mint: 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk',
+        source: 'stub',
+        ...log.mockPoolData,
+        estimatedSlippage: log.mockPoolData.estimatedSlippage || 0,
+        creator: log.mockPoolData.creator || 'MockCreator',
+      };
+    }
+
+    if (!log.signature) return null;
+
+    try {
+      const tx = await this._httpConnection.getParsedTransaction(log.signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+
+      if (!tx) return null;
+
+      const isNewPumpV1Pool = (tx.meta?.preTokenBalances?.length ?? -1) === 0;
+
+      if (isNewPumpV1Pool) {
+        console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${log.signature}`);
+
+        const wsolMint = 'So11111111111111111111111111111111111111112';
+        const postTokenBalances = tx.meta?.postTokenBalances ?? [];
+        const newPoolMint = postTokenBalances.find(balance => balance.mint !== wsolMint);
+
+        if (newPoolMint) {
+          return {
+            address: log.signature,
+            mint: newPoolMint.mint,
+            source: 'PumpV1',
+            mintAuthority: null,
+            freezeAuthority: null,
+            lpSol: 0,
+            creatorFee: 0,
+            estimatedSlippage: 0,
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`[EXTRACT] Error processing transaction ${log.signature}:`, error);
+    }
+
+    return null;
+  }
 }
 
-if (require.main === module) {
-  listenForNewPools();
-}
-
-export { listenForNewPools, PoolData };
+export { PoolData };

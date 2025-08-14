@@ -1,5 +1,5 @@
-// safetyService.ts – utvecklingsläge
-// SafetyService med modulära rug checks, batch-RPC, latency per check, blockering av ogiltiga nycklar och blockloggning
+// safetyService.ts
+// Modular safety checks, batched RPC calls, latency tracking, and logging.
 
 import fs from 'fs';
 import fetch from 'node-fetch';
@@ -10,7 +10,7 @@ import { getTokenMetadataWarnings } from '@utils/tokenMetadataUtils';
 
 dotenv.config({ override: true, debug: false });
 
-const LOG_FILE = './logs/safety_checks.jsonl';
+const SAFE_LOG_FILE = './logs/safe_pools.json';
 const BLOCK_LOG_FILE = './logs/blocked_pools.jsonl';
 const BLACKLIST_FILE = './config/creator_blacklist.json';
 const LOCKERS_FILE = './config/lp_lockers.json';
@@ -24,10 +24,10 @@ const LP_LOCKERS: string[] = fs.existsSync(LOCKERS_FILE)
   : [];
 
 if (CREATOR_BLACKLIST.length === 0) {
-  console.log('ℹ️ Creator wallet blacklist är tom – ingen blockering på denna check.');
+  console.log('ℹ️ Creator wallet blacklist is empty - this check will be skipped.');
 }
 if (LP_LOCKERS.length === 0) {
-  console.log('ℹ️ LP-lockers-listan är tom – ingen blockering på denna check.');
+  console.log('ℹ️ LP lockers list is empty - this check will be skipped.');
 }
 
 export interface PoolData {
@@ -200,45 +200,71 @@ function failsCreatorWalletRisk(creator?: string): boolean {
 }
 
 async function logResult(result: SafetyResult): Promise<void> {
+  console.log(
+    `[SAFETY] Pool SAFE: ${result.pool}. Source: ${result.source}, LP: ${result.lp.toFixed(
+      2
+    )} SOL, Fee: ${result.creator_fee.toFixed(2)}%`
+  );
+
   try {
-    if (!fs.existsSync('./logs')) fs.mkdirSync('./logs', { recursive: true });
-    fs.appendFileSync(LOG_FILE, JSON.stringify(result) + '\n');
-    console.log(`💾 Loggad lokalt: ${result.status} – ${result.pool}`);
+    if (!fs.existsSync('./logs')) {
+      fs.mkdirSync('./logs', { recursive: true });
+    }
+    let safePools: SafetyResult[] = [];
+    if (fs.existsSync(SAFE_LOG_FILE)) {
+      const fileContent = fs.readFileSync(SAFE_LOG_FILE, 'utf8');
+      if (fileContent) {
+        safePools = JSON.parse(fileContent);
+      }
+    }
+    safePools.push(result);
+    fs.writeFileSync(SAFE_LOG_FILE, JSON.stringify(safePools, null, 2));
+    console.log(`[SAFETY] Successfully logged safe pool to ${SAFE_LOG_FILE}`);
   } catch (err) {
-    console.error('Kunde inte skriva till lokal loggfil:', err);
+    console.error(`[SAFETY] Error writing to log file ${SAFE_LOG_FILE}:`, err);
   }
 
   const discordWebhook = process.env.DISCORD_WEBHOOK_URL?.trim();
   if (!discordWebhook) return;
 
   const discordMessage = {
-    content: `✅ SAFE – Källa: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(2)} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`
+    content: `✅ SAFE – Source: ${result.source} – Pool: ${result.pool}\nLP: ${result.lp.toFixed(
+      2
+    )} SOL | Fee: ${result.creator_fee.toFixed(2)}% | Slippage: ${result.slippage.toFixed(2)}%`,
   };
 
   try {
     const res = await fetch(discordWebhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(discordMessage)
+      body: JSON.stringify(discordMessage),
     });
-    if (res.ok) console.log(`📨 Discord-logg skickad: ${result.status} – ${result.pool}`);
-  } catch {}
+    if (res.ok) {
+      console.log(`[SAFETY] Discord notification sent for pool: ${result.pool}`);
+    }
+  } catch (err) {
+    console.error(`[SAFETY] Failed to send Discord notification for pool: ${result.pool}`, err);
+  }
 }
 
 async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<void> {
+  console.log(`[SAFETY] Pool BLOCKED: ${pool.address}. Reasons: ${result.reasons.join(', ')}`);
+
   try {
-    if (!fs.existsSync('./logs')) fs.mkdirSync('./logs', { recursive: true });
+    if (!fs.existsSync('./logs')) {
+      fs.mkdirSync('./logs', { recursive: true });
+    }
     const logEntry = {
       timestamp: result.timestamp,
       pool: pool.address,
       mint: pool.mint,
       reasons: result.reasons,
-      source: pool.source || 'unknown'
+      source: pool.source || 'unknown',
     };
     fs.appendFileSync(BLOCK_LOG_FILE, JSON.stringify(logEntry) + '\n');
-    console.log(`🚫 Blockerad pool loggad: ${pool.address}`);
+    console.log(`[SAFETY] Successfully logged blocked pool to ${BLOCK_LOG_FILE}`);
   } catch (err) {
-    console.error('Kunde inte skriva till blocked_pools-logg:', err);
+    console.error(`[SAFETY] Error writing to blocked pools log file ${BLOCK_LOG_FILE}:`, err);
   }
 }
 
