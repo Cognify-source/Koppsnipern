@@ -3,69 +3,70 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { StreamListener } from "./services/streamListener";
+import { DexPoolListener } from "./listeners/dexPoolListener";
 import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
-import { SafetyService } from "./services/safetyService";
+import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
 
-const isStub = process.env.USE_STUB === "true";
+const isStub = process.env.USE_STUB_LISTENER === "true";
 
-async function handleSlot(
-  slot: number,
+async function handleNewPool(
+  poolData: PoolData,
   tradeSvc: TradeService,
   planner: TradePlanner,
   safety: SafetyService,
   risk: RiskManager,
   bundleSender: BundleSender
 ): Promise<void> {
-  console.log(`🕵️‍♂️ Ny slot: ${slot}`);
+  console.log(`\n✅ Ny pool mottagen: ${poolData.address} (${poolData.source})`);
 
-  const poolEvent = {}; // TODO: Hämta riktig Geyser-event
-
-  if (!safety.isPoolSafe(poolEvent)) {
-    console.log("⚠️ Poolen underkänd i safety checks");
+  if (!await safety.isPoolSafe(poolData)) {
+    console.log(`[ORCHESTRATOR] Pool ${poolData.address} failed safety checks.`);
     return;
   }
+  console.log(`[ORCHESTRATOR] Pool ${poolData.address} passed safety checks.`);
 
   if (!risk.shouldTrade()) {
-    console.error("🚫 Riskkontroll misslyckades, avbryter.");
+    console.error("[ORCHESTRATOR] Risk control failed, trade aborted.");
     return;
   }
 
-  const tradeSignal = await planner.shouldTrigger(poolEvent);
+  const tradeSignal = await planner.shouldTrigger(poolData);
   if (!tradeSignal) {
-    console.log("⏳ Inväntar trigger...");
+    console.log("[ORCHESTRATOR] No trade signal from planner.");
     return;
   }
 
   const sig = await tradeSvc.executeSwap(tradeSignal.amount);
-  console.log(`✅ Trade exekverad, signature: ${sig}`);
+  console.log(`[ORCHESTRATOR] Trade executed, signature: ${sig}`);
 
   const sent = await bundleSender.sendBundle({ signature: sig });
-  console.log(`📦 Bundle skickad: ${sent}`);
+  console.log(`[ORCHESTRATOR] Bundle sent: ${sent}`);
 
   risk.recordTradeOutcome(sent, tradeSignal.amount);
 }
 
 async function main(): Promise<void> {
-  console.log("🚀 Orchestrator startar", isStub ? "(stub-mode)" : "");
+  console.log("🚀 Orchestrator starting", isStub ? "(stub-mode)" : "");
 
-  await notifyDiscord("🤖 Koppsnipern är online");
+  await notifyDiscord("🤖 Koppsnipern is online");
 
-  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
-  const keyJson = process.env.PAYER_SECRET_KEY!;
-  console.log("🧪 keyJson-innehåll:", keyJson);
+  const rpcUrl = process.env.SOLANA_HTTP_RPC_URL || "https://api.devnet.solana.com";
+  const keyJson = process.env.PAYER_SECRET_KEY;
+  if (!keyJson) {
+    throw new Error("PAYER_SECRET_KEY must be set in .env");
+  }
   let payer: Keypair;
 
   try {
     const parsedKey = JSON.parse(keyJson);
     payer = Keypair.fromSecretKey(Uint8Array.from(parsedKey));
   } catch (err) {
-    console.error("🚫 Kunde inte parsa PAYER_SECRET_KEY:", keyJson);
+    console.error("🚫 Could not parse PAYER_SECRET_KEY:", err);
     throw err;
   }
 
@@ -94,16 +95,18 @@ async function main(): Promise<void> {
     authToken: process.env.JITO_AUTH!,
   });
 
-  const listener = new StreamListener(rpcUrl, async (slot: number) => {
-    await handleSlot(slot, tradeSvc, planner, safety, risk, bundleSender);
+  // The new DexPoolListener is instantiated with a callback
+  const listener = new DexPoolListener(async (poolData: PoolData) => {
+    await handleNewPool(poolData, tradeSvc, planner, safety, risk, bundleSender);
   });
 
+  // Start the listener
   await listener.start();
 }
 
 if (require.main === module) {
   main().catch((err) => {
-    console.error("⚠️ Fatal error i orchestrator:", err);
+    console.error("⚠️ Fatal error in orchestrator:", err);
     process.exit(1);
   });
 }

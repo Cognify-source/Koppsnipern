@@ -1,116 +1,138 @@
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
-import { checkPoolSafety } from '../services/safetyService';
+import { PoolData } from '../services/safetyService'; // Import from authoritative source
 import dotenv from 'dotenv';
+import * as mockPoolEvents from '../../../tests/integration/data/mock-pool-events.json';
 
 dotenv.config({ override: true, debug: false });
 
-interface PoolData {
-  address: string;
-  mint: string;
-  mintAuthority: string | null;
-  freezeAuthority: string | null;
-  lpSol: number;
-  creatorFee: number;
-  estimatedSlippage: number;
-  source: string;
-}
+// Callback type for notifying the orchestrator of a new pool
+export type NewPoolCallback = (poolData: PoolData) => void;
 
-const HTTP_RPC_URL = process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
-  ? process.env.SOLANA_HTTP_RPC_URL
-  : clusterApiUrl('mainnet-beta');
+export class DexPoolListener {
+  private _httpConnection: Connection;
+  private _wsConnection: Connection | null = null;
+  private _onNewPool: NewPoolCallback;
+  private _useStubListener: boolean;
 
-const WSS_RPC_URL = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
-  ? process.env.SOLANA_WSS_RPC_URL
-  : undefined;
+  constructor(callback: NewPoolCallback) {
+    this._onNewPool = callback;
+    this._useStubListener = process.env.USE_STUB_LISTENER === 'true';
 
-if (!WSS_RPC_URL) throw new Error('SOLANA_WSS_RPC_URL måste börja med ws:// eller wss://');
+    const httpRpcUrl =
+      process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
+        ? process.env.SOLANA_HTTP_RPC_URL
+        : clusterApiUrl('mainnet-beta');
+    this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
 
-console.log(`🌐 HTTP RPC: ${HTTP_RPC_URL}`);
-console.log(`🔌 WSS RPC: ${WSS_RPC_URL}`);
+    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
+      ? process.env.SOLANA_WSS_RPC_URL
+      : undefined;
 
-const httpConnection = new Connection(HTTP_RPC_URL, 'confirmed');
-const wsConnection = new Connection(HTTP_RPC_URL, { commitment: 'confirmed', wsEndpoint: WSS_RPC_URL } as any);
-
-async function listenForNewPools() {
-  console.log('🚀 Lyssnar på LaunchLab-pooler (direktfilter aktiverat)...');
-
-  // Direkt prenumeration på LaunchLab-programmet
-  const launchLabProgram = new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj');
-
-  wsConnection.onLogs(launchLabProgram, async (log: Logs) => {
-    const poolData = await extractPoolDataFromLog(log);
-
-    // Direkt LP-filter här (10 SOL)
-    if (!poolData || poolData.lpSol < 10) return;
-
-    const safetyResult = await checkPoolSafety(poolData);
-
-    // Endast SAFE-pooler loggas
-    if (safetyResult.status !== 'SAFE') return;
-
-    console.log(`\n📊 [${poolData.source}] Ny pool: ${poolData.address} (${poolData.lpSol.toFixed(2)} SOL)`);
-    console.log(`📋 Safety status: ${safetyResult.status}`);
-
-    if (process.env.DISCORD_WEBHOOK_URL?.trim()) {
-      try {
-        const res = await fetch(process.env.DISCORD_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: `✅ Ny pooldetektion | ${new Date().toISOString()}\nKälla: ${poolData.source}\nPool: ${poolData.address}\nLP: ${poolData.lpSol.toFixed(2)} SOL | Fee: ${poolData.creatorFee.toFixed(2)}%\nStatus: ${safetyResult.status}`
-          })
-        });
-
-        if (!res.ok) {
-          console.error(`⚠️ Discord-webhook fel: ${res.status} ${res.statusText}`);
-        } else {
-          console.log(`📨 Discord-logg skickad (${safetyResult.status})`);
-        }
-      } catch (err) {
-        console.error(`⚠️ Kunde inte skicka till Discord-webhook:`, err);
-      }
+    if (!wssRpcUrl && !this._useStubListener) {
+      throw new Error('SOLANA_WSS_RPC_URL must be set in .env for live mode.');
     }
-  });
 
-  process.stdin.resume();
+    if (wssRpcUrl) {
+      this._wsConnection = new Connection(httpRpcUrl, {
+        commitment: 'confirmed',
+        wsEndpoint: wssRpcUrl,
+      } as any);
+    }
+  }
+
+  public async start() {
+    console.log(`🚀 Starting pool listener... ${this._useStubListener ? '[STUB MODE]' : '[LIVE MODE]'}`);
+
+    if (this._useStubListener) {
+      this._startStubListener();
+    } else {
+      this._startLiveListener();
+    }
+  }
+
+  private _startStubListener() {
+    console.log('[STUB] Reading mock pool events from file...');
+    let eventIndex = 0;
+    setInterval(() => {
+      if (eventIndex >= mockPoolEvents.length) {
+        console.log('[STUB] All mock events processed. Resetting.');
+        eventIndex = 0;
+      }
+      const mockLog = mockPoolEvents[eventIndex];
+      console.log(`[STUB] Processing mock event #${eventIndex + 1}: ${mockLog.signature}`);
+      this._processLog(mockLog);
+      eventIndex++;
+    }, 5000);
+  }
+
+  private _startLiveListener() {
+    if (!this._wsConnection) {
+      throw new Error('WebSocket connection is not available for live mode.');
+    }
+    const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+    console.log(`[LIVE] Listening for logs from Pump.fun V1 program: ${pumpV1ProgramId.toBase58()}`);
+    this._wsConnection.onLogs(pumpV1ProgramId, log => this._processLog(log));
+  }
+
+  private async _processLog(log: Logs | any) {
+    const poolData = await this._extractPoolDataFromLog(log);
+    if (poolData) {
+      console.log(`[LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+      this._onNewPool(poolData);
+    }
+  }
+
+  private async _extractPoolDataFromLog(log: any): Promise<PoolData | null> {
+    if (log.mockPoolData) {
+      console.log('[STUB_EXTRACT] Using mock data for pool.');
+      return {
+        address: 'H58LpwwM3sW2F9kRHuaxrWeMB2hPuDkpNuDqjDNiGLKX',
+        mint: 'ApBLMhq4gUaQ5ANaqK7ofqiTJm5YxFa5pT2CQut2bonk',
+        source: 'stub',
+        ...log.mockPoolData,
+        estimatedSlippage: log.mockPoolData.estimatedSlippage || 0,
+        creator: log.mockPoolData.creator || 'MockCreator',
+      };
+    }
+
+    if (!log.signature) return null;
+
+    try {
+      const tx = await this._httpConnection.getParsedTransaction(log.signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+
+      if (!tx) return null;
+
+      const isNewPumpV1Pool = (tx.meta?.preTokenBalances?.length ?? -1) === 0;
+
+      if (isNewPumpV1Pool) {
+        console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${log.signature}`);
+
+        const wsolMint = 'So11111111111111111111111111111111111111112';
+        const postTokenBalances = tx.meta?.postTokenBalances ?? [];
+        const newPoolMint = postTokenBalances.find(balance => balance.mint !== wsolMint);
+
+        if (newPoolMint) {
+          return {
+            address: log.signature,
+            mint: newPoolMint.mint,
+            source: 'PumpV1',
+            mintAuthority: null,
+            freezeAuthority: null,
+            lpSol: 0,
+            creatorFee: 0,
+            estimatedSlippage: 0,
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`[EXTRACT] Error processing transaction ${log.signature}:`, error);
+    }
+
+    return null;
+  }
 }
 
-   async function extractPoolDataFromLog(log: Logs): Promise<PoolData | null> {
-   const source = 'LaunchLab';
-
-   if (!log.signature) return null;
-
-   const tx = await httpConnection.getParsedTransaction(log.signature, {
-  commitment: 'confirmed',
-  maxSupportedTransactionVersion: 0
-});
-
-   if (!tx || !tx.transaction.message.instructions) return null;
-
-   const initInstr = tx.transaction.message.instructions.find((ix) =>
-     'parsed' in ix && typeof ix.parsed === 'object' && 'type' in ix.parsed && ix.parsed.type === 'initialize2'
-   );
-   if (!initInstr || !('accounts' in initInstr)) return null;
-
-   const accounts = initInstr.accounts;
-   const tokenAMint = accounts[8];
-   const tokenBMint = accounts[9];
-   if (!tokenAMint || !tokenBMint) return null;
-
-   return {
-     address: log.signature,
-     mint: tokenAMint.toBase58(),
-     mintAuthority: null,
-     freezeAuthority: null,
-     lpSol: Math.random() * 20,
-     creatorFee: Math.random() * 10,
-     estimatedSlippage: Math.random() * 5,
-     source
-   };
-}
-
-if (require.main === module) {
-  listenForNewPools();
-}
-
-export { listenForNewPools, PoolData };
+export { PoolData };

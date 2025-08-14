@@ -1,0 +1,51 @@
+[
+  {
+    "signature": "MOCK_PUMPV1_POOL_SUCCESS",
+    "logs": [],
+    "err": null,
+    "txData": {
+      "meta": {
+        "preTokenBalances": [],
+        "postTokenBalances": [
+          {
+            "mint": "So11111111111111111111111111111111111111112",
+            "owner": "some_owner_address",
+            "uiTokenAmount": { "amount": "1000000000", "decimals": 9, "uiAmount": 1, "uiAmountString": "1" }
+          },
+          {
+            "mint": "NEW_MINT_ADDRESS_PUMP_V1",
+            "owner": "some_owner_address",
+            "uiTokenAmount": { "amount": "1000000000", "decimals": 6, "uiAmount": 1000, "uiAmountString": "1000" }
+          }
+        ]
+      },
+      "transaction": {
+        "message": {
+          "instructions": []
+        }
+      }
+    }
+  },
+  {
+    "signature": "MOCK_PUMPV1_SWAP_FAIL",
+    "logs": [],
+    "err": null,
+    "txData": {
+      "meta": {
+        "preTokenBalances": [
+          {
+            "mint": "So11111111111111111111111111111111111111112",
+            "owner": "some_owner_address",
+            "uiTokenAmount": { "amount": "1000000000", "decimals": 9, "uiAmount": 1, "uiAmountString": "1" }
+          }
+        ],
+        "postTokenBalances": []
+      },
+      "transaction": {
+        "message": {
+          "instructions": []
+        }
+      }
+    }
+  }
+]

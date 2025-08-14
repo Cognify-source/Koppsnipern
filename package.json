@@ -6,19 +6,16 @@
   "scripts": {
     "lint": "eslint \"src/ts/**/*.ts\"",
     "build": "tsc",
+    "start": "ts-node src/ts/index.ts",
     "test": "npm run build && jest --passWithNoTests",
     "test:unit": "jest tests/unit --forceExit --detectOpenHandles --passWithNoTests",
-    "test:integration": "npm run build && jest tests/integration --passWithNoTests",
-    "prepare": "npm run build"
+    "test:integration": "npm run build && jest tests/integration --passWithNoTests"
   },
   "dependencies": {
     "@metaplex-foundation/js": "^0.19.5",
     "@raydium-io/raydium-sdk": "^1.3.1-beta.58",
     "@solana/spl-token": "^0.2.0",
     "@solana/web3.js": "^1.98.4",
-    "bs58": "^6.0.0",
-    "cli-progress": "^3.12.0",
-    "dayjs": "^1.11.13",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "node-fetch": "2.6.7"
@@ -33,7 +30,7 @@
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.4.5"
   },
   "directories": {
     "doc": "docs",
