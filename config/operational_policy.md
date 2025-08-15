@@ -37,7 +37,7 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 - **Creator Fee:** < 5 %
 - **Mint Authority:** Avsagd (`None`)
 - **Freeze Authority:** Avsagd (`None`)
-- **Slippage (estimerad):** < 3 %
+- **
 - **Round-Trip Time (RTT):** < 150 ms
 - **Öppna Positioner:** < 2 (per wallet)
 
