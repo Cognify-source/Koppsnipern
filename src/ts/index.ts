@@ -4,10 +4,10 @@ import * as dotenv from "dotenv";
 dotenv.config({ override: true });
 
 import { DexPoolListener } from "./listeners/dexPoolListener";
-import { TradeService } from "./services/tradeService";
+import { TradeService } from "./services/trade/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
-import { TradePlanner } from "./services/tradePlanner";
+import { TradePlanner } from "./services/trade/tradePlanner";
 import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
