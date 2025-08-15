@@ -4,14 +4,6 @@ dist/
 
 # Lokala miljövariabler
 .env
-.env.local
-.env.*.local
-
-# IDE och OS-filer
-.vscode/
-.idea/
-.DS_Store
 
 # Oanvänd kod och arkiv
 unused/
-scripts/unused/

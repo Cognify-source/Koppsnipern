@@ -130,7 +130,7 @@ Boten består av följande logiska moduler:
 ### Logg-nivåer och syfte
 - **Interna loggar (DEBUG):** Detaljerad information om varje steg i processen, inklusive prediktionslogik, "staged" trades och trigger-events. Används för felsökning. Mål: `logs/internal_debug.log`.
 - **Transaktionsloggar (INFO):** En post för varje slutförd, misslyckad eller skippad trade. Används för prestanda-analys. Mål: `logs/trades.json`.
-- **Publika notiser (NOTIFY):** Lättlästa notiser till Discord för realtidsövervakning av viktiga händelser (t.ex. lyckad trade, aktivering av skyddsregel).
+- **Publika notiser (NOTIFY):** Lättlästa notiser till Discord för realtidsövervakning av viktiga händelser (t.ex. lyckad trade, aktivering av skyddsregel) samt till terminal och loggfiler.
 
 ### JSON-schema för transaktionslogg (`trades.json`)
 *Alla fält är obligatoriska.*
@@ -160,9 +160,9 @@ Boten består av följande logiska moduler:
 ---
 
 ## Gyllene regel: Säkerhet först
-*Detta är min viktigaste princip och övertrumfar alla andra regler.*
+*Detta är botens viktigaste princip och övertrumfar alla andra regler.*
 
-Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT**. Logga händelsen för manuell granskning. Ingen trade är bättre än en dålig trade.
+Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT**. Logga händelsen för manuell granskning. Hellre ingen trade än en dålig trade.
 
 ---
 
@@ -186,7 +186,7 @@ Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett tr
 
 **Fas 2: Kärnlogik & Exekvering**
 3.  **Kärnmoduler (Prediction & Safety):** Utveckla `dexPoolListener` och `safetyService` för att identifiera och säkerhetsgranska potentiella målpooler enligt vår strategi. *Validering: Testas löpande mot backtesting-ramverket.*
-4.  **Exekvering (Jito):** Integrera `tradeService` för att hantera "staging" av transaktioner och omedelbar exekvering via Jito när triggern (`suqh5s...`) detekteras. *Validering: Testas mot Devnet via CI-pipelinen.*
+4.  **Exekvering (Jito):** Integrera `tradeService` för att hantera "staging" av transaktioner och omedelbar exekvering via Jito när triggern (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) detekteras. *Validering: Testas mot Devnet via CI-pipelinen.*
 
 **Fas 3: Drift & Övervakning**
 5.  **Metrics & Health Checks:** Implementera detaljerad realtidsövervakning av prestanda (latens, P&L) och systemhälsa. *Mål: Full insyn under live-drift.*
@@ -205,7 +205,8 @@ Boten använder en modulär design för att lyssna på nya pooler från olika k�
 ---
 
 # INFO OM HUR NYA POOLER SKAPAS PÅ PUMP AMM, PUMP V1, LAUNCHLAB OCH METEORA DBC (VIRTUAL CURVE)
-Metoder för att skapa nya pooler (och framförallt tracka dem i min bot):
+
+Metoder för att skapa nya pooler (och framförallt tracka dem i boten):
 Alla metoder lyssnar på loggar via en websocket-anslutning till min Solana RPC-nod. 
 Datan parsas för att leta efter specifika events, eller i vissa fall, en kedja av events.
 
