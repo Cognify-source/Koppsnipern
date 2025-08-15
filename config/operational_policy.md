@@ -1,13 +1,8 @@
 # Koppsnipern — Operativ policy (version 1.8)
 
 **Syfte:**
-Denna policy styr drift och utveckling av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. Din uppgift är att bistå vid utvecklingen av denna bot.
-Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner.
-
----
-
-## Git & Agent-Workflow
-Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras direkt till Jules-branchen om inte annat uttryckligen specificeras.
+Denna policy styr drift av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. 
+Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner. Policyn gäller endast botens realtidsdrift.
 
 ---
 
@@ -18,13 +13,13 @@ Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras dir
 
 ---
 
-## Startvillkor för boten
+## Startvillkor
 * **Självtest:** Måste passera. Vid fel: avbryt start och logga `SELFTEST_FAIL`.
 
 ---
 
 ## Handelsflöde
-1.  **Upptäckt:** Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM).
+1.  **Upptäckt:** Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM och Meteora DBC/Virtual Curve).
 2.  **Verifiering:** Bekräfta att poolen är initierad (< 2 sekunder).
 3.  **Säkerhetskontroll:** Validera mot hårda filter och rug‑checks.
 4.  **Förberedelse:** Pre-signera swap-transaktion.
@@ -87,10 +82,15 @@ Regel: Nya branches - Skapa aldrig nya git-branches. Alla commits ska göras dir
 Botens primära strategi är att agera som "lead-trader" genom att systematiskt placera en köporder omedelbart efter en känd, inflytelserik trader ("Cupsyy"), men före dennes community av copy-traders. Målet är att kapitalisera på den förväntade prisuppgång som följarna skapar.
 
 Strategin exekveras i fem steg:
+
 1.  **Prediktion:** Boten övervakar kontinuerligt nya Solana-pooler och tillämpar ett prediktivt filter baserat på Cupsyy's kända investeringsmönster (t.ex. min. LP, dev-aktivitet). Pooler som matchar mönstret flaggas som potentiella mål.
+
 2.  **Förberedelse (Staging):** För varje potentiellt mål förbereds och pre-signeras en komplett köptransaktion. Dessa transaktioner hålls redo för omedelbar exekvering.
+
 3.  **Trigger:** Den enda händelsen som utlöser en köporder är en bekräftad transaktion från Cupsyy's plånbok (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) i en av de förberedda målpoolerna.
+
 4.  **Exekvering:** Vid en giltig trigger skickas den förberedda transaktionen omedelbart via en Jito-bundle. Detta görs för att optimera hastigheten och öka sannolikheten för att transaktionen inkluderas i blocket direkt efter Cupsyy's.
+
 5.  **Exit:** Positionen hanteras enligt definierade exit-regler (se sektion "Risk & Exit"), med en grundinställning mot snabba exits för att realisera vinst från den initiala volatiliteten.
 
 ----
@@ -131,8 +131,8 @@ Boten består av följande logiska moduler:
 - `poolAddress` (string)
 - `outcome` (string: `SUCCESS | FAIL_RPC | FAIL_RISK | SKIPPED_FILTER | SKIPPED_NO_TRIGGER`)
 - `latencyMs`:
-- `prediction` (number)
-- `execution` (number)
+    - `prediction` (number)
+    - `execution` (number)
 - `roiPercent` (number)
 - `isLeadTrade` (boolean): `true` om triggad av Cupsyy.
 - `triggerTx` (string, optional): Transaktions-ID för Cupsyy's köp.
@@ -147,14 +147,15 @@ Boten består av följande logiska moduler:
 1.  **Versionera:** Öka versionsnumret (t.ex., 1.8 → 1.9).
 2.  **Logga:** Skriv en kort sammanfattning av ändringen, med datum, i en changelog.
 3.  **Arkivera:** Spara den föregående versionen av dokumentet.
+
 *Policyn fungerar som kravspecifikation. Kod och konfiguration måste uppdateras för att reflektera ändringar innan de anses vara i drift.*
 
 ---
 
 ## Gyllene regel: Säkerhet först
-*Detta är botens viktigaste princip och övertrumfar alla andra regler.*
+*Detta är min viktigaste princip och övertrumfar alla andra regler.*
 
-Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT PLANERAD TRADE**. Logga händelsen för manuell granskning. INGEN TRADE är bättre än en dålig trade.
+Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett trade-beslut: **AVBRYT**. Logga händelsen för manuell granskning. Ingen trade är bättre än en dålig trade.
 
 ---
 
@@ -185,11 +186,38 @@ Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett tr
 
 ---
 
-## Development & Testing Workflow
-Språk i kodbasen: All ny kod, kommentarer och loggmeddelanden ska skrivas på engelska för att upprätthålla en konsekvent stil i projektet.
+## Data Sources & Listeners
 
-Verifiering & Testning: Innan en ändring anses färdig, ska den verifieras med hjälp av stub-lyssnaren. Detta görs genom att sätta USE_STUB_LISTENER=true i .env-filen och använda den dedikerade test-plånboken.
+Boten använder en modulär design för att lyssna på nya pooler från olika källor. Varje källa har sin egen listener-klass:
 
-Loggformat:
-Säkra pooler (SAFE) loggas som en JSON-array till logs/safe_pools.json.
-Blockerade pooler (BLOCKED) loggas som JSON Lines till logs/blocked_pools.jsonl.
+* `PumpV1Listener`:** Upptäcker nya pooler genom att prenumerera på loggar från Pump.fun V1-programmet och analysera transaktionens token-balanser.
+* `PumpAmmListener`:** Upptäcker nya pooler genom att manuellt parsa `CreatePoolEvent` från loggdata som emitteras av Pump.fun AMM-programmet.
+* `LaunchLabListener`:** Upptäcker nya pooler genom att hitta `CreatePool` instruktionen i loggar och sedan analysera transaktionens konton för att extrahera pool-data.
+* `MeteoraDbcListener`:** Använder samma metod som LaunchLab-listenern, men letar efter `InitializeVirtualPoolWithSplToken`-instruktionen.
+
+---
+
+# INFO OM HUR NYA POOLER SKAPAS PÅ PUMP AMM, PUMP V1, LAUNCHLAB OCH METEORA DBC (VIRTUAL CURVE)
+Metoder för att skapa nya pooler (och framförallt tracka dem i min bot):
+Alla metoder lyssnar på loggar via en websocket-anslutning till min Solana RPC-nod. 
+Datan parsas för att leta efter specifika events, eller i vissa fall, en kedja av events.
+
+1. Pump AMM:
+Program-ID: pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+Metod: CreatePoolEvent.
+
+2. Pump V1 (pump.fun):
+Program-ID: 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P
+Metod: Allt sker i en enda stor transaktion med tre steg:
+* Den anropar programmet med en Create-instruktion
+* Token skapas med InializeMint2
+* Första Buy-anropet görs.
+Det absolut tydligaste och enklaste tecknet är en transaktion som anropar programmet 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P och där preTokenBalances-listan i transaktionsdatan är tom. Jag vet inte om det räcker med att lyssna efter InitializeMint2, men det kan vi lista ut.
+
+3. Launchlab:
+Program-ID: LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj
+Metod: PoolCreateEvent.
+
+4. Meteora DBC (Virtual Curve):
+Program-ID: dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN
+Metod: InitializeVirtualPoolWithSplToken.
