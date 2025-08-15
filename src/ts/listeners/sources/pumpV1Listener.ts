@@ -1,7 +1,6 @@
-import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
+import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
-import * as mockPoolEvents from '../../../../tests/integration/data/mock-pool-events.json';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
@@ -10,6 +9,7 @@ export class PumpV1Listener implements IPoolListener {
   private _httpConnection: Connection;
   private _wsConnection: Connection | null = null;
   private _onNewPool: NewPoolCallback;
+  private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
@@ -36,24 +36,8 @@ export class PumpV1Listener implements IPoolListener {
   public start() {
     console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
+    setInterval(() => this._processSignatureQueue(), 200); // Process queue every 200ms
   }
-
-  /*
-  private _startStubListener() {
-    console.log('[PUMP_V1_STUB] Reading mock pool events from file...');
-    let eventIndex = 0;
-    setInterval(() => {
-      if (eventIndex >= mockPoolEvents.length) {
-        console.log('[PUMP_V1_STUB] All mock events processed. Resetting.');
-        eventIndex = 0;
-      }
-      const mockLog = mockPoolEvents[eventIndex];
-      console.log(`[PUMP_V1_STUB] Processing mock event #${eventIndex + 1}: ${mockLog.signature}`);
-      this._processLog(mockLog);
-      eventIndex++;
-    }, 5000);
-  }
-  */
 
   private _startLiveListener() {
     if (!this._wsConnection) {
@@ -61,43 +45,61 @@ export class PumpV1Listener implements IPoolListener {
     }
     const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
     console.log(`[PUMP_V1_LIVE] Listening for logs from Pump.fun V1 program: ${pumpV1ProgramId.toBase58()}`);
-    this._wsConnection.onLogs(pumpV1ProgramId, log => this._processLog(log));
+    this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
+      if (!log.err) {
+        this._signatureQueue.push(log.signature);
+      }
+    });
   }
 
-  private async _processLog(log: Logs | any) {
-    const poolData = await this._extractPoolDataFromLog(log);
-    if (poolData) {
-      console.log(`[PUMP_V1_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
-      this._onNewPool(poolData);
+  private async _processSignatureQueue() {
+    if (this._signatureQueue.length === 0) {
+      return;
     }
-  }
 
-  private async _extractPoolDataFromLog(log: any): Promise<PoolData | null> {
-    // Live logic only
-    if (!log.signature) return null;
+    const signatures = this._signatureQueue.splice(0, this._signatureQueue.length);
+    console.log(`[QUEUE] Processing batch of ${signatures.length} signatures.`);
 
     try {
-      const tx = await this._httpConnection.getParsedTransaction(log.signature, {
-        commitment: 'confirmed',
+      const txs = await this._httpConnection.getParsedTransactions(signatures, {
         maxSupportedTransactionVersion: 0,
       });
 
-      if (!tx || !tx.meta) return null;
+      for (const tx of txs) {
+        if (tx) {
+          const poolData = await this._extractPoolDataFromLog(tx);
+          if (poolData) {
+            console.log(`[PUMP_V1_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+            this._onNewPool(poolData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[QUEUE] Error fetching or processing transactions in batch:', error);
+    }
+  }
+
+  private async _extractPoolDataFromLog(tx: ParsedTransactionWithMeta): Promise<PoolData | null> {
+    const signature = tx.transaction.signatures[0];
+    if (!signature) return null;
+
+    try {
+      if (!tx.meta) return null;
 
       const isNewPumpV1Pool = (tx.meta.preTokenBalances?.length ?? -1) === 0;
-      const isPumpV1Program = tx.transaction.message.instructions.some(ix => ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+      const isPumpV1Program = tx.transaction.message.instructions.some((ix: any) => ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 
       if (isNewPumpV1Pool && isPumpV1Program) {
-        console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${log.signature}`);
+        console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${signature}`);
 
         const accountKeys = tx.transaction.message.accountKeys;
         const bondingCurveAddress = accountKeys[2].pubkey.toBase58();
         const tokenMintAddress = accountKeys[1].pubkey.toBase58();
 
         let mintAuthorityRevoked = false;
-        tx.meta.innerInstructions?.forEach(ix => {
-          ix.instructions.forEach(iix => {
-            if ('parsed' in iix && iix.program === 'spl-token' && iix.parsed.type === 'setAuthority') {
+        tx.meta.innerInstructions?.forEach((ix: any) => {
+          ix.instructions.forEach((iix: any) => {
+            if (iix.parsed && iix.program === 'spl-token' && iix.parsed.type === 'setAuthority') {
               const parsedIx = iix.parsed.info;
               if (parsedIx.authorityType === 'mintTokens' && parsedIx.newAuthority === null) {
                 mintAuthorityRevoked = true;
@@ -107,9 +109,9 @@ export class PumpV1Listener implements IPoolListener {
         });
 
         let maxLpSol = 0;
-        tx.meta.innerInstructions?.forEach(ix => {
-          ix.instructions.forEach(iix => {
-            if ('parsed' in iix && iix.program === 'system' && iix.parsed.type === 'transfer') {
+        tx.meta.innerInstructions?.forEach((ix: any) => {
+          ix.instructions.forEach((iix: any) => {
+            if (iix.parsed && iix.program === 'system' && iix.parsed.type === 'transfer') {
               const parsedIx = iix.parsed.info;
               if (parsedIx.destination === bondingCurveAddress) {
                 if (parsedIx.lamports > maxLpSol) {
@@ -134,7 +136,7 @@ export class PumpV1Listener implements IPoolListener {
         };
       }
     } catch (error) {
-      console.error(`[EXTRACT] Error processing transaction ${log.signature}:`, error);
+      console.error(`[EXTRACT] Error processing transaction ${signature}:`, error);
     }
 
     return null;
