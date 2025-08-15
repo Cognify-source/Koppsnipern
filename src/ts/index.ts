@@ -33,6 +33,12 @@ async function handleNewPool(
   }
   await logSafePool(safetyResult);
 
+  // Per user request for this session, only log PumpV1 pools and do not trade.
+  if (poolData.source === 'PumpV1') {
+    console.log('[ORCHESTRATOR] PumpV1 pool detected. Halting execution after logging as per instructions.');
+    return;
+  }
+
   if (!risk.shouldTrade()) {
     console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
