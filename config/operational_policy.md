@@ -22,24 +22,25 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 ## Handelsflöde
 1. Upptäckt: Lyssna på Geyser/WebSocket för nya pooler (mål: Launchlab, Pump V1, Pump AMM och Meteora DBC/Virtual Curve).
 2. Verifiering: Bekräfta att poolen är initierad (< 2 sekunder).
-3. Säkerhetskontroll: Validera mot hårda filter och rug‑checks.
+3. Säkerhetskontroll: Validera mot hårda filter och rug‑checks (se nästa sektion).
 4. Förberedelse: Pre-signera swap-transaktion.
 5. Signal: Invänta trigger från Cupsyy-wallet (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`).
-   Tidsfönster: 10–45 sekunder efter pool-initiering.
+   Tidsfönster: 5–45 sekunder efter pool-initiering.
 6. Exekvering: Skicka transaktion via Jito bundle.
 7. Avslut: Hantera position enligt definierade exit-regler.
 
 ---
 
-## Obligatoriska filter
+## Obligatoriska filter 
 * En pool måste passera samtliga filter för att handel ska kunna initieras.
 * Filter parallellverifieras i den mån det är möjligt
 
-* Likviditet (WSOL): > 10 SOL
+* Likviditet (WSOL): > 20 SOL
 * Creator Fee: < 5 %
 * Mint Authority: Avsagd (`None`)
 * Freeze Authority: Avsagd (`None`)
 * Simulerad säljtransaction: Framgångsrik
+* Dev måste ha köpt för minst 1 SOL
 * Top 10 holders äger < 10%
 * RTT < 150 ms
 
@@ -62,13 +63,13 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 
 2.  **Trailing Take-Profit (TTP):**
     - A) Aktivering: TTP aktiveras när ROI når +12 %.
-    - B) Initialt vinstlås: Vid aktivering flyttas stop-loss direkt till +6 % ROI.
+    - B) Initialt vinstlås: Vid aktivering flyttas stop-loss direkt upp +6 % ROI.
     - C) Medföljande stopp: Därefter flyttas stop-loss uppåt och hålls alltid 3 % under den högsta uppnådda ROI. (Ex: om ROI når +20 %, är stop-loss +17 %)
 	
 ---
 	
 ## Max antal öppna trades simultant
-* Max 2 trades öppna samtidigt.	
+* Max 2 trades öppna per wallet samtidigt.	
 
 ---
 
@@ -86,18 +87,15 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 ---
 
 ## Kärnstrategi: Lead-Trading
-Botens primära strategi är att agera som "lead-trader" genom att systematiskt placera en köporder omedelbart efter en känd, inflytelserik trader ("Cupsyy"), men före dennes community av copy-traders. Målet är att kapitalisera på den förväntade prisuppgång som följarna skapar.
+Botens primära strategi är att agera som "lead-trader" genom att systematiskt placera en köporder omedelbart efter en känd, inflytelserik trader ("Cupsyy"), men före dennes community av copy-traders. 
+Målet är att kapitalisera på den förväntade prisuppgång som följarna skapar.
 
 Strategin exekveras i fem steg:
 
 1.  **Prediktion:** Boten övervakar kontinuerligt nya Solana-pooler och tillämpar ett prediktivt filter baserat på Cupsyy's kända investeringsmönster (t.ex. min. LP, dev-aktivitet). Pooler som matchar mönstret flaggas som potentiella mål.
-
 2.  **Förberedelse (Staging):** För varje potentiellt mål förbereds och pre-signeras en komplett köptransaktion. Dessa transaktioner hålls redo för omedelbar exekvering.
-
 3.  **Trigger:** Den enda händelsen som utlöser en köporder är en bekräftad transaktion från Cupsyy's plånbok (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) i en av de förberedda målpoolerna.
-
 4.  **Exekvering:** Vid en giltig trigger skickas den förberedda transaktionen omedelbart via en Jito-bundle. Detta görs för att optimera hastigheten och öka sannolikheten för att transaktionen inkluderas i blocket direkt efter Cupsyy's.
-
 5.  **Exit:** Positionen hanteras enligt definierade exit-regler (se sektion "Risk & Exit"), med en grundinställning mot snabba exits för att realisera vinst från den initiala volatiliteten.
 
 ----
@@ -111,11 +109,13 @@ Strategin exekveras i fem steg:
 
 ### Modulär design
 Boten består av följande logiska moduler:
-- **dexPoolListener:** Tar emot och avkodar data från Geyser.
-- **PredictionEngine:** Analyserar pooler, applicerar filter och hanterar "staged" trades.
-- **SafetyService:** Utför rug-checks och validerar säkerhet.
-- **ExecutionService:** Övervakar trigger-plånboken och skickar transaktioner via Jito.
-- **RiskManager:** Applicerar globala och trade-specifika riskregler.
+- **dexPoolListener:    Tar emot och avkodar data från Geyser.
+- **safetyService:      Utför rug-checks och validerar säkerhet.
+- **notifyService:      Loggar resultat i terminal, Discord och loggfiler.
+- **tradePlanner:       Förbered och signerar transaktioner via Jito.
+- **bundleSender:       ??????????
+- **tradeService:       Genomför trade.
+- **riskManager:        Applicerar globala och trade-specifika riskregler.
 
 ### Latensbudget (end-to-end)
 *Målet är att gå från pool-upptäckt till skickad bundle på **under 100 ms**.*

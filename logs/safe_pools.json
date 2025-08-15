@@ -1,1 +1,145 @@
-[]
+[
+  {
+    "timestamp": "2025-08-15T19:15:24.858Z",
+    "pool": "4SBaQKQ7NpmWwVz69oK6otrf28FWWi8847vSm65gsPqM",
+    "status": "SAFE",
+    "latency": 41,
+    "lp": 2.475247524,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:19:58.863Z",
+    "pool": "8TR5jkpUkGtD9L7xaXwD5EvvRv1aqc4hFh5n2v4CCr5B",
+    "status": "SAFE",
+    "latency": 28,
+    "lp": 2.970297029,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:20:11.686Z",
+    "pool": "9Ly3cy6uR7wRp4ZrXnByYYRLGuFoKQ2sD6bL6FidXR9K",
+    "status": "SAFE",
+    "latency": 28,
+    "lp": 2.970297029,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:20:15.331Z",
+    "pool": "H62z22cjVEbYWpo4ZLciKeGfd3h167f31fhy5PGiXxGS",
+    "status": "SAFE",
+    "latency": 31,
+    "lp": 1.485148514,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:20:17.959Z",
+    "pool": "AGwGUYbomiD7pdz8TcxQCvoUJS3nrVXS4imUgGXTum57",
+    "status": "SAFE",
+    "latency": 39,
+    "lp": 1.024561569,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:20:18.136Z",
+    "pool": "7pnXmBNJ1fiAeR2kX6z2Rx2tuRADW7fJux6YHnsizG4b",
+    "status": "SAFE",
+    "latency": 29,
+    "lp": 1.386138613,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:20:43.768Z",
+    "pool": "8h4YR5gYEhEgy5T4Ke58UBQWYeLRPSifogVM5pAFUb4V",
+    "status": "SAFE",
+    "latency": 236,
+    "lp": 2.9,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:21:07.164Z",
+    "pool": "GgdAG3P7kzzv7tUyyB2BywkH3fNDkcGMD7Kpbsr117AJ",
+    "status": "SAFE",
+    "latency": 224,
+    "lp": 1.980198019,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:35:52.351Z",
+    "pool": "6Z3wEKCf1dTCmBFXjrKqq44nqW2GpFqXB2jgjAo41yLH",
+    "status": "SAFE",
+    "latency": 33,
+    "lp": 1.980198019,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:36:17.556Z",
+    "pool": "2YWNgkHvgrw4p3AcQ98KqqpRoZ5vAL1e8CuMzCgMaeqA",
+    "status": "SAFE",
+    "latency": 30,
+    "lp": 3,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:36:20.040Z",
+    "pool": "5iLwL1gi1SBjDzjNdbxCcDCf77i5oNHeeb62JGFhRK6e",
+    "status": "SAFE",
+    "latency": 26,
+    "lp": 2.970297029,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:36:24.235Z",
+    "pool": "AFiJBR28RhVPtTceNRonsMYmpYrV3pHqxMcHczBYL3tH",
+    "status": "SAFE",
+    "latency": 29,
+    "lp": 1.980198019,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-15T19:40:07.451Z",
+    "pool": "H81u3V6mwmoM3nSftM358VcCmrvAHkpaT3VPhhmNtbod",
+    "status": "SAFE",
+    "latency": 149,
+    "lp": 3,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  }
+]
