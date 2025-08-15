@@ -50,7 +50,7 @@ const BuyInstructionSchema = {
   }
 };
 
-export class PumpV1TradeService {
+export class TradeServicePumpV1 {
   private connection: Connection;
   private owner: Keypair;
 
