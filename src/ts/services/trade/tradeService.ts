@@ -1,4 +1,4 @@
-// src/ts/services/tradeService.ts
+// src/ts/services/tradeServiceBase.ts
 import {
   Connection,
   Keypair,
@@ -13,7 +13,7 @@ import {
 import { NATIVE_MINT, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
-import { PoolData } from "./safetyService";
+import { PoolData } from "../safetyService";
 import * as borsh from 'borsh';
 import BN from 'bn.js';
 import { createHash } from 'crypto';

@@ -12,11 +12,11 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@raydium-io/raydium-sdk": ["src/types/raydium-sdk/index.d.ts"],
+
       "@utils/*": ["src/ts/utils/*"]
     },
     "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["src/ts/**/*", "src/types/**/*"],
+  "include": ["src/ts/**/*", "src/types/**/*", "unused/safetyServiceTest.ts", "src/ts/services/bundleSender.ts", "unused/streamListener.ts", "src/types/json.d.ts"],
   "exclude": ["node_modules", "dist", "unused"]
 }
