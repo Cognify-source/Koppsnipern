@@ -5,11 +5,18 @@ import {
   Transaction,
   VersionedTransaction,
   sendAndConfirmTransaction,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
-import { NATIVE_MINT } from '@solana/spl-token';
+import { NATIVE_MINT, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
 import { PoolData } from "./safetyService";
+import * as borsh from 'borsh';
+import BN from 'bn.js';
+import { createHash } from 'crypto';
 
 export interface TradeServiceOptions {
   connection: Connection;
@@ -20,6 +27,32 @@ export interface TradeServiceOptions {
 interface SwapCompute {
   swapResponse: any; // The full response is complex, using 'any' for simplicity
 }
+
+const PUMP_PROGRAM_ID = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+const PUMP_GLOBAL_ADDRESS = new PublicKey('4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf');
+const PUMP_FEE_RECIPIENT = new PublicKey('CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM');
+const RENT_SYSVAR = new PublicKey('SysvarRent111111111111111111111111111111111');
+const PUMP_EVENT_AUTHORITY = new PublicKey('Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1');
+
+// Borsh schema for deserializing the BondingCurve account
+const BondingCurveAccountSchema = {
+  struct: {
+    virtualTokenReserves: 'u64',
+    virtualSolReserves: 'u64',
+    realTokenReserves: 'u64',
+    realSolReserves: 'u64',
+    tokenTotalSupply: 'u64',
+    complete: 'u8',
+  }
+};
+
+// Borsh schema for serializing the buy instruction data
+const BuyInstructionSchema = {
+  struct: {
+    tokenAmountOut: 'u64',
+    maxSolCost: 'u64',
+  }
+};
 
 export class TradeService {
   private connection: Connection;
@@ -84,5 +117,97 @@ export class TradeService {
     console.log(`[TRADE_SERVICE_V2] Swap confirmed for last transaction.`);
 
     return lastTxId;
+  }
+
+  public async prepareSwapTransaction(
+    poolData: PoolData,
+    amountInSol: number,
+    priorityFeeInSol: number = 0.001,
+  ): Promise<Transaction> {
+    console.log(`[TRADE_SERVICE] Preparing swap transaction for ${poolData.mint} with ${amountInSol} SOL.`);
+
+    if (poolData.source !== 'PumpV1') {
+      throw new Error(`Unsupported pool source: ${poolData.source}`);
+    }
+
+    // 1. Fetch the bonding curve account to calculate the price
+    const bondingCurveAddress = new PublicKey(poolData.address);
+    const bondingCurveAccountInfo = await this.connection.getAccountInfo(bondingCurveAddress);
+    if (!bondingCurveAccountInfo) {
+      throw new Error('Failed to fetch bonding curve account info.');
+    }
+    const decodedBondingCurve = borsh.deserialize(
+      BondingCurveAccountSchema as any,
+      bondingCurveAccountInfo.data.slice(8)
+    ) as { [key: string]: BN };
+
+    if (!decodedBondingCurve) {
+      throw new Error('Failed to deserialize bonding curve account.');
+    }
+
+    // Calculate how many tokens we get for the input SOL amount
+    // This is a simplified version of the bonding curve calculation: (s * V) / v
+    // s = sol input, V = virtual token reserves, v = virtual sol reserves
+    const solInLamports = new BN(amountInSol * 1e9);
+    const tokenAmountOut = solInLamports
+      .mul(decodedBondingCurve.virtualTokenReserves)
+      .div(decodedBondingCurve.virtualSolReserves);
+
+    console.log(`[TRADE_SERVICE] Calculated token amount out: ${tokenAmountOut.toString()}`);
+
+    // 2. Define all accounts needed for the instruction
+    const mintPublicKey = new PublicKey(poolData.mint);
+    const userAta = await getAssociatedTokenAddress(mintPublicKey, this.owner.publicKey);
+
+    const accounts = [
+      { pubkey: PUMP_GLOBAL_ADDRESS, isSigner: false, isWritable: false },
+      { pubkey: PUMP_FEE_RECIPIENT, isSigner: false, isWritable: true },
+      { pubkey: mintPublicKey, isSigner: false, isWritable: false },
+      { pubkey: bondingCurveAddress, isSigner: false, isWritable: true },
+      { pubkey: bondingCurveAddress, isSigner: false, isWritable: true }, // Associated Bonding Curve, same as bonding curve address
+      { pubkey: userAta, isSigner: false, isWritable: true },
+      { pubkey: this.owner.publicKey, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: RENT_SYSVAR, isSigner: false, isWritable: false },
+      { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
+      { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
+    ];
+
+    // 3. Create the instruction data
+    const instructionName = 'buy';
+    const discriminator = createHash('sha256').update(`global:${instructionName}`).digest().slice(0, 8);
+
+    const instructionDataObject = {
+      tokenAmountOut: tokenAmountOut,
+      maxSolCost: new BN(amountInSol * 1e9 * 1.05) // Allow 5% slippage
+    };
+    const instructionDataBuffer = borsh.serialize(BuyInstructionSchema as any, instructionDataObject);
+
+    const instructionData = Buffer.concat([discriminator, instructionDataBuffer]);
+
+    // 4. Build the transaction
+    const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: Math.round(priorityFeeInSol * 1e9 * 1e6 / 1400000), // Approximate lamports to micro-lamports
+    });
+
+    const computeLimitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+      units: 1400000,
+    });
+
+    const swapInstruction = new TransactionInstruction({
+      keys: accounts,
+      programId: PUMP_PROGRAM_ID,
+      data: instructionData,
+    });
+
+    const transaction = new Transaction();
+    transaction.add(priorityFeeInstruction);
+    transaction.add(computeLimitInstruction);
+    transaction.add(swapInstruction);
+
+    transaction.feePayer = this.owner.publicKey;
+
+    return transaction;
   }
 }

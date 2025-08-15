@@ -17,10 +17,11 @@ export class DexPoolListener {
   constructor(newPoolCallback: NewPoolCallback) {
     // Instantiate all the different DEX listeners and add them to the array.
     // This makes it easy to add or remove sources in the future.
+    // For this session, we are only focusing on PumpV1.
     this.listeners.push(new PumpV1Listener(newPoolCallback));
-    this.listeners.push(new PumpAmmListener(newPoolCallback));
-    this.listeners.push(new LaunchLabListener(newPoolCallback));
-    this.listeners.push(new MeteoraDbcListener(newPoolCallback));
+    // this.listeners.push(new PumpAmmListener(newPoolCallback));
+    // this.listeners.push(new LaunchLabListener(newPoolCallback));
+    // this.listeners.push(new MeteoraDbcListener(newPoolCallback));
     // Example for the future:
     // this.listeners.push(new MeteoraListener(newPoolCallback));
   }
