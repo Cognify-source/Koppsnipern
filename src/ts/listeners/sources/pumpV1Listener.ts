@@ -33,10 +33,10 @@ export class PumpV1Listener implements IPoolListener {
     } as any);
   }
 
-  public start() {
+  public async start() {
     console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    setInterval(() => this._processSignatureQueue(), 200); // Process queue every 200ms
+    setInterval(() => this._processSignatureQueue(), 200);
   }
 
   private _startLiveListener() {
@@ -58,7 +58,6 @@ export class PumpV1Listener implements IPoolListener {
     }
 
     const signatures = this._signatureQueue.splice(0, this._signatureQueue.length);
-    console.log(`[QUEUE] Processing batch of ${signatures.length} signatures.`);
 
     try {
       const txs = await this._httpConnection.getParsedTransactions(signatures, {
@@ -90,8 +89,6 @@ export class PumpV1Listener implements IPoolListener {
       const isPumpV1Program = tx.transaction.message.instructions.some((ix: any) => ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 
       if (isNewPumpV1Pool && isPumpV1Program) {
-        console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${signature}`);
-
         const accountKeys = tx.transaction.message.accountKeys;
         const bondingCurveAddress = accountKeys[2].pubkey.toBase58();
         const tokenMintAddress = accountKeys[1].pubkey.toBase58();
@@ -130,7 +127,7 @@ export class PumpV1Listener implements IPoolListener {
           mintAuthority: mintAuthorityRevoked ? null : 'UNKNOWN',
           freezeAuthority: null,
           lpSol: initialLpSol / 1e9,
-          creatorFee: 0,
+          creatorFee: 0, // Reverted to 0 as we are pausing this feature
           estimatedSlippage: 0,
           creator: tx.transaction.message.accountKeys[0].pubkey.toBase58(),
         };

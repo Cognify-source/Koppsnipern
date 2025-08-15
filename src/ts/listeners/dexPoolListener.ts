@@ -33,8 +33,8 @@ export class DexPoolListener {
     console.log(`[DEX_MANAGER] Initializing ${this.listeners.length} pool listener(s)...`);
     for (const listener of this.listeners) {
       try {
-        // No await here, so listeners can run in parallel
-        listener.start();
+        // We now await start() because some listeners might have async initialization.
+        await listener.start();
       } catch (error) {
         console.error(`[DEX_MANAGER] Error starting listener ${listener.constructor.name}:`, error);
       }
