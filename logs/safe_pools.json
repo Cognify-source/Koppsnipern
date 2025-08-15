@@ -53,5 +53,16 @@
     "slippage": 1,
     "reasons": [],
     "source": "stub-safe"
+  },
+  {
+    "timestamp": "2025-08-15T09:13:58.225Z",
+    "pool": "So11111111111111111111111111111111111111112",
+    "status": "SAFE",
+    "latency": 101,
+    "lp": 25,
+    "creator_fee": 3,
+    "slippage": 1,
+    "reasons": [],
+    "source": "stub-safe"
   }
 ]
