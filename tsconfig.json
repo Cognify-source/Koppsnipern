@@ -15,8 +15,8 @@
 
       "@utils/*": ["src/ts/utils/*"]
     },
-    "typeRoots": ["unused/types", "node_modules/@types"]
+    "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["src/ts/**/*", "unused/types/**/*", "unused/safetyServiceTest.ts", "src/ts/services/bundleSender.ts", "unused/streamListener.ts", "unused/types/json.d.ts"],
+  "include": ["src/ts/**/*", "src/types/**/*", "unused/safetyServiceTest.ts", "src/ts/services/bundleSender.ts", "unused/streamListener.ts", "src/types/json.d.ts"],
   "exclude": ["node_modules", "dist", "unused"]
 }
