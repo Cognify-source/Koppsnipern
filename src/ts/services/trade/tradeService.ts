@@ -13,14 +13,10 @@ import {
 import { NATIVE_MINT, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
-<<<<<<< HEAD:src/ts/services/tradeService.ts
-import { PoolData } from "./safetyService";
+import { PoolData } from "../safetyService";
 import * as borsh from 'borsh';
 import BN from 'bn.js';
 import { createHash } from 'crypto';
-=======
-import { PoolData } from "../safetyService";
->>>>>>> e7a56cdc2996898510cd492ac83e778105527245:src/ts/services/trade/tradeService.ts
 
 export interface TradeServiceOptions {
   connection: Connection;
