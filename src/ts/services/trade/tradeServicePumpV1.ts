@@ -26,6 +26,14 @@ interface SwapCompute {
   swapResponse: any;
 }
 
+interface PriorityFeeResponse {
+  data: {
+    default: {
+      vh: number;
+    };
+  };
+}
+
 const PUMP_PROGRAM_ID = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 const PUMP_GLOBAL_ADDRESS = new PublicKey('4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf');
 const PUMP_FEE_RECIPIENT = new PublicKey('CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM');
@@ -68,15 +76,15 @@ export class TradeServicePumpV1 {
     const txVersion = 'V0';
     const isV0Tx = txVersion === 'V0';
 
-    const [feeRes, swapRes] = await Promise.all([
-      axios.get(`${API_URLS.BASE_HOST}${API_URLS.PRIORITY_FEE}`),
+    const [priorityFeeRes, swapRes] = await Promise.all([
+      axios.get<PriorityFeeResponse>(`${API_URLS.BASE_HOST}${API_URLS.PRIORITY_FEE}`),
       axios.get(`${API_URLS.SWAP_HOST}/compute/swap-base-in?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippage * 100}&txVersion=${txVersion}`)
     ]);
-    const feeData = feeRes.data;
+    const priorityFeeData = priorityFeeRes.data;
     const swapResponse = (swapRes.data as SwapCompute).swapResponse;
 
     const { data: swapTransactions } = await axios.post<{ data: { transaction: string }[] }>(`${API_URLS.SWAP_HOST}/transaction/swap-base-in`, {
-      computeUnitPriceMicroLamports: String(feeData.data.default.vh),
+      computeUnitPriceMicroLamports: String(priorityFeeData.data.default.vh),
       swapResponse,
       txVersion,
       wallet: this.owner.publicKey.toBase58(),
