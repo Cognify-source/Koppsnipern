@@ -3,9 +3,9 @@ const express = require("express");
 const { exec } = require("child_process");
 const crypto = require("crypto");
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+const WEBHOOK_SECRET = process.env.GIT_WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
-  console.error("❌ Ingen WEBHOOK_SECRET hittades. Lägg till den i .env eller som miljövariabel.");
+  console.error("❌ Ingen GIT_WEBHOOK_SECRET hittades. Lägg till den i .env eller som miljövariabel.");
   process.exit(1);
 }
 
@@ -22,7 +22,7 @@ app.use(express.json({
 function verifySignature(req) {
   const signature = req.headers["x-hub-signature-256"];
   if (!signature) return false;
-  const hmac = crypto.createHmac("sha256", WEBHOOK_SECRET);
+  const hmac = crypto.createHmac("sha256", GIT_WEBHOOK_SECRET);
   const digest = "sha256=" + hmac.update(req.rawBody).digest("hex");
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
