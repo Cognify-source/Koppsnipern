@@ -111,7 +111,7 @@ export class PumpV1Listener implements IPoolListener {
       }
     }
 
-    // Live logic (unchanged from original)
+    // Live logic
     if (!log.signature) return null;
 
     try {
@@ -120,29 +120,61 @@ export class PumpV1Listener implements IPoolListener {
         maxSupportedTransactionVersion: 0,
       });
 
-      if (!tx) return null;
+      if (!tx || !tx.meta) return null;
 
-      const isNewPumpV1Pool = (tx.meta?.preTokenBalances?.length ?? -1) === 0;
+      // The primary indicator for a new Pump.fun V1 pool.
+      const isNewPumpV1Pool = (tx.meta.preTokenBalances?.length ?? -1) === 0;
+      const isPumpV1Program = tx.transaction.message.instructions.some(ix => ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 
-      if (isNewPumpV1Pool) {
+      if (isNewPumpV1Pool && isPumpV1Program) {
         console.log(`[EXTRACT] Identified new Pump.fun V1 pool. Signature: ${log.signature}`);
 
-        const wsolMint = 'So11111111111111111111111111111111111111112';
-        const postTokenBalances = tx.meta?.postTokenBalances ?? [];
-        const newPoolMint = postTokenBalances.find(balance => balance.mint !== wsolMint);
+        const accountKeys = tx.transaction.message.accountKeys;
+        const bondingCurveAddress = accountKeys[2].pubkey.toBase58();
+        const tokenMintAddress = accountKeys[1].pubkey.toBase58();
 
-        if (newPoolMint) {
-          return {
-            address: log.signature,
-            mint: newPoolMint.mint,
-            source: 'PumpV1',
-            mintAuthority: null,
-            freezeAuthority: null,
-            lpSol: 0,
-            creatorFee: 0,
-            estimatedSlippage: 0,
-          };
-        }
+        // Check if mint authority was revoked.
+        let mintAuthorityRevoked = false;
+        tx.meta.innerInstructions?.forEach(ix => {
+          ix.instructions.forEach(iix => {
+            if ('parsed' in iix && iix.program === 'spl-token' && iix.parsed.type === 'setAuthority') {
+              const parsedIx = iix.parsed.info;
+              if (parsedIx.authorityType === 'mintTokens' && parsedIx.newAuthority === null) {
+                mintAuthorityRevoked = true;
+              }
+            }
+          });
+        });
+
+        // Find the largest SOL deposit to the bonding curve, which represents the initial liquidity.
+        let maxLpSol = 0;
+        tx.meta.innerInstructions?.forEach(ix => {
+          ix.instructions.forEach(iix => {
+            if ('parsed' in iix && iix.program === 'system' && iix.parsed.type === 'transfer') {
+              const parsedIx = iix.parsed.info;
+              if (parsedIx.destination === bondingCurveAddress) {
+                if (parsedIx.lamports > maxLpSol) {
+                  maxLpSol = parsedIx.lamports;
+                }
+              }
+            }
+          });
+        });
+        const initialLpSol = maxLpSol;
+
+        return {
+          address: bondingCurveAddress,
+          mint: tokenMintAddress,
+          source: 'PumpV1',
+          mintAuthority: mintAuthorityRevoked ? null : 'UNKNOWN', // Set to a non-null value if not revoked
+          freezeAuthority: null, // Pump.fun tokens typically don't have a freeze authority.
+          lpSol: initialLpSol / 1e9, // Convert lamports to SOL
+          // NOTE: Creator fee and slippage are complex to extract without an Anchor IDL.
+          // Leaving as 0 for now, as the primary goal is detection and core data logging.
+          creatorFee: 0,
+          estimatedSlippage: 0,
+          creator: tx.transaction.message.accountKeys[0].pubkey.toBase58(),
+        };
       }
     } catch (error) {
       console.error(`[EXTRACT] Error processing transaction ${log.signature}:`, error);

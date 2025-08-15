@@ -8,9 +8,10 @@ import { TradeService } from "./services/tradeService";
 import { RiskManager } from "./services/riskManager";
 import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/tradePlanner";
-import { SafetyService, PoolData, SafetyResult } from "./services/safetyService";
+import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
+// No longer need Raydium SDK imports here
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
 
@@ -21,25 +22,29 @@ async function handleNewPool(
   safety: SafetyService,
   risk: RiskManager,
   bundleSender: BundleSender
+  // No longer need to pass connection here
 ): Promise<void> {
   console.log(`\n[ORCHESTRATOR] Received new pool: ${poolData.address} (${poolData.source})`);
 
   const safetyResult = await safety.isPoolSafe(poolData);
-
-  // Log the result using the centralized logging service
   if (safetyResult.status === 'BLOCKED') {
     await logBlockedPool(safetyResult, poolData);
-    return; // Stop processing if blocked
+    return;
   }
-
-  // If we reach here, the pool is SAFE
   await logSafePool(safetyResult);
 
-  // Continue with the rest of the trading logic only if the pool is safe
+  // Per user request for this session, only log PumpV1 pools and do not trade.
+  if (poolData.source === 'PumpV1') {
+    console.log('[ORCHESTRATOR] PumpV1 pool detected. Halting execution after logging as per instructions.');
+    return;
+  }
+
   if (!risk.shouldTrade()) {
     console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
   }
+
+  // All the complex pool key logic is now removed.
 
   const tradeSignal = await planner.shouldTrigger(poolData);
   if (!tradeSignal) {
@@ -47,7 +52,9 @@ async function handleNewPool(
     return;
   }
 
-  const sig = await tradeSvc.executeSwap(tradeSignal.amount);
+  // The call to executeSwap is now much simpler.
+  // It just needs the new pool's data and the amount to trade.
+  const sig = await tradeSvc.executeSwap(poolData, tradeSignal.amount);
   console.log(`[ORCHESTRATOR] Trade executed, signature: ${sig}`);
 
   const sent = await bundleSender.sendBundle({ signature: sig });
@@ -58,35 +65,24 @@ async function handleNewPool(
 
 async function main(): Promise<void> {
   console.log("🚀 Orchestrator starting", isStub ? "(stub-mode)" : "");
-
   await notifyDiscord("🤖 Koppsnipern bot is online.");
 
   const rpcUrl = process.env.SOLANA_HTTP_RPC_URL || "https://api.devnet.solana.com";
-  const keyJson = process.env.PAYER_SECRET_KEY;
-  if (!keyJson) {
-    throw new Error("PAYER_SECRET_KEY must be set in .env");
-  }
-  let payer: Keypair;
+  const connection = new Connection(rpcUrl, { commitment: "confirmed" });
 
+  const keyJson = process.env.PAYER_SECRET_KEY;
+  if (!keyJson) throw new Error("PAYER_SECRET_KEY must be set in .env");
+  let payer: Keypair;
   try {
-    const parsedKey = JSON.parse(keyJson);
-    payer = Keypair.fromSecretKey(Uint8Array.from(parsedKey));
+    payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(keyJson)));
   } catch (err) {
     console.error("🚫 Could not parse PAYER_SECRET_KEY:", err);
     throw err;
   }
 
-  const connection = new Connection(rpcUrl, { commitment: "confirmed" });
-
-  const tradeSvc = new TradeService({
-    connection,
-    payer,
-    poolJson: process.env.TRADE_POOL_JSON ? JSON.parse(process.env.TRADE_POOL_JSON) : {},
-  });
-
+  const tradeSvc = new TradeService({ connection, payer });
   const planner = new TradePlanner();
   const safety = new SafetyService();
-
   const risk = new RiskManager({
     precisionWindow: 50,
     precisionThreshold: 0.85,
@@ -95,18 +91,16 @@ async function main(): Promise<void> {
     maxPriceSlippage: 0.20,
     blockhashMaxAgeSec: 90,
   });
-
   const bundleSender = new BundleSender({
     endpoint: process.env.JITO_ENDPOINT!,
     authToken: process.env.JITO_AUTH!,
   });
 
-  // The new DexPoolListener is instantiated with a callback
   const listener = new DexPoolListener(async (poolData: PoolData) => {
+    // The handler no longer needs the connection passed in separately
     await handleNewPool(poolData, tradeSvc, planner, safety, risk, bundleSender);
   });
 
-  // Start the listener
   await listener.start();
 }
 
