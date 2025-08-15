@@ -12,32 +12,23 @@ export class PumpAmmListener implements IPoolListener {
   private _wsConnection: Connection | null = null;
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
-  private _useStubListener: boolean;
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
     this._programId = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
-    this._useStubListener = process.env.USE_STUB_LISTENER === 'true';
 
-    if (!this._useStubListener) {
-      const httpRpcUrl = process.env.SOLANA_HTTP_RPC_URL || clusterApiUrl('mainnet-beta');
-      this._connection = new Connection(httpRpcUrl, 'confirmed');
-      const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL;
-      if (wssRpcUrl) {
-        this._wsConnection = new Connection(httpRpcUrl, {
-          commitment: 'confirmed',
-          wsEndpoint: wssRpcUrl,
-        });
-      }
+    const httpRpcUrl = process.env.SOLANA_HTTP_RPC_URL || clusterApiUrl('mainnet-beta');
+    this._connection = new Connection(httpRpcUrl, 'confirmed');
+    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL;
+    if (wssRpcUrl) {
+      this._wsConnection = new Connection(httpRpcUrl, {
+        commitment: 'confirmed',
+        wsEndpoint: wssRpcUrl,
+      });
     }
   }
 
   public start(): void {
-    if (this._useStubListener) {
-      this._startStubListener();
-      return;
-    }
-
     if (!this._wsConnection) {
       console.log('[PUMP_AMM] Not started, WebSocket connection is missing.');
       return;
@@ -47,6 +38,7 @@ export class PumpAmmListener implements IPoolListener {
     this._wsConnection.onLogs(this._programId, (log) => this._processLog(log), 'confirmed');
   }
 
+  /*
   private _startStubListener(): void {
     console.log('[PUMP_AMM_STUB] Starting stub listener...');
     let eventIndex = 0;
@@ -60,6 +52,7 @@ export class PumpAmmListener implements IPoolListener {
       eventIndex++;
     }, 5000);
   }
+  */
 
   private _parseCreatePoolEvent(dataBuffer: Buffer): PoolData | null {
     try {

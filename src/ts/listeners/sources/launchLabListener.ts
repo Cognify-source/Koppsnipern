@@ -28,10 +28,10 @@ export class LaunchLabListener implements IPoolListener {
   }
 
   public start(): void {
-    if (process.env.USE_STUB_LISTENER === 'true') {
-      // Stub mode is not implemented for this listener yet.
-      return;
-    }
+    // if (process.env.USE_STUB_LISTENER === 'true') {
+    //   // Stub mode is not implemented for this listener yet.
+    //   return;
+    // }
 
     if (!this._wsConnection) {
       console.log('[LAUNCHLAB] Not started, WebSocket connection is missing.');
