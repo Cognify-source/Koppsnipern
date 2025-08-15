@@ -11,7 +11,6 @@ import { TradePlanner } from "./services/tradePlanner";
 import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
 import { Connection, Keypair } from "@solana/web3.js";
-// No longer need Raydium SDK imports here
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
 
@@ -22,7 +21,6 @@ async function handleNewPool(
   safety: SafetyService,
   risk: RiskManager,
   bundleSender: BundleSender
-  // No longer need to pass connection here
 ): Promise<void> {
   console.log(`\n[ORCHESTRATOR] Received new pool: ${poolData.address} (${poolData.source})`);
 
@@ -33,18 +31,15 @@ async function handleNewPool(
   }
   await logSafePool(safetyResult);
 
-  // Per user request for this session, only log PumpV1 pools and do not trade.
-  if (poolData.source === 'PumpV1') {
-    console.log('[ORCHESTRATOR] PumpV1 pool detected. Halting execution after logging as per instructions.');
-    return;
-  }
+  // HARD STOP: Per user request, prevent all trading until detection/logging is perfect.
+  console.log('[ORCHESTRATOR] All trading is disabled for this session. Halting execution.');
+  return;
 
+  /*
   if (!risk.shouldTrade()) {
     console.error("[ORCHESTRATOR] Risk control prohibits trade at this time.");
     return;
   }
-
-  // All the complex pool key logic is now removed.
 
   const tradeSignal = await planner.shouldTrigger(poolData);
   if (!tradeSignal) {
@@ -52,8 +47,6 @@ async function handleNewPool(
     return;
   }
 
-  // The call to executeSwap is now much simpler.
-  // It just needs the new pool's data and the amount to trade.
   const sig = await tradeSvc.executeSwap(poolData, tradeSignal.amount);
   console.log(`[ORCHESTRATOR] Trade executed, signature: ${sig}`);
 
@@ -61,6 +54,7 @@ async function handleNewPool(
   console.log(`[ORCHESTRATOR] Bundle sent: ${sent}`);
 
   risk.recordTradeOutcome(sent, tradeSignal.amount);
+  */
 }
 
 async function main(): Promise<void> {
@@ -97,7 +91,6 @@ async function main(): Promise<void> {
   });
 
   const listener = new DexPoolListener(async (poolData: PoolData) => {
-    // The handler no longer needs the connection passed in separately
     await handleNewPool(poolData, tradeSvc, planner, safety, risk, bundleSender);
   });
 
