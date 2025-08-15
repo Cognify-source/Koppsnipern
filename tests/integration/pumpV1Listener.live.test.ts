@@ -3,14 +3,18 @@ import { PumpV1Listener } from '../../src/ts/listeners/sources/pumpV1Listener';
 import { NewPoolCallback } from '../../src/ts/listeners/iPoolListener';
 import { PoolData } from '../../src/ts/services/safetyService';
 
-// Mock the entire web3.js connection to control the data returned
+// This is a more robust way to mock and capture the onLogs callback
+let capturedOnLogsCallback: (log: Logs, context: any) => void;
+
 jest.mock('@solana/web3.js', () => {
   const actualWeb3 = jest.requireActual('@solana/web3.js');
   return {
     ...actualWeb3,
     Connection: jest.fn().mockImplementation(() => ({
       getParsedTransactions: jest.fn(),
-      onLogs: jest.fn(),
+      onLogs: jest.fn((programId, callback) => {
+        capturedOnLogsCallback = callback; // Capture the callback when onLogs is called
+      }),
     })),
   };
 });
@@ -26,7 +30,6 @@ describe('PumpV1Listener - Live Mode with Batching', () => {
   let listener: PumpV1Listener;
   let mockCallback: jest.Mock<NewPoolCallback>;
   let mockConnection: jest.Mocked<Connection>;
-  let onLogsCallback: (log: Logs, context: any) => void;
 
   beforeAll(() => {
     process.env.USE_STUB_LISTENER = 'false';
@@ -41,10 +44,6 @@ describe('PumpV1Listener - Live Mode with Batching', () => {
     listener = new PumpV1Listener(mockCallback);
 
     mockConnection = (listener as any)._httpConnection as jest.Mocked<Connection>;
-
-    // Capture the onLogs callback to simulate log events
-    const mockOnLogs = (listener as any)._wsConnection.onLogs as jest.Mock;
-    onLogsCallback = mockOnLogs.mock.calls[0][1];
   });
 
   afterEach(() => {
@@ -52,7 +51,6 @@ describe('PumpV1Listener - Live Mode with Batching', () => {
   });
 
   test('should queue signatures and process them in a batch', async () => {
-    // A simplified but type-correct mock transaction
     const MOCK_PUMP_V1_TRANSACTION: ParsedTransactionWithMeta = {
       blockTime: 123456789,
       slot: 1234,
@@ -87,25 +85,23 @@ describe('PumpV1Listener - Live Mode with Batching', () => {
 
     listener.start();
 
-    // Simulate two logs arriving
-    onLogsCallback({ signature: txSignature, err: null, logs: [] }, {} as any);
-    onLogsCallback({ signature: 'anotherFailedSignature', err: null, logs: [] }, {} as any);
+    // Ensure onLogs was called and we captured the callback
+    expect(capturedOnLogsCallback).toBeDefined();
 
-    // At this point, the queue should have 2 items, but nothing processed yet
+    // Simulate two logs arriving
+    capturedOnLogsCallback({ signature: txSignature, err: null, logs: [] }, {} as any);
+    capturedOnLogsCallback({ signature: 'anotherFailedSignature', err: null, logs: [] }, {} as any);
+
     expect(mockConnection.getParsedTransactions).not.toHaveBeenCalled();
     expect(mockCallback).not.toHaveBeenCalled();
 
-    // Mock the response for the batch call
     (mockConnection.getParsedTransactions as jest.Mock).mockResolvedValue([MOCK_PUMP_V1_TRANSACTION, null]);
 
-    // Advance the timer to trigger the batch processing
     await jest.advanceTimersByTimeAsync(250);
 
-    // Now, the batch should have been processed
     expect(mockConnection.getParsedTransactions).toHaveBeenCalledTimes(1);
     expect(mockConnection.getParsedTransactions).toHaveBeenCalledWith([txSignature, 'anotherFailedSignature'], expect.any(Object));
 
-    // And the callback should have been called once with the valid transaction data
     expect(mockCallback).toHaveBeenCalledTimes(1);
     const expectedPoolData: Partial<PoolData> = {
       address: 'HDxg3qJqAexLtP4HJ2jkqgNVuvmFyTd5KGoK5K83i9MC',
