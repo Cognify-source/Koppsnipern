@@ -1,12 +1,12 @@
 # Koppsnipern — Operativ policy (version 1.9)
 
 **Syfte:**
-Denna policy styr drift av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. 
-Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner. Policyn gäller endast botens realtidsdrift.
+Denna policy styr utveckling och drift av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. 
+Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felhantering samt dokumentrutiner. 
 
 ---
 
-* **Huvudprincip:** Säkerhet före hastighet.
+* **Huvudprincip:** Säkerhet först, hastighet tätt därefter.
 * Mål (precision): 90–95 %.
 * Mål (latens E2E): < 350 ms.
 * Mål (max risk/dag): 50 SOL.
