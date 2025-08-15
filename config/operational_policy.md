@@ -114,7 +114,7 @@ Boten består av följande logiska moduler:
 - **notifyService:      Loggar resultat i terminal, Discord och loggfiler.
 - **tradePlanner:       Förbered och signerar transaktioner via Jito.
 - **bundleSender:       ??????????
-- **tradeService:       Genomför trade.
+- **tradeService:       Genomför trade. TradeServiceBase är basen, och den kallar på olika underservices (tradeServicePumpv1.ts, tradeServicePumpAmm.ts, tradeServiceLaunchlab.ts och tradeServiceMeteoradbc.ts)
 - **riskManager:        Applicerar globala och trade-specifika riskregler.
 
 ### Latensbudget (end-to-end)

@@ -68,3 +68,18 @@
 {"timestamp":"2025-08-15T19:40:03.856Z","pool":"DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL","mint":"6fB87YCSx7cELVm8rYNuVvGgY9TaTYX5tVKVVRQEpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
 {"timestamp":"2025-08-15T19:40:09.860Z","pool":"72drLf1FwX3g617ANmtFS9UTJiqRN2Xy4goKiHxmuU2s","mint":"8u2yAj5e9XL6WEKH3vBCJaU4JiRmdqmU9Db7HhgKpump","reasons":["LP too low (0.04950495 SOL)"],"source":"PumpV1"}
 {"timestamp":"2025-08-15T19:40:11.879Z","pool":"3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT","mint":"72DzChnd3XYPPQKsTwe1jzRjrF1f3DoEHi3LV1A2pump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:28.076Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"HeKgg5EmvHJ3urBQpHqzW4xVnnTZZsDpeXj8vBsVpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:28.077Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"HbCK5oETwWwxxMB4T6bTgKKcpkcssdpAcRbQiavKpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:28.849Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"AGjLFq7Xky55ZiUqkXvTKJRsQRBh3A5HVc2azM7Gpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:28.851Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"24bRrxhnr7r8vNLnwngGYcpNGVgbJdRXxs75AX7ypump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:35.592Z","pool":"ComputeBudget111111111111111111111111111111","mint":"3aLGKpr95Fi2TrunMse2R8mia65SDu45ALATj5cAK6e9","reasons":["Mint authority present","LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:37.976Z","pool":"ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt","mint":"GGu2RYfsBP3vQjZrjnkC39FyjoeWw5wfAKuym4u4oS5p","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:40.054Z","pool":"62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV","mint":"Gka5mc1XBkt87wpNGCG2BHtjSPqafBMpLhWkE6tRpump","reasons":["LP too low (0.0285 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:44.915Z","pool":"Bguj5N6Qjds8gCN84hXzC6XdHru217tUwaMvMzHdRjMc","mint":"6sdTc3uHtQSqVy4wCUHJBc42dK3oF8DzbvN4L5htb8Wj","reasons":["Mint authority present","LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:46.381Z","pool":"9WXzhPDmDpDyznLijn8t9dyAZHwnrC4z3UBj8n46PgpV","mint":"Dogdx95RtXBqMgKVNNjSCcqbgHyWVPubD7NnYQJppump","reasons":["LP too low (0.990099009 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:47.968Z","pool":"3yi9kEBJWgvgG4ZZNccw6ZZZPo2rzqcFeF2bELJ4y3vY","mint":"C9cgd7CtDVTPwbimEuYd2xzXTSZ4RadZPi9WvQixnPnw","reasons":["Mint authority present","LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:03:55.034Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"DCHyZBTbpu71SdAoVWyBqFCKvrQWxAhsyYySy5n9pump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:04:00.272Z","pool":"2Ef5yecPRrcejsyX6fiaD1hLrC6HqDyYF62ikbhM6ZJz","mint":"3nBWRAQuXXEguW6qUXuBuBgzFjrfE7skk81JRQhMpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:04:38.654Z","pool":"E5NdqhAyCX5Urmf13TZ36BwjWxYcfrFGUs4c8T2ToTCX","mint":"4acbjSxEuzRv6VpWwNPdGRR8u3JMCXAysKtiLrV4cxKF","reasons":["Mint authority present","LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:04:43.278Z","pool":"2C7SfcyKeFbQAj4Sve1vB9rkgoV1peLUfrEYJyV8r4Uf","mint":"J3PepXpRjACXTPd1R7nyPujyZfWsxWoTKGsPea7wB5k5","reasons":["Mint authority present","LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-15T20:04:48.016Z","pool":"astrazznxsGUhWShqgNtAdfrzP2G83DzcWVJDxwV9bF","mint":"DThH7Fpgw5jKRxA8r82N3JcUS1rfLjmCPw6wJhrypump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}

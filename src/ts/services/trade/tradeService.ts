@@ -1,4 +1,4 @@
-// src/ts/services/tradeService.ts
+// src/ts/services/tradeServiceBase.ts
 import {
   Connection,
   Keypair,
@@ -9,7 +9,7 @@ import {
 import { NATIVE_MINT } from '@solana/spl-token';
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
-import { PoolData } from "./safetyService";
+import { PoolData } from "../safetyService";
 
 export interface TradeServiceOptions {
   connection: Connection;
