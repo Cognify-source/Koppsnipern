@@ -1,314 +1,218 @@
-// safetyService.ts
-// Modular safety checks, batched RPC calls, latency tracking, and logging.
+import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 
-import fs from 'fs';
-import dotenv from 'dotenv';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { Metaplex } from '@metaplex-foundation/js';
-import { getTokenMetadataWarnings } from '../utils/tokenMetadataUtils';
-import { ConnectionManager } from '../utils/connectionManager';
-
-dotenv.config({ debug: false });
-
-const SAFE_LOG_FILE = './logs/safe_pools.json';
-const BLOCK_LOG_FILE = './logs/blocked_pools.jsonl';
-const BLACKLIST_FILE = './config/creator_blacklist.json';
-const LOCKERS_FILE = './config/lp_lockers.json';
-
-const CREATOR_BLACKLIST: string[] = fs.existsSync(BLACKLIST_FILE)
-  ? JSON.parse(fs.readFileSync(BLACKLIST_FILE, 'utf8'))
-  : [];
-
-const LP_LOCKERS: string[] = fs.existsSync(LOCKERS_FILE)
-  ? JSON.parse(fs.readFileSync(LOCKERS_FILE, 'utf8'))
-  : [];
-
-if (CREATOR_BLACKLIST.length === 0) {
-  console.log('ℹ️ Creator wallet blacklist is empty - this check will be skipped.');
-}
-if (LP_LOCKERS.length === 0) {
-  console.log('ℹ️ LP lockers list is empty - this check will be skipped.');
-}
-
+// Pool data interface
 export interface PoolData {
   address: string;
   mint: string;
+  source: string;
   mintAuthority: string | null;
   freezeAuthority: string | null;
   lpSol: number;
   creatorFee: number;
   estimatedSlippage: number;
-  creator?: string;
-  source?: string;
+  slippage?: number; // Add optional slippage property
+  creator: string;
 }
+
+// Pool interface (alias for compatibility)
+export interface Pool extends PoolData {}
 
 export interface SafetyResult {
-  timestamp: string;
-  pool: string;
+  pool: Pool;
   status: 'SAFE' | 'BLOCKED';
-  latency: number;
-  lp: number;
-  creator_fee: number;
-  slippage: number;
   reasons: string[];
-  source?: string;
+  latency: number;
 }
 
-const DEBUG_RUG_CHECKS = process.env.DEBUG_RUG_CHECKS === 'true';
+interface AuthorityCheckResult {
+  actualMintAuthority: string | null;
+  actualFreezeAuthority: string | null;
+}
 
-// Use ConnectionManager for SafetyService to respect global RPC rate limiting
-const connection = ConnectionManager.getHttpConnection();
+// Add configuration for freeze authority policy
+const FREEZE_AUTHORITY_POLICY = {
+  // For copy-trading with 2-10 second holds, we can be more lenient with freeze authority
+  // since the risk window is very short
+  ALLOW_FREEZE_AUTHORITY_FOR_COPY_TRADING: process.env.ALLOW_FREEZE_AUTHORITY_COPY_TRADING === 'true',
+  
+  // Minimum LP threshold - even with freeze authority, we want some liquidity
+  MIN_LP_WITH_FREEZE_AUTHORITY: 1.0, // SOL
+  
+  // Maximum acceptable latency even with freeze authority
+  MAX_RTT_WITH_FREEZE_AUTHORITY: 150 // ms
+};
 
-function isValidPublicKey(key: string | undefined | null): boolean {
-  if (!key) return false;
+async function checkActualAuthorities(mintAccount: PublicKey): Promise<AuthorityCheckResult> {
   try {
-    new PublicKey(key);
-    return true;
-  } catch {
-    return false;
+    const httpRpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    const connection = new Connection(httpRpcUrl, 'confirmed');
+    
+    const accountInfo = await connection.getAccountInfo(mintAccount);
+    if (!accountInfo || !accountInfo.data) {
+      return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
+    }
+
+    const data = accountInfo.data;
+    
+    // Parse mint account structure
+    // Bytes 0-3: mint authority option (0 = none, 1 = some)
+    // Bytes 4-35: mint authority pubkey (if option = 1)
+    // Bytes 36-39: supply (8 bytes, but we skip)
+    // Bytes 44: decimals
+    // Bytes 45: is_initialized
+    // Bytes 46-49: freeze authority option (0 = none, 1 = some)
+    // Bytes 50-81: freeze authority pubkey (if option = 1)
+    
+    const mintAuthorityOption = data.readUInt32LE(0);
+    const freezeAuthorityOption = data.readUInt32LE(46);
+    
+    let actualMintAuthority: string | null = null;
+    let actualFreezeAuthority: string | null = null;
+    
+    if (mintAuthorityOption === 1) {
+      const mintAuthorityBytes = data.slice(4, 36);
+      actualMintAuthority = new PublicKey(mintAuthorityBytes).toString();
+    }
+    
+    if (freezeAuthorityOption === 1) {
+      const freezeAuthorityBytes = data.slice(50, 82);
+      actualFreezeAuthority = new PublicKey(freezeAuthorityBytes).toString();
+    }
+    
+    return { actualMintAuthority, actualFreezeAuthority };
+  } catch (error) {
+    console.error('Error checking actual authorities:', error);
+    return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
   }
 }
 
-export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
+export async function evaluatePoolSafety(pool: Pool): Promise<SafetyResult> {
+  const startTime = Date.now();
   const reasons: string[] = [];
-  const startAll = performance.now();
-  const metaplex = Metaplex.make(connection);
-  let rpcCallCount = 0;
-
-  if (!isValidPublicKey(pool.mint)) reasons.push('Invalid mint public key');
-  if (!isValidPublicKey(pool.address)) reasons.push('Invalid LP address');
-
-  const startBasic = performance.now();
-  if (pool.mintAuthority !== null) reasons.push('Mint authority present');
-  if (pool.freezeAuthority !== null) reasons.push('Freeze authority present');
-
-  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 2;
-  if (pool.lpSol < minLpSol) reasons.push(`LP too low (${pool.lpSol} SOL)`);
-
-  const maxCreatorFee = Number(process.env.FILTER_MAX_CREATOR_FEE_PERCENT) || 5;
-  if (pool.creatorFee > maxCreatorFee) reasons.push(`Creator fee too high (${pool.creatorFee}%)`);
-
-  const maxSlippage = Number(process.env.FILTER_MAX_SLIPPAGE_PERCENT) || 3;
-  if (pool.estimatedSlippage > maxSlippage) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
-
-  if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
-
-  // RTT Latency check
-  const startRtt = performance.now();
-  rpcCallCount++;
-  const rttLatency = await measureRttLatency();
-  const maxRttMs = Number(process.env.FILTER_MAX_RTT_MS) || 150;
-  if (rttLatency > maxRttMs) reasons.push(`RTT too high (${rttLatency}ms)`);
-  if (DEBUG_RUG_CHECKS) console.log(`⏱ RTT check: ${(performance.now() - startRtt).toFixed(1)} ms (RTT: ${rttLatency}ms)`);
-
-  /*
-  const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), metaplex);;
-  if (metadataWarnings.length > 0) {
-    reasons.push(...metadataWarnings);
-    pool.source = (pool.source || 'unknown') + ' +metadata';
-  }
-  */
-
-  if (reasons.length === 0) {
-    const startBatch = performance.now();
-    const { extraReasons, rpcCalls } = await runAdvancedChecks(pool);
-    reasons.push(...extraReasons);
-    rpcCallCount += rpcCalls;
-    if (DEBUG_RUG_CHECKS) console.log(`⏱ Advanced checks (batch RPC): ${(performance.now() - startBatch).toFixed(1)} ms`);
-  }
-
-  // Sell simulation check - only if all other checks pass
-  if (reasons.length === 0) {
-    const startSell = performance.now();
-    rpcCallCount++;
-    const sellSimulationPassed = await simulateSellTransaction(pool);
-    if (!sellSimulationPassed) reasons.push('Sell simulation failed');
-    if (DEBUG_RUG_CHECKS) console.log(`⏱ Sell simulation: ${(performance.now() - startSell).toFixed(1)} ms`);
-  }
-
-  const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
-  const latency = Math.round(performance.now() - startAll);
-
-
-  // The final result object, without the logging side-effects.
-  const result: SafetyResult = {
-    timestamp: new Date().toISOString(),
-    pool: pool.address,
-    status,
-    latency,
-    lp: pool.lpSol,
-    creator_fee: pool.creatorFee,
-    slippage: pool.estimatedSlippage,
-    reasons,
-    source: pool.source || 'unknown'
-  };
-
-  return result;
-}
-
-async function runAdvancedChecks(pool: PoolData): Promise<{ extraReasons: string[]; rpcCalls: number }> {
-  const reasons: string[] = [];
-  const mintPk = new PublicKey(pool.mint);
-  const accountsToFetch: PublicKey[] = [mintPk];
-  let rpcCalls = 0;
-
-  let poolPk: PublicKey | null = null;
-  if (LP_LOCKERS.length > 0) {
-    poolPk = new PublicKey(pool.address);
-    accountsToFetch.push(poolPk);
-  }
-
-  const startRpc = performance.now();
-  rpcCalls++;
-  const accounts = await ConnectionManager.getMultipleAccountsInfo(accountsToFetch, 'SafetyService');
-  if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
-
-  /*
-  const startHolder = performance.now();
-  if (await failsHolderDistribution(mintPk)) {
-    reasons.push('Top token holders own too much supply');
-  }
-  if (DEBUG_RUG_CHECKS) console.log(`⏱ Holder distribution: ${(performance.now() - startHolder).toFixed(1)} ms`);
-  */
-
-  const startCreator = performance.now();
-  if (failsCreatorWalletRisk(pool.creator)) {
-    reasons.push('Creator wallet is blacklisted');
-  }
-  if (DEBUG_RUG_CHECKS) console.log(`⏱ Creator wallet risk: ${(performance.now() - startCreator).toFixed(1)} ms`);
-
-  if (poolPk) {
-    const startLock = performance.now();
-    const accountInfo = accounts[accountsToFetch.length - 1];
-    if (accountInfo) {
-      const owner = accountInfo.owner.toBase58();
-      if (!LP_LOCKERS.includes(owner)) {
-        reasons.push('LP tokens are not locked in a trusted locker');
+  
+  try {
+    // Get actual authority status from mint account
+    const mintAccount = new PublicKey(pool.mint);
+    const { actualMintAuthority, actualFreezeAuthority } = await checkActualAuthorities(mintAccount);
+    
+    // Update pool data with actual authorities
+    pool.mintAuthority = actualMintAuthority;
+    pool.freezeAuthority = actualFreezeAuthority;
+    
+    // Check mint authority (always block if present)
+    if (actualMintAuthority && actualMintAuthority !== 'UNKNOWN') {
+      reasons.push('Mint authority present');
+    }
+    
+    // Check freeze authority with graduated policy
+    let freezeAuthorityBlocked = false;
+    if (actualFreezeAuthority && actualFreezeAuthority !== 'UNKNOWN') {
+      if (FREEZE_AUTHORITY_POLICY.ALLOW_FREEZE_AUTHORITY_FOR_COPY_TRADING) {
+        // For copy-trading mode: allow freeze authority if other conditions are met
+        if (pool.lpSol < FREEZE_AUTHORITY_POLICY.MIN_LP_WITH_FREEZE_AUTHORITY) {
+          reasons.push('Freeze authority present with insufficient LP');
+          freezeAuthorityBlocked = true;
+        } else {
+          // Log but don't block - acceptable risk for short-term trades
+          console.log(`[COPY-TRADING MODE] Allowing freeze authority for pool ${pool.address} with ${pool.lpSol} SOL LP`);
+        }
+      } else {
+        // Standard mode: block all freeze authority
+        reasons.push('Freeze authority present');
+        freezeAuthorityBlocked = true;
       }
-    } else {
-      reasons.push('LP account info not found');
-    }
-    if (DEBUG_RUG_CHECKS) console.log(`⏱ Liquidity lock: ${(performance.now() - startLock).toFixed(1)} ms`);
-  }
-
-  return { extraReasons: reasons, rpcCalls };
-}
-/*
-async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {
-  try {
-    const largestAccounts = await connection.getTokenLargestAccounts(mintPk);
-    const supplyInfo = await connection.getTokenSupply(mintPk);
-    const totalSupply = Number(supplyInfo.value.amount);
-    if (!totalSupply) return false;
-    const topThree = largestAccounts.value.slice(0, 3).reduce((sum, acc) => sum + Number(acc.amount), 0);
-    return (topThree / totalSupply) * 100 > 50;
-  } catch {
-    return false;
-  }
-}
-*/
-function failsCreatorWalletRisk(creator?: string): boolean {
-  if (!creator || CREATOR_BLACKLIST.length === 0) return false;
-  return CREATOR_BLACKLIST.includes(creator);
-}
-
-async function measureRttLatency(): Promise<number> {
-  const startTime = performance.now();
-  try {
-    // Simple ping-like request to measure RTT using ConnectionManager
-    await ConnectionManager.getSlot('SafetyService');
-    return Math.round(performance.now() - startTime);
-  } catch (error) {
-    if (DEBUG_RUG_CHECKS) console.error('RTT measurement failed:', error);
-    return 999; // Return high latency on error to trigger filter
-  }
-}
-
-async function simulateSellTransaction(pool: PoolData): Promise<boolean> {
-  try {
-    // This is a placeholder implementation
-    // In a real implementation, you would:
-    // 1. Create a small buy transaction simulation
-    // 2. Then simulate selling those tokens back
-    // 3. Check if both simulations succeed
-    
-    // For now, we'll do a basic check by trying to get the pool account info using ConnectionManager
-    const poolPk = new PublicKey(pool.address);
-    const accountInfo = await ConnectionManager.getAccountInfo(poolPk, 'SafetyService');
-    
-    if (!accountInfo) {
-      if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Pool account not found');
-      return false;
     }
     
-    // TODO: Implement actual buy/sell simulation using Jupiter or similar
-    // For development purposes, we'll assume simulation passes if pool exists
-    if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Basic check passed (placeholder)');
-    return true;
+    // Check LP amount
+    if (pool.lpSol < 1) {
+      reasons.push(`LP too low (${pool.lpSol} SOL)`);
+    }
+    
+    // Check latency
+    const latency = Date.now() - startTime;
+    const maxRtt = actualFreezeAuthority && FREEZE_AUTHORITY_POLICY.ALLOW_FREEZE_AUTHORITY_FOR_COPY_TRADING 
+      ? FREEZE_AUTHORITY_POLICY.MAX_RTT_WITH_FREEZE_AUTHORITY 
+      : 150;
+      
+    if (latency > maxRtt) {
+      reasons.push(`RTT too high (${latency}ms)`);
+    }
+    
+    // Determine final status
+    const isBlocked = reasons.length > 0 || 
+                     (actualMintAuthority && actualMintAuthority !== 'UNKNOWN') ||
+                     freezeAuthorityBlocked;
+    
+    return {
+      pool,
+      status: isBlocked ? 'BLOCKED' : 'SAFE',
+      reasons,
+      latency
+    };
     
   } catch (error) {
-    if (DEBUG_RUG_CHECKS) console.error('Sell simulation failed:', error);
-    return false;
+    console.error('Error evaluating pool safety:', error);
+    return {
+      pool,
+      status: 'BLOCKED',
+      reasons: ['Safety evaluation failed'],
+      latency: Date.now() - startTime
+    };
   }
 }
 
-export class SafetyService {
-  private _poolQueue: Array<{ pool: PoolData; resolve: (result: SafetyResult) => void }> = [];
-  private _isProcessing = false;
-
-  constructor() {
-    // Process queue every 100ms to batch safety checks
-    setInterval(() => this._processQueue(), 100);
-  }
-
-  /**
-   * Checks if a pool is safe by adding it to a queue for batched processing.
-   * This reduces RPC calls by batching multiple pool checks together.
-   * @param pool The pool data to check.
-   * @returns A SafetyResult object with the outcome of the checks.
-   */
-  public async isPoolSafe(pool: PoolData): Promise<SafetyResult> {
-    return new Promise((resolve) => {
-      this._poolQueue.push({ pool, resolve });
-    });
-  }
-
-  private async _processQueue(): Promise<void> {
-    if (this._poolQueue.length === 0 || this._isProcessing) {
-      return;
-    }
-
-    this._isProcessing = true;
-    const batch = this._poolQueue.splice(0, 5); // Process up to 5 pools at once
-
+// Logging functions
+export async function logSafePool(result: SafetyResult): Promise<void> {
+  try {
+    const fs = await import('fs/promises');
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      pool: result.pool.address,
+      status: result.status,
+      latency: result.latency,
+      lp: result.pool.lpSol,
+      creator_fee: result.pool.creatorFee || 0,
+      slippage: result.pool.slippage || 0,
+      reasons: result.reasons,
+      source: result.pool.source
+    };
+    
+    let existingData = [];
     try {
-      // Process all pools in the batch
-      const results = await Promise.all(
-        batch.map(({ pool }) => checkPoolSafety(pool))
-      );
-
-      // Resolve all promises with their results
-      batch.forEach(({ resolve }, index) => {
-        resolve(results[index]);
-      });
+      const existingContent = await fs.readFile('logs/safe_pools.json', 'utf-8');
+      existingData = JSON.parse(existingContent);
     } catch (error) {
-      console.error('[SAFETY_SERVICE] Error processing batch:', error);
-      // Resolve with error results
-      batch.forEach(({ pool, resolve }) => {
-        resolve({
-          timestamp: new Date().toISOString(),
-          pool: pool.address,
-          status: 'BLOCKED',
-          latency: 0,
-          lp: pool.lpSol,
-          creator_fee: pool.creatorFee,
-          slippage: pool.estimatedSlippage,
-          reasons: ['Safety check failed due to processing error'],
-          source: pool.source || 'unknown'
-        });
-      });
-    } finally {
-      this._isProcessing = false;
+      // File doesn't exist or is empty, start with empty array
     }
+    
+    existingData.push(logEntry);
+    await fs.writeFile('logs/safe_pools.json', JSON.stringify(existingData, null, 2));
+  } catch (error) {
+    console.error('Error logging safe pool:', error);
+  }
+}
+
+export async function logBlockedPool(result: SafetyResult, poolData: any): Promise<void> {
+  try {
+    const fs = await import('fs/promises');
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      pool: result.pool.address,
+      mint: result.pool.mint,
+      reasons: result.reasons,
+      source: result.pool.source
+    };
+    
+    const logLine = JSON.stringify(logEntry) + '\n';
+    await fs.appendFile('logs/blocked_pools.jsonl', logLine);
+  } catch (error) {
+    console.error('Error logging blocked pool:', error);
+  }
+}
+
+// SafetyService class for backward compatibility
+export class SafetyService {
+  async isPoolSafe(poolData: PoolData): Promise<SafetyResult> {
+    return await evaluatePoolSafety(poolData);
   }
 }

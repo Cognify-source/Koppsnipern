@@ -78,10 +78,16 @@ export class PumpAmmListener implements IPoolListener {
             const mintAuth = poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m';
             const freezeAuth = poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m';
             
-            // Color code safety status
-            const safetyStatus = safetyResult.status === 'SAFE' 
+            // Color code safety status and add reasons if blocked
+            let safetyStatus = safetyResult.status === 'SAFE' 
               ? '\x1b[32mSAFE\x1b[0m' 
               : '\x1b[31mBLOCKED\x1b[0m';
+            
+            // Add blocking reasons if pool is blocked
+            if (safetyResult.status === 'BLOCKED' && safetyResult.reasons.length > 0) {
+              const reasons = safetyResult.reasons.join(', ');
+              safetyStatus += ` (${reasons})`;
+            }
             
             console.log(`[${timestamp}] PumpAMM | \x1b[32mCA:${poolData.address}\x1b[0m | LP:${poolData.lpSol} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
             

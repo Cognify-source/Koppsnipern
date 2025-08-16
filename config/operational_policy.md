@@ -42,7 +42,6 @@ Den beskriver mål, prioriteringar, handelsflöde, hårda filter, risk- och felh
 * Simulerad säljtransaction: Framgångsrik
 * Dev måste ha köpt för minst 1 SOL
 * Top 10 holders äger < 10%
-* RTT < 150 ms
 
 ---
 

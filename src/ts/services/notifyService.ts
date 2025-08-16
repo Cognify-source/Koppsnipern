@@ -39,9 +39,9 @@ export async function notifyDiscord(message: string): Promise<void> {
 export async function logSafePool(result: SafetyResult): Promise<void> {
   // 1. Log to console - temporarily silenced for cleaner RPS monitoring
   // console.log(
-  //   `[RESULT] ✅ SAFE: Pool ${result.pool}. Source: ${result.source}, LP: ${result.lp.toFixed(
+  //   `[RESULT] ✅ SAFE: Pool ${result.pool.address}. Source: ${result.pool.source}, LP: ${result.pool.lpSol.toFixed(
   //     2
-  //   )} SOL, Fee: ${result.creator_fee.toFixed(2)}%`
+  //   )} SOL, Fee: ${result.pool.creatorFee.toFixed(2)}%`
   // );
 
   // 2. Log to file
@@ -49,25 +49,38 @@ export async function logSafePool(result: SafetyResult): Promise<void> {
     if (!fs.existsSync('./logs')) {
       fs.mkdirSync('./logs', { recursive: true });
     }
-    let safePools: SafetyResult[] = [];
+    let safePools: any[] = [];
     if (fs.existsSync(SAFE_LOG_FILE)) {
       const fileContent = fs.readFileSync(SAFE_LOG_FILE, 'utf8');
       if (fileContent) {
         safePools = JSON.parse(fileContent);
       }
     }
-    safePools.push(result);
+    
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      pool: result.pool.address,
+      status: result.status,
+      latency: result.latency,
+      lp: result.pool.lpSol,
+      creator_fee: result.pool.creatorFee || 0,
+      slippage: result.pool.slippage || result.pool.estimatedSlippage || 0,
+      reasons: result.reasons,
+      source: result.pool.source
+    };
+    
+    safePools.push(logEntry);
     fs.writeFileSync(SAFE_LOG_FILE, JSON.stringify(safePools, null, 2));
   } catch (err) {
     console.error(`[LOGGING] Error writing to safe pools log file ${SAFE_LOG_FILE}:`, err);
   }
 
   // 3. Notify Discord
-  const discordMessage = `✅ **SAFE** – Pool Found\n**Source:** ${result.source}\n**Address:** \`${
-    result.pool
-  }\`\n**LP:** ${result.lp.toFixed(2)} SOL | **Fee:** ${result.creator_fee.toFixed(
+  const discordMessage = `✅ **SAFE** – Pool Found\n**Source:** ${result.pool.source}\n**Address:** \`${
+    result.pool.address
+  }\`\n**LP:** ${result.pool.lpSol.toFixed(2)} SOL | **Fee:** ${result.pool.creatorFee.toFixed(
     2
-  )}% | **Slippage:** ${result.slippage.toFixed(2)}%`;
+  )}% | **Slippage:** ${(result.pool.slippage || result.pool.estimatedSlippage || 0).toFixed(2)}%`;
   await notifyDiscord(discordMessage);
 }
 
@@ -79,7 +92,7 @@ export async function logSafePool(result: SafetyResult): Promise<void> {
 export async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<void> {
   const reasons = result.reasons.join(', ');
   // 1. Log to console - temporarily silenced for cleaner RPS monitoring
-  // console.log(`[RESULT] ❌ BLOCKED: Pool ${result.pool}. Reasons: ${reasons}`);
+  // console.log(`[RESULT] ❌ BLOCKED: Pool ${result.pool.address}. Reasons: ${reasons}`);
 
   // 2. Log to file
   try {
@@ -87,11 +100,11 @@ export async function logBlockedPool(result: SafetyResult, pool: PoolData): Prom
       fs.mkdirSync('./logs', { recursive: true });
     }
     const logEntry = {
-      timestamp: result.timestamp,
-      pool: pool.address,
-      mint: pool.mint,
+      timestamp: new Date().toISOString(),
+      pool: result.pool.address,
+      mint: result.pool.mint,
       reasons: result.reasons,
-      source: result.source || 'unknown',
+      source: result.pool.source,
     };
     fs.appendFileSync(BLOCK_LOG_FILE, JSON.stringify(logEntry) + '\n');
   } catch (err) {
@@ -99,6 +112,6 @@ export async function logBlockedPool(result: SafetyResult, pool: PoolData): Prom
   }
 
   // 3. Notify Discord
-  const discordMessage = `❌ **BLOCKED** – Pool Ignored\n**Address:** \`${result.pool}\`\n**Reasons:** ${reasons}`;
+  const discordMessage = `❌ **BLOCKED** – Pool Ignored\n**Address:** \`${result.pool.address}\`\n**Reasons:** ${reasons}`;
   await notifyDiscord(discordMessage);
 }
