@@ -22,8 +22,6 @@ async function handleNewPool(
   risk: RiskManager,
   bundleSender: BundleSender
 ): Promise<void> {
-  console.log(`\n[ORCHESTRATOR] Received new pool: ${poolData.address} (${poolData.source})`);
-
   const safetyResult = await safety.isPoolSafe(poolData);
   if (safetyResult.status === 'BLOCKED') {
     await logBlockedPool(safetyResult, poolData);

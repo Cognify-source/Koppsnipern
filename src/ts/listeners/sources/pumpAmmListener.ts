@@ -1,50 +1,129 @@
-import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
+import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
 import * as mockPoolEvents from '../../../../tests/integration/data/mock-pump-amm-events.json';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
-dotenv.config({ override: true });
+dotenv.config();
 
 export class PumpAmmListener implements IPoolListener {
-  private _connection: Connection | undefined;
+  private _httpConnection: Connection;
   private _wsConnection: Connection | null = null;
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
   private _useStubListener: boolean;
+  private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
     this._programId = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
-    this._useStubListener = process.env.USE_STUB_LISTENER === 'true';
+    // Force live mode for PumpAMM regardless of USE_STUB_LISTENER setting
+    this._useStubListener = false;
 
-    if (!this._useStubListener) {
-      const httpRpcUrl = process.env.SOLANA_HTTP_RPC_URL || clusterApiUrl('mainnet-beta');
-      this._connection = new Connection(httpRpcUrl, 'confirmed');
-      const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL;
-      if (wssRpcUrl) {
-        this._wsConnection = new Connection(httpRpcUrl, {
-          commitment: 'confirmed',
-          wsEndpoint: wssRpcUrl,
-        });
+    const httpRpcUrl =
+      process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
+        ? process.env.SOLANA_HTTP_RPC_URL
+        : clusterApiUrl('mainnet-beta');
+    this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
+
+    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
+      ? process.env.SOLANA_WSS_RPC_URL
+      : undefined;
+
+    if (!wssRpcUrl) {
+      throw new Error('SOLANA_WSS_RPC_URL must be set in .env for live mode.');
+    }
+    this._wsConnection = new Connection(httpRpcUrl, {
+      commitment: 'confirmed',
+      wsEndpoint: wssRpcUrl,
+    } as any);
+  }
+
+  public async start() {
+    console.log(`[PUMP_AMM] Starting listener... (live-mode only)`);
+    this._startLiveListener();
+    // Use configurable delay from environment variable
+    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
+    console.log(`[PUMP_AMM] Using RPC delay: ${rpcDelayMs}ms`);
+    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
+  }
+
+  private _startLiveListener() {
+    if (!this._wsConnection) {
+      throw new Error('WebSocket connection is not available for live mode.');
+    }
+    console.log(`[PUMP_AMM_LIVE] Listening for logs from Pump.fun AMM program: ${this._programId.toBase58()}`);
+    this._wsConnection.onLogs(this._programId, (log) => {
+      if (!log.err) {
+        this._signatureQueue.push(log.signature);
       }
+    });
+  }
+
+  private async _processSignatureQueue() {
+    if (this._signatureQueue.length === 0) {
+      return;
+    }
+
+    // Limit batch size to reduce RPC load and avoid rate limits
+    const maxBatchSize = 10;
+    const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
+
+    try {
+      const txs = await this._httpConnection.getParsedTransactions(signatures, {
+        maxSupportedTransactionVersion: 0,
+      });
+
+      for (const tx of txs) {
+        if (tx) {
+          const poolData = await this._extractPoolDataFromTransaction(tx);
+          if (poolData) {
+            console.log(`[PUMP_AMM_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+            this._onNewPool(poolData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[PUMP_AMM_QUEUE] Error fetching or processing transactions in batch:', error);
     }
   }
 
-  public start(): void {
-    if (this._useStubListener) {
-      this._startStubListener();
-      return;
+  private async _extractPoolDataFromTransaction(tx: ParsedTransactionWithMeta): Promise<PoolData | null> {
+    const signature = tx.transaction.signatures[0];
+    if (!signature) return null;
+
+    try {
+      if (!tx.meta || !tx.meta.logMessages) return null;
+
+      // Look for PumpAMM CreatePool event in logs
+      const eventPrefix = 'Program data: ';
+      const eventLog = tx.meta.logMessages.find(l => l.startsWith(eventPrefix));
+
+      if (eventLog) {
+        const base64Data = eventLog.substring(eventPrefix.length);
+        const dataBuffer = Buffer.from(base64Data, 'base64');
+
+        // First 8 bytes are the event discriminator, skip them
+        const eventDataBuffer = dataBuffer.slice(8);
+
+        const poolData = this._parseCreatePoolEvent(eventDataBuffer);
+        if (poolData) {
+          // Additional validation for PumpAMM pools
+          const isPumpAmmProgram = tx.transaction.message.instructions.some((ix: any) => 
+            ix.programId.toBase58() === this._programId.toBase58()
+          );
+
+          if (isPumpAmmProgram) {
+            return poolData;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[PUMP_AMM_EXTRACT] Error processing transaction ${signature}:`, error);
     }
 
-    if (!this._wsConnection) {
-      console.log('[PUMP_AMM] Not started, WebSocket connection is missing.');
-      return;
-    }
-
-    console.log(`[PUMP_AMM] Listening for logs from program: ${this._programId.toBase58()}`);
-    this._wsConnection.onLogs(this._programId, (log) => this._processLog(log), 'confirmed');
+    return null;
   }
 
   private _startStubListener(): void {

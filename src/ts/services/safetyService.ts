@@ -54,10 +54,10 @@ export interface SafetyResult {
 }
 
 const DEBUG_RUG_CHECKS = process.env.DEBUG_RUG_CHECKS === 'true';
-const connection = new Connection(
-  process.env.SOLANA_HTTP_RPC_URL || 'https://api.mainnet-beta.solana.com',
-  'confirmed'
-);
+
+// Import ConnectionManager for shared connection
+import { ConnectionManager } from '../utils/connectionManager';
+const connection = ConnectionManager.getHttpConnection();
 
 function isValidPublicKey(key: string | undefined | null): boolean {
   if (!key) return false;

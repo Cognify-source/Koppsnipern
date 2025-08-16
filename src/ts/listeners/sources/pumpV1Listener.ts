@@ -1,42 +1,32 @@
 import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
+import { ConnectionManager } from '../../utils/connectionManager';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 export class PumpV1Listener implements IPoolListener {
   private _httpConnection: Connection;
-  private _wsConnection: Connection | null = null;
+  private _wsConnection: Connection;
   private _onNewPool: NewPoolCallback;
   private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
-
-    const httpRpcUrl =
-      process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
-        ? process.env.SOLANA_HTTP_RPC_URL
-        : clusterApiUrl('mainnet-beta');
-    this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
-
-    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
-      ? process.env.SOLANA_WSS_RPC_URL
-      : undefined;
-
-    if (!wssRpcUrl) {
-      throw new Error('SOLANA_WSS_RPC_URL must be set in .env for live mode.');
-    }
-    this._wsConnection = new Connection(httpRpcUrl, {
-      commitment: 'confirmed',
-      wsEndpoint: wssRpcUrl,
-    } as any);
+    
+    // Use shared connections to reduce RPC overhead
+    this._httpConnection = ConnectionManager.getHttpConnection();
+    this._wsConnection = ConnectionManager.getWsConnection();
   }
 
   public async start() {
     console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    setInterval(() => this._processSignatureQueue(), 200);
+    // Use configurable delay from environment variable
+    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
+    console.log(`[PUMP_V1] Using RPC delay: ${rpcDelayMs}ms`);
+    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
   }
 
   private _startLiveListener() {
@@ -57,7 +47,9 @@ export class PumpV1Listener implements IPoolListener {
       return;
     }
 
-    const signatures = this._signatureQueue.splice(0, this._signatureQueue.length);
+    // Limit batch size to reduce RPC load and avoid rate limits
+    const maxBatchSize = 10;
+    const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {
       const txs = await this._httpConnection.getParsedTransactions(signatures, {
