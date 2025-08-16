@@ -64,14 +64,21 @@ async function checkActualAuthorities(mintAccount: PublicKey): Promise<Authority
     
     const accountInfo = await connection.getAccountInfo(mintAccount);
     if (!accountInfo || !accountInfo.data) {
+      // Account doesn't exist or has no data - treat as unknown authorities
       return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
     }
 
     const data = accountInfo.data;
     
     // Check if buffer is large enough for mint account structure (should be 82 bytes)
+    if (data.length === 0) {
+      // Empty account data - likely account doesn't exist yet or is invalid
+      return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
+    }
+    
     if (data.length < 82) {
-      console.warn(`Mint account data too small: ${data.length} bytes, expected 82`);
+      // Account exists but data is too small - might be a different account type
+      console.warn(`Mint account ${mintAccount.toString()} has unexpected data size: ${data.length} bytes, expected 82 for SPL token mint`);
       return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
     }
     
