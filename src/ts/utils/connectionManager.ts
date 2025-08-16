@@ -1,8 +1,18 @@
-import { Connection, clusterApiUrl } from '@solana/web3.js';
+import { Connection, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
+
+// Global RPC request queue types
+interface RpcRequest {
+  id: string;
+  type: 'getParsedTransactions' | 'getSlot' | 'getMultipleAccountsInfo' | 'getAccountInfo';
+  params: any[];
+  resolve: (result: any) => void;
+  reject: (error: any) => void;
+  source: string; // For debugging which component made the request
+}
 
 /**
- * Shared connection manager to avoid multiple connections to the same RPC endpoint
- * This helps prevent rate limiting issues by reusing the same connection pool
+ * Shared connection manager with global RPC queue to prevent rate limiting
+ * All RPC requests go through a single queue with controlled timing
  */
 class ConnectionManager {
   private static _httpConnection: Connection | null = null;
@@ -10,6 +20,11 @@ class ConnectionManager {
   private static _requestCount: number = 0;
   private static _requestTimes: number[] = [];
   private static _lastRpsReport: number = Date.now();
+  
+  // Global RPC queue
+  private static _rpcQueue: RpcRequest[] = [];
+  private static _isProcessingQueue: boolean = false;
+  private static _queueProcessor: NodeJS.Timeout | null = null;
 
   public static getHttpConnection(): Connection {
     if (!this._httpConnection) {
@@ -19,37 +34,11 @@ class ConnectionManager {
       
       this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
       console.log(`[CONNECTION_MANAGER] Created shared HTTP connection to: ${httpRpcUrl}`);
+      
+      // Start the global RPC queue processor
+      this._startQueueProcessor();
     }
     return this._httpConnection;
-  }
-
-  /**
-   * Track RPC request for performance monitoring
-   */
-  public static trackRequest(): void {
-    this._requestCount++;
-    const now = Date.now();
-    this._requestTimes.push(now);
-    
-    // Keep only requests from the last 60 seconds for RPS calculation
-    this._requestTimes = this._requestTimes.filter(time => now - time <= 60000);
-    
-    // Update last report time (silent tracking)
-    if (now - this._lastRpsReport >= 30000) {
-      this._lastRpsReport = now;
-    }
-  }
-
-  /**
-   * Get current RPS statistics
-   */
-  public static getRpsStats(): { currentRps: number; totalRequests: number } {
-    const now = Date.now();
-    const recentRequests = this._requestTimes.filter(time => now - time <= 60000);
-    return {
-      currentRps: recentRequests.length / 60,
-      totalRequests: this._requestCount
-    };
   }
 
   public static getWsConnection(): Connection {
@@ -74,6 +63,143 @@ class ConnectionManager {
       console.log(`[CONNECTION_MANAGER] Created shared WebSocket connection to: ${wssRpcUrl}`);
     }
     return this._wsConnection;
+  }
+
+  /**
+   * Start the global RPC queue processor
+   */
+  private static _startQueueProcessor(): void {
+    if (this._queueProcessor) return;
+    
+    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '100', 10);
+    console.log(`[CONNECTION_MANAGER] Starting global RPC queue processor with ${rpcDelayMs}ms delay`);
+    
+    this._queueProcessor = setInterval(() => {
+      this._processRpcQueue();
+    }, rpcDelayMs);
+  }
+
+  /**
+   * Process the global RPC queue - only one request at a time
+   */
+  private static async _processRpcQueue(): Promise<void> {
+    if (this._rpcQueue.length === 0 || this._isProcessingQueue) {
+      return;
+    }
+
+    this._isProcessingQueue = true;
+    const request = this._rpcQueue.shift()!;
+
+    try {
+      this.trackRequest();
+      const connection = this.getHttpConnection();
+      let result: any;
+
+      switch (request.type) {
+        case 'getParsedTransactions':
+          result = await connection.getParsedTransactions(request.params[0], request.params[1]);
+          break;
+        case 'getSlot':
+          result = await connection.getSlot();
+          break;
+        case 'getMultipleAccountsInfo':
+          result = await connection.getMultipleAccountsInfo(request.params[0]);
+          break;
+        case 'getAccountInfo':
+          result = await connection.getAccountInfo(request.params[0]);
+          break;
+        default:
+          throw new Error(`Unknown RPC request type: ${request.type}`);
+      }
+
+      request.resolve(result);
+    } catch (error) {
+      console.error(`[RPC_QUEUE] Error processing ${request.type} from ${request.source}:`, error);
+      request.reject(error);
+    } finally {
+      this._isProcessingQueue = false;
+    }
+  }
+
+  /**
+   * Queue an RPC request instead of executing it immediately
+   */
+  public static queueRpcRequest<T>(
+    type: RpcRequest['type'],
+    params: any[],
+    source: string
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const request: RpcRequest = {
+        id: `${Date.now()}-${Math.random()}`,
+        type,
+        params,
+        resolve,
+        reject,
+        source
+      };
+      
+      this._rpcQueue.push(request);
+    });
+  }
+
+  /**
+   * Convenience methods for common RPC calls
+   */
+  public static async getParsedTransactions(
+    signatures: string[],
+    options: any,
+    source: string
+  ): Promise<(ParsedTransactionWithMeta | null)[]> {
+    return this.queueRpcRequest('getParsedTransactions', [signatures, options], source);
+  }
+
+  public static async getSlot(source: string): Promise<number> {
+    return this.queueRpcRequest('getSlot', [], source);
+  }
+
+  public static async getMultipleAccountsInfo(
+    publicKeys: any[],
+    source: string
+  ): Promise<any[]> {
+    return this.queueRpcRequest('getMultipleAccountsInfo', [publicKeys], source);
+  }
+
+  public static async getAccountInfo(
+    publicKey: any,
+    source: string
+  ): Promise<any> {
+    return this.queueRpcRequest('getAccountInfo', [publicKey], source);
+  }
+
+  /**
+   * Track RPC request for performance monitoring
+   */
+  public static trackRequest(): void {
+    this._requestCount++;
+    const now = Date.now();
+    this._requestTimes.push(now);
+    
+    // Keep only requests from the last 60 seconds for RPS calculation
+    this._requestTimes = this._requestTimes.filter(time => now - time <= 60000);
+    
+    // Update last report time (silent tracking)
+    if (now - this._lastRpsReport >= 30000) {
+      this._lastRpsReport = now;
+    }
+  }
+
+  /**
+   * Get current RPS statistics
+   */
+  public static getRpsStats(): { currentRps: number; totalRequests: number; queueLength: number } {
+    const now = Date.now();
+    const recentRequests = this._requestTimes.filter(time => now - time <= 60000);
+    return {
+      currentRps: recentRequests.length / 60,
+      totalRequests: this._requestCount,
+      queueLength: this._rpcQueue.length
+    };
   }
 }
 

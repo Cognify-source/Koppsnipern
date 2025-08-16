@@ -23,10 +23,9 @@ export class PumpV1Listener implements IPoolListener {
   public async start() {
     console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    // Use configurable delay from environment variable
-    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
-    console.log(`[PUMP_V1] Using RPC delay: ${rpcDelayMs}ms`);
-    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
+    console.log(`[PUMP_V1] Using global RPC queue for rate limiting`);
+    // Process queue every 500ms, but actual RPC calls go through global queue
+    setInterval(() => this._processSignatureQueue(), 500);
   }
 
   private _startLiveListener() {
@@ -54,15 +53,11 @@ export class PumpV1Listener implements IPoolListener {
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {
-      // Track RPC request
-      ConnectionManager.trackRequest();
-      
-      const rpcStartTime = Date.now();
-      const txs = await this._httpConnection.getParsedTransactions(signatures, {
-        maxSupportedTransactionVersion: 0,
-      });
-      const rpcEndTime = Date.now();
-      const rpcDuration = rpcEndTime - rpcStartTime;
+      const txs = await ConnectionManager.getParsedTransactions(
+        signatures,
+        { maxSupportedTransactionVersion: 0 },
+        'PumpV1Listener'
+      );
 
       for (const tx of txs) {
         if (tx) {

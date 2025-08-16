@@ -25,10 +25,9 @@ export class LaunchLabListener implements IPoolListener {
   public async start() {
     console.log(`[LAUNCHLAB] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    // Use configurable delay from environment variable
-    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
-    console.log(`[LAUNCHLAB] Using RPC delay: ${rpcDelayMs}ms`);
-    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
+    console.log(`[LAUNCHLAB] Using global RPC queue for rate limiting`);
+    // Process queue every 500ms, but actual RPC calls go through global queue
+    setInterval(() => this._processSignatureQueue(), 500);
   }
 
   private _startLiveListener() {
@@ -53,12 +52,11 @@ export class LaunchLabListener implements IPoolListener {
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {
-      // Track RPC request
-      ConnectionManager.trackRequest();
-      
-      const txs = await this._httpConnection.getParsedTransactions(signatures, {
-        maxSupportedTransactionVersion: 0,
-      });
+      const txs = await ConnectionManager.getParsedTransactions(
+        signatures,
+        { maxSupportedTransactionVersion: 0 },
+        'LaunchLabListener'
+      );
 
       for (const tx of txs) {
         if (tx) {

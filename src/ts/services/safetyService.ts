@@ -95,7 +95,6 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 
   // RTT Latency check
   const startRtt = performance.now();
-  ConnectionManager.trackRequest();
   rpcCallCount++;
   const rttLatency = await measureRttLatency();
   const maxRttMs = Number(process.env.FILTER_MAX_RTT_MS) || 150;
@@ -121,7 +120,6 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   // Sell simulation check - only if all other checks pass
   if (reasons.length === 0) {
     const startSell = performance.now();
-    ConnectionManager.trackRequest();
     rpcCallCount++;
     const sellSimulationPassed = await simulateSellTransaction(pool);
     if (!sellSimulationPassed) reasons.push('Sell simulation failed');
@@ -161,9 +159,8 @@ async function runAdvancedChecks(pool: PoolData): Promise<{ extraReasons: string
   }
 
   const startRpc = performance.now();
-  ConnectionManager.trackRequest();
   rpcCalls++;
-  const accounts = await connection.getMultipleAccountsInfo(accountsToFetch);
+  const accounts = await ConnectionManager.getMultipleAccountsInfo(accountsToFetch, 'SafetyService-Advanced');
   if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
 
   /*
@@ -218,8 +215,8 @@ function failsCreatorWalletRisk(creator?: string): boolean {
 async function measureRttLatency(): Promise<number> {
   const startTime = performance.now();
   try {
-    // Simple ping-like request to measure RTT
-    await connection.getSlot();
+    // Simple ping-like request to measure RTT using global queue
+    await ConnectionManager.getSlot('SafetyService-RTT');
     return Math.round(performance.now() - startTime);
   } catch (error) {
     if (DEBUG_RUG_CHECKS) console.error('RTT measurement failed:', error);
@@ -235,9 +232,9 @@ async function simulateSellTransaction(pool: PoolData): Promise<boolean> {
     // 2. Then simulate selling those tokens back
     // 3. Check if both simulations succeed
     
-    // For now, we'll do a basic check by trying to get the pool account info
+    // For now, we'll do a basic check by trying to get the pool account info using global queue
     const poolPk = new PublicKey(pool.address);
-    const accountInfo = await connection.getAccountInfo(poolPk);
+    const accountInfo = await ConnectionManager.getAccountInfo(poolPk, 'SafetyService-SellSim');
     
     if (!accountInfo) {
       if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Pool account not found');
@@ -256,13 +253,62 @@ async function simulateSellTransaction(pool: PoolData): Promise<boolean> {
 }
 
 export class SafetyService {
+  private _poolQueue: Array<{ pool: PoolData; resolve: (result: SafetyResult) => void }> = [];
+  private _isProcessing = false;
+
+  constructor() {
+    // Process queue every 100ms to batch safety checks
+    setInterval(() => this._processQueue(), 100);
+  }
+
   /**
-   * Checks if a pool is safe by running a series of checks.
-   * This method is now purely for logic and does not perform any logging.
+   * Checks if a pool is safe by adding it to a queue for batched processing.
+   * This reduces RPC calls by batching multiple pool checks together.
    * @param pool The pool data to check.
    * @returns A SafetyResult object with the outcome of the checks.
    */
   public async isPoolSafe(pool: PoolData): Promise<SafetyResult> {
-    return await checkPoolSafety(pool);
+    return new Promise((resolve) => {
+      this._poolQueue.push({ pool, resolve });
+    });
+  }
+
+  private async _processQueue(): Promise<void> {
+    if (this._poolQueue.length === 0 || this._isProcessing) {
+      return;
+    }
+
+    this._isProcessing = true;
+    const batch = this._poolQueue.splice(0, 5); // Process up to 5 pools at once
+
+    try {
+      // Process all pools in the batch
+      const results = await Promise.all(
+        batch.map(({ pool }) => checkPoolSafety(pool))
+      );
+
+      // Resolve all promises with their results
+      batch.forEach(({ resolve }, index) => {
+        resolve(results[index]);
+      });
+    } catch (error) {
+      console.error('[SAFETY_SERVICE] Error processing batch:', error);
+      // Resolve with error results
+      batch.forEach(({ pool, resolve }) => {
+        resolve({
+          timestamp: new Date().toISOString(),
+          pool: pool.address,
+          status: 'BLOCKED',
+          latency: 0,
+          lp: pool.lpSol,
+          creator_fee: pool.creatorFee,
+          slippage: pool.estimatedSlippage,
+          reasons: ['Safety check failed due to processing error'],
+          source: pool.source || 'unknown'
+        });
+      });
+    } finally {
+      this._isProcessing = false;
+    }
   }
 }
