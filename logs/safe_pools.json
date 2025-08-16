@@ -3012,5 +3012,203 @@
     "slippage": 0,
     "reasons": [],
     "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:48:54.410Z",
+    "pool": "DBYte5pPv4HYAhGHepfAtqNnwT624DxMinpc6QT6FYXU",
+    "status": "SAFE",
+    "latency": 146,
+    "lp": 1.55145499,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:48:54.830Z",
+    "pool": "DBYte5pPv4HYAhGHepfAtqNnwT624DxMinpc6QT6FYXU",
+    "status": "SAFE",
+    "latency": 96,
+    "lp": 1.55145499,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:01.726Z",
+    "pool": "4GEdYdZWZUSYhjbMmAeqXu8jNsk5jnLATgoPfwj1N1UX",
+    "status": "SAFE",
+    "latency": 65,
+    "lp": 4.490670708,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:02.257Z",
+    "pool": "4GEdYdZWZUSYhjbMmAeqXu8jNsk5jnLATgoPfwj1N1UX",
+    "status": "SAFE",
+    "latency": 67,
+    "lp": 4.490670708,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:37.436Z",
+    "pool": "G7NvZKjoVqBDWciSYtWWgUPB7DA1iJavdvH5jty2FAmM",
+    "status": "SAFE",
+    "latency": 65,
+    "lp": 73.936561245,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:37.825Z",
+    "pool": "G7NvZKjoVqBDWciSYtWWgUPB7DA1iJavdvH5jty2FAmM",
+    "status": "SAFE",
+    "latency": 62,
+    "lp": 73.936561245,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:41.257Z",
+    "pool": "9cuGdsGzwG3qbc4DM5ybbfhUJk6bXQRMbbdiY1pXYk5r",
+    "status": "SAFE",
+    "latency": 58,
+    "lp": 3.606222088,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:42.324Z",
+    "pool": "9cuGdsGzwG3qbc4DM5ybbfhUJk6bXQRMbbdiY1pXYk5r",
+    "status": "SAFE",
+    "latency": 57,
+    "lp": 3.606222088,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:43.600Z",
+    "pool": "5zCkbcD74hFPeBHwYdwJLJAoLVgHX45AFeR7RzC8vFiD",
+    "status": "SAFE",
+    "latency": 58,
+    "lp": 18.1669548,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:50:44.013Z",
+    "pool": "5zCkbcD74hFPeBHwYdwJLJAoLVgHX45AFeR7RzC8vFiD",
+    "status": "SAFE",
+    "latency": 63,
+    "lp": 18.1669548,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:51:48.931Z",
+    "pool": "2PYNxpTQpkpkxr49pzeCQNUxEygatGYWofP6VGV7pG8K",
+    "status": "SAFE",
+    "latency": 56,
+    "lp": 4.774160438,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:51:49.345Z",
+    "pool": "2PYNxpTQpkpkxr49pzeCQNUxEygatGYWofP6VGV7pG8K",
+    "status": "SAFE",
+    "latency": 61,
+    "lp": 4.774160438,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:52:02.861Z",
+    "pool": "5mL7LKTYsc7oYeMTAY5GBw8KLhmFNXMXtXbuWFa3yZYn",
+    "status": "SAFE",
+    "latency": 55,
+    "lp": 1.721028439,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:52:03.281Z",
+    "pool": "5mL7LKTYsc7oYeMTAY5GBw8KLhmFNXMXtXbuWFa3yZYn",
+    "status": "SAFE",
+    "latency": 49,
+    "lp": 1.721028439,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:52:55.069Z",
+    "pool": "5qUEJaub2VfZjjz4vvr4jv76GgwC6mYW5XmZvzZHQBWG",
+    "status": "SAFE",
+    "latency": 63,
+    "lp": 2.37059617,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:52:55.549Z",
+    "pool": "5qUEJaub2VfZjjz4vvr4jv76GgwC6mYW5XmZvzZHQBWG",
+    "status": "SAFE",
+    "latency": 72,
+    "lp": 2.37059617,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:53:00.075Z",
+    "pool": "C4ARzqpvZ4gR3ta89H5Yz7UyPTpRm22BL5U91e5dHTSf",
+    "status": "SAFE",
+    "latency": 69,
+    "lp": 50.783747352,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
+  },
+  {
+    "timestamp": "2025-08-16T19:53:00.486Z",
+    "pool": "C4ARzqpvZ4gR3ta89H5Yz7UyPTpRm22BL5U91e5dHTSf",
+    "status": "SAFE",
+    "latency": 71,
+    "lp": 50.783747352,
+    "creator_fee": 0,
+    "slippage": 0,
+    "reasons": [],
+    "source": "PumpV1"
   }
 ]
