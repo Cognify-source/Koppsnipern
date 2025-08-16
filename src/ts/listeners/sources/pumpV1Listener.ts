@@ -14,6 +14,11 @@ export class PumpV1Listener implements IPoolListener {
   private _onNewPool: NewPoolCallback;
   private _signatureQueue: string[] = [];
   private _safetyService: SafetyService;
+  private _processedSignatures: Set<string> = new Set(); // Track processed signatures
+  private _totalLogsReceived: number = 0;
+  private _totalTransactionsProcessed: number = 0;
+  private _totalPoolsDetected: number = 0;
+  private _lastStatsReport: number = Date.now();
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
@@ -25,7 +30,28 @@ export class PumpV1Listener implements IPoolListener {
   }
 
   public async start() {
+    console.log('[PUMP_V1] Starting PumpV1 listener with enhanced debugging...');
     this._startLiveListener();
+    this._startStatsReporting();
+  }
+
+  private _startStatsReporting() {
+    // Report detection statistics every 30 seconds
+    setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastReport = now - this._lastStatsReport;
+      const logsPerMinute = (this._totalLogsReceived / (timeSinceLastReport / 60000)).toFixed(1);
+      const txPerMinute = (this._totalTransactionsProcessed / (timeSinceLastReport / 60000)).toFixed(1);
+      const poolsPerMinute = (this._totalPoolsDetected / (timeSinceLastReport / 60000)).toFixed(1);
+      
+      console.log(`[PUMP_V1_STATS] Logs: ${this._totalLogsReceived} (${logsPerMinute}/min) | TX: ${this._totalTransactionsProcessed} (${txPerMinute}/min) | Pools: ${this._totalPoolsDetected} (${poolsPerMinute}/min) | Queue: ${this._signatureQueue.length}`);
+      
+      // Reset counters
+      this._totalLogsReceived = 0;
+      this._totalTransactionsProcessed = 0;
+      this._totalPoolsDetected = 0;
+      this._lastStatsReport = now;
+    }, 30000);
   }
 
   private _startLiveListener() {
@@ -34,18 +60,41 @@ export class PumpV1Listener implements IPoolListener {
     }
     const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
     
+    console.log(`[PUMP_V1] Listening to program: ${pumpV1ProgramId.toBase58()}`);
+    
     this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
+      this._totalLogsReceived++;
+      
       if (!log.err) {
-        this._signatureQueue.push(log.signature);
-        // Don't process immediately - let timer handle batching to prevent queue overflow
+        // Pre-filter logs to only queue potential pool creation transactions
+        // This dramatically reduces queue size by filtering out trading transactions
+        const logMessages = log.logs || [];
+        const mightBePoolCreation = logMessages.some(msg => 
+          msg.includes('create') || 
+          msg.includes('Initialize') || 
+          msg.includes('mint') ||
+          msg.includes('authority') ||
+          logMessages.length <= 3 // New pools typically have fewer log messages
+        );
+        
+        if (mightBePoolCreation && !this._processedSignatures.has(log.signature)) {
+          this._signatureQueue.push(log.signature);
+          this._processedSignatures.add(log.signature);
+        }
+      }
+      
+      // Clean up old processed signatures to prevent memory bloat
+      if (this._processedSignatures.size > 10000) {
+        const oldSignatures = Array.from(this._processedSignatures).slice(0, 5000);
+        oldSignatures.forEach(sig => this._processedSignatures.delete(sig));
       }
     });
     
     // Staggered execution: PumpV1 starts immediately (0ms offset)
     // Balanced 60ms intervals - important source but sustainable rate
-        setInterval(() => {
-            this._processSignatureQueue();
-        }, 600);
+    setInterval(() => {
+      this._processSignatureQueue();
+    }, 600);
   }
 
   private async _processSignatureQueue() {
@@ -65,10 +114,14 @@ export class PumpV1Listener implements IPoolListener {
       );
 
       for (const tx of txs) {
+        this._totalTransactionsProcessed++;
+        
         if (tx) {
           const poolData = await this._extractPoolDataFromLog(tx);
           
           if (poolData) {
+            this._totalPoolsDetected++;
+            
             // Check if this pool has very low LP and should be scheduled for delayed checking
             if (poolData.lpSol < 0.1) {
               // Run safety check immediately in parallel while monitoring LP
@@ -82,7 +135,7 @@ export class PumpV1Listener implements IPoolListener {
       }
       
     } catch (error) {
-      // Silent error handling - only global RPS logging allowed
+      console.error(`[PUMP_V1_ERROR] Error processing signature queue:`, error);
     }
   }
 
@@ -91,12 +144,35 @@ export class PumpV1Listener implements IPoolListener {
     if (!signature) return null;
 
     try {
-      if (!tx.meta) return null;
+      if (!tx.meta) {
+        return null;
+      }
 
+      // Enhanced detection logic - check multiple criteria
       const isNewPumpV1Pool = (tx.meta.preTokenBalances?.length ?? -1) === 0;
-      const isPumpV1Program = tx.transaction.message.instructions.some((ix: any) => ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+      const isPumpV1Program = tx.transaction.message.instructions.some((ix: any) => 
+        ix.programId.toBase58() === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
+      );
+      
+      // Also check for specific instruction patterns that indicate pool creation
+      const hasCreateInstruction = tx.meta.logMessages?.some(log => 
+        log.includes('CreatePool') || 
+        log.includes('create') ||
+        log.includes('Initialize') ||
+        log.includes('initialize')
+      );
+      
+      // Check for token creation patterns
+      const hasTokenCreation = tx.meta.innerInstructions?.some((ix: any) =>
+        ix.instructions.some((iix: any) =>
+          iix.parsed && 
+          iix.program === 'spl-token' && 
+          (iix.parsed.type === 'initializeMint' || iix.parsed.type === 'setAuthority')
+        )
+      );
 
-      if (isNewPumpV1Pool && isPumpV1Program) {
+      // Focus ONLY on NEW pool creation - ignore trading activity to keep queue small
+      if (isPumpV1Program && (isNewPumpV1Pool || hasCreateInstruction || hasTokenCreation)) {
         const accountKeys = tx.transaction.message.accountKeys;
         
         // Find the actual bonding curve and mint addresses by looking for the right patterns
@@ -160,7 +236,7 @@ export class PumpV1Listener implements IPoolListener {
         });
         const initialLpSol = maxLpSol;
 
-        return {
+        const poolData = {
           address: bondingCurveAddress,
           mint: tokenMintAddress,
           source: 'PumpV1',
@@ -171,9 +247,11 @@ export class PumpV1Listener implements IPoolListener {
           estimatedSlippage: 0,
           creator: tx.transaction.message.accountKeys[0].pubkey.toBase58(),
         };
+
+        return poolData;
       }
     } catch (error) {
-      console.error(`[EXTRACT] Error processing transaction ${signature}:`, error);
+      console.error(`[PUMP_V1_EXTRACT] Error processing transaction ${signature}:`, error);
     }
 
     return null;
