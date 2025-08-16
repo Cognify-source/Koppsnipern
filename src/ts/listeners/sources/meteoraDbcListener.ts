@@ -41,7 +41,7 @@ export class MeteoraDbcListener implements IPoolListener {
         setTimeout(() => {
             setInterval(() => {
                 this._processSignatureQueue();
-            }, 360);
+            }, 520);
         }, 240);
   }
 

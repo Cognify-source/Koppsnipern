@@ -43,7 +43,7 @@ export class PumpAmmListener implements IPoolListener {
         setTimeout(() => {
             setInterval(() => {
                 this._processSignatureQueue();
-            }, 320);
+            }, 480);
         }, 80);
   }
 

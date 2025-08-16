@@ -40,7 +40,7 @@ export class PumpV1Listener implements IPoolListener {
     // Balanced 60ms intervals - important source but sustainable rate
         setInterval(() => {
             this._processSignatureQueue();
-        }, 300);
+        }, 450);
   }
 
   private async _processSignatureQueue() {
