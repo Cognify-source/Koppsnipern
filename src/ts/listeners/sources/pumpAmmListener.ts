@@ -92,7 +92,7 @@ export class PumpAmmListener implements IPoolListener {
             // Format with proper column alignment
             const source = 'PumpAMM'.padEnd(12);
             const address = poolData.address.padEnd(44);
-            const lp = `LP:${poolData.lpSol}`.padEnd(12);
+            const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
             
             console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
             

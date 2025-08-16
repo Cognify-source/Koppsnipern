@@ -554,3 +554,6 @@
 {"timestamp":"2025-08-16T16:05:17.577Z","pool":"39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg","mint":"Dy6D8Lv6XjFaE2jRswG6fyCwEaYpdPT56EVL3P7B2rRQ","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
 {"timestamp":"2025-08-16T16:05:18.112Z","pool":"AatzdbzmaGWmRbEEXzo6DvsjA3MMWF2qhvmP8hivxBrz","mint":"HFCtvXaX9WdhfC54jYDFywE1nGhGyD3rhVfDJJyMpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
 {"timestamp":"2025-08-16T16:05:26.118Z","pool":"13c3RGoXhithXkC1UADHWpmo2sFUGxr5iUfX4hX1FbyE","mint":"2CchmBRWpGuLe7Rusp1gczTdaWxAbvp2VzeethVtpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:08:28.484Z","pool":"EKvJQX4CWUeqBLuVeNtJs6s3NryjTShcCvFmQNDu8A1Y","mint":"8Xe3Wq9BBbizuLg82mZtgYXCPSPPUMPCciLnYj2zvVH7","reasons":["LP too low (0.040714898 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:08:50.018Z","pool":"6UM1QLxefzv4U1DBCx35pd4JgbXs1jEPNJSv9JycsAyL","mint":"3UKGsrABYrqKML5W8LEgEqpjVKQTHnycdBiKi9Cypump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:08:54.647Z","pool":"5ui6H2j8pWp8GHcmEP6GyD8YQezMHZ82TAiQ3T3Y1Vd8","mint":"2xMH8XHJEeK2nsQRuCme2ET9jay5UKLMSdif58yXBAGS","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
