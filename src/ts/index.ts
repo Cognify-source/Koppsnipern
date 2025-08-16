@@ -15,6 +15,7 @@ import { Keypair } from "@solana/web3.js";
 import { ConnectionManager } from "./utils/connectionManager";
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
+let tradingDisabledMessageShown = false; // Flag to show message only once
 
 async function handleNewPool(
   poolData: PoolData,
@@ -32,7 +33,10 @@ async function handleNewPool(
   await logSafePool(safetyResult);
 
   // HARD STOP: Per user request, prevent all trading until detection/logging is perfect.
-  console.log('[ORCHESTRATOR] All trading is disabled for this session. Halting execution.');
+  if (!tradingDisabledMessageShown) {
+    console.log('[ORCHESTRATOR] All trading is disabled for this session. Halting execution.');
+    tradingDisabledMessageShown = true;
+  }
   return;
 
   /*

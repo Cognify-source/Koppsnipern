@@ -130,13 +130,10 @@ export class DelayedLpChecker {
       if (updatedLp > 0) {
         // Found liquidity! Calculate timing and update pool data
         const timeTaken = Date.now() - check.timestamp;
-        // Also check current mint/freeze authorities when LP is found
-        const authorities = await this.checkTokenAuthorities(check.poolData.mint);
+        // Only update LP - let SafetyService handle mint/freeze authorities
         const updatedPoolData = { 
           ...check.poolData, 
-          lpSol: updatedLp,
-          mintAuthority: authorities.mintAuthority,
-          freezeAuthority: authorities.freezeAuthority
+          lpSol: updatedLp
         };
         
         // Silent LP found - let the callback handle logging
