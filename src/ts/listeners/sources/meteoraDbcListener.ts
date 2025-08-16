@@ -1,7 +1,8 @@
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
-import { PoolData } from '../../services/safetyService';
+import { PoolData, SafetyService } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
 import { ConnectionManager } from '../../utils/connectionManager';
+import { logSafePool, logBlockedPool } from '../../services/notifyService';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
@@ -12,9 +13,11 @@ export class MeteoraDbcListener implements IPoolListener {
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
   private _signatureQueue: string[] = [];
+  private _safetyService: SafetyService;
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
+    this._safetyService = new SafetyService();
     this._programId = new PublicKey('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN');
     
     // Use shared connections to reduce RPC overhead
@@ -65,7 +68,28 @@ export class MeteoraDbcListener implements IPoolListener {
         if (tx) {
           const poolData = await this._extractPoolDataFromTransaction(tx);
           if (poolData) {
-            this._onNewPool(poolData);
+            // Run safety check and get result
+            const safetyResult = await this._safetyService.isPoolSafe(poolData);
+            
+            const now = new Date();
+            const timestamp = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            const mintAuth = poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m';
+            const freezeAuth = poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m';
+            
+            // Color code safety status
+            const safetyStatus = safetyResult.status === 'SAFE' 
+              ? '\x1b[32mSAFE\x1b[0m' 
+              : '\x1b[31mBLOCKED\x1b[0m';
+            
+            console.log(`[${timestamp}] MeteoraDBC | \x1b[32mCA:${poolData.address}\x1b[0m | LP:${poolData.lpSol} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
+            
+            // Log to files
+            if (safetyResult.status === 'SAFE') {
+              await logSafePool(safetyResult);
+              this._onNewPool(poolData);
+            } else {
+              await logBlockedPool(safetyResult, poolData);
+            }
           }
         }
       }

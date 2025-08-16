@@ -245,7 +245,7 @@ class ConnectionManager {
       const totalUtilization = (totalSystemRps / rpsLimit * 100).toFixed(1);
       const headroom = rpsLimit - totalSystemRps;
       
-      console.log(`[SYSTEM_RPS] Queue: ${stats.currentRps.toFixed(1)} RPS | TOTAL SYSTEM: ${totalSystemRps.toFixed(1)}/${rpsLimit} RPS (${totalUtilization}% capacity) | Headroom: ${headroom.toFixed(1)} RPS | Queue: ${stats.queueLength} [${queueBreakdownStr}]`);
+      // console.log(`[SYSTEM_RPS] Queue: ${stats.currentRps.toFixed(1)} RPS | TOTAL SYSTEM: ${totalSystemRps.toFixed(1)}/${rpsLimit} RPS (${totalUtilization}% capacity) | Headroom: ${headroom.toFixed(1)} RPS | Queue: ${stats.queueLength} [${queueBreakdownStr}]`);
       this._lastRpsReport = now;
     }
   }
@@ -294,7 +294,7 @@ class ConnectionManager {
         if (url.includes('chainstack.com')) {
           const now = Date.now();
           ConnectionManager._allRpcCalls.push(now);
-          console.log(`[GLOBAL_RPC_TRACKING] HTTPS request to Chainstack detected: ${url.substring(0, 100)}...`);
+          // console.log(`[GLOBAL_RPC_TRACKING] HTTPS request to Chainstack detected: ${url.substring(0, 100)}...`);
           
           // Keep only calls from last 10 seconds
           ConnectionManager._allRpcCalls = ConnectionManager._allRpcCalls.filter(time => now - time <= 10000);
