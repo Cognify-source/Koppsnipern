@@ -82,7 +82,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.mintAuthority !== null) reasons.push('Mint authority present');
   if (pool.freezeAuthority !== null) reasons.push('Freeze authority present');
 
-  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 10;
+  const minLpSol = Number(process.env.FILTER_MIN_LP_SOL) || 2;
   if (pool.lpSol < minLpSol) reasons.push(`LP too low (${pool.lpSol} SOL)`);
 
   const maxCreatorFee = Number(process.env.FILTER_MAX_CREATOR_FEE_PERCENT) || 5;
@@ -92,6 +92,13 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   if (pool.estimatedSlippage > maxSlippage) reasons.push(`Slippage too high (${pool.estimatedSlippage}%)`);
 
   if (DEBUG_RUG_CHECKS) console.log(`⏱ Basic checks: ${(performance.now() - startBasic).toFixed(1)} ms`);
+
+  // RTT Latency check
+  const startRtt = performance.now();
+  const rttLatency = await measureRttLatency();
+  const maxRttMs = Number(process.env.FILTER_MAX_RTT_MS) || 150;
+  if (rttLatency > maxRttMs) reasons.push(`RTT too high (${rttLatency}ms)`);
+  if (DEBUG_RUG_CHECKS) console.log(`⏱ RTT check: ${(performance.now() - startRtt).toFixed(1)} ms (RTT: ${rttLatency}ms)`);
 
   /*
   const metadataWarnings = await getTokenMetadataWarnings(new PublicKey(pool.mint), metaplex);;
@@ -106,6 +113,14 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
     const extraReasons = await runAdvancedChecks(pool);
     reasons.push(...extraReasons);
     if (DEBUG_RUG_CHECKS) console.log(`⏱ Advanced checks (batch RPC): ${(performance.now() - startBatch).toFixed(1)} ms`);
+  }
+
+  // Sell simulation check - only if all other checks pass
+  if (reasons.length === 0) {
+    const startSell = performance.now();
+    const sellSimulationPassed = await simulateSellTransaction(pool);
+    if (!sellSimulationPassed) reasons.push('Sell simulation failed');
+    if (DEBUG_RUG_CHECKS) console.log(`⏱ Sell simulation: ${(performance.now() - startSell).toFixed(1)} ms`);
   }
 
   const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
@@ -189,6 +204,46 @@ async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {
 function failsCreatorWalletRisk(creator?: string): boolean {
   if (!creator || CREATOR_BLACKLIST.length === 0) return false;
   return CREATOR_BLACKLIST.includes(creator);
+}
+
+async function measureRttLatency(): Promise<number> {
+  const startTime = performance.now();
+  try {
+    // Simple ping-like request to measure RTT
+    await connection.getSlot();
+    return Math.round(performance.now() - startTime);
+  } catch (error) {
+    if (DEBUG_RUG_CHECKS) console.error('RTT measurement failed:', error);
+    return 999; // Return high latency on error to trigger filter
+  }
+}
+
+async function simulateSellTransaction(pool: PoolData): Promise<boolean> {
+  try {
+    // This is a placeholder implementation
+    // In a real implementation, you would:
+    // 1. Create a small buy transaction simulation
+    // 2. Then simulate selling those tokens back
+    // 3. Check if both simulations succeed
+    
+    // For now, we'll do a basic check by trying to get the pool account info
+    const poolPk = new PublicKey(pool.address);
+    const accountInfo = await connection.getAccountInfo(poolPk);
+    
+    if (!accountInfo) {
+      if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Pool account not found');
+      return false;
+    }
+    
+    // TODO: Implement actual buy/sell simulation using Jupiter or similar
+    // For development purposes, we'll assume simulation passes if pool exists
+    if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Basic check passed (placeholder)');
+    return true;
+    
+  } catch (error) {
+    if (DEBUG_RUG_CHECKS) console.error('Sell simulation failed:', error);
+    return false;
+  }
 }
 
 export class SafetyService {

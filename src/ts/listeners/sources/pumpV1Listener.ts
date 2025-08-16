@@ -94,12 +94,16 @@ export class PumpV1Listener implements IPoolListener {
         const tokenMintAddress = accountKeys[1].pubkey.toBase58();
 
         let mintAuthorityRevoked = false;
+        let freezeAuthorityRevoked = false;
         tx.meta.innerInstructions?.forEach((ix: any) => {
           ix.instructions.forEach((iix: any) => {
             if (iix.parsed && iix.program === 'spl-token' && iix.parsed.type === 'setAuthority') {
               const parsedIx = iix.parsed.info;
               if (parsedIx.authorityType === 'mintTokens' && parsedIx.newAuthority === null) {
                 mintAuthorityRevoked = true;
+              }
+              if (parsedIx.authorityType === 'freezeAccount' && parsedIx.newAuthority === null) {
+                freezeAuthorityRevoked = true;
               }
             }
           });
@@ -125,7 +129,7 @@ export class PumpV1Listener implements IPoolListener {
           mint: tokenMintAddress,
           source: 'PumpV1',
           mintAuthority: mintAuthorityRevoked ? null : 'UNKNOWN',
-          freezeAuthority: null,
+          freezeAuthority: freezeAuthorityRevoked ? null : 'UNKNOWN',
           lpSol: initialLpSol / 1e9,
           creatorFee: 0, // Reverted to 0 as we are pausing this feature
           estimatedSlippage: 0,
