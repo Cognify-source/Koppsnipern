@@ -40,7 +40,7 @@ export class PumpV1Listener implements IPoolListener {
     // Balanced 60ms intervals - important source but sustainable rate
         setInterval(() => {
             this._processSignatureQueue();
-        }, 480);
+        }, 300);
   }
 
   private async _processSignatureQueue() {
@@ -48,8 +48,8 @@ export class PumpV1Listener implements IPoolListener {
       return;
     }
 
-    // Reduce batch size to test if smaller batches help with rate limiting
-    const maxBatchSize = 3;
+    // Process one transaction at a time for maximum Chainstack compatibility
+    const maxBatchSize = 1;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {

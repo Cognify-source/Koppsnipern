@@ -40,11 +40,11 @@ export class PumpAmmListener implements IPoolListener {
     
     // Staggered execution: PumpAMM starts with 50ms offset
     // Better separation to reduce RPC burst conflicts
-    setTimeout(() => {
-      setInterval(() => {
-        this._processSignatureQueue();
-      }, 550);
-    }, 150);
+        setTimeout(() => {
+            setInterval(() => {
+                this._processSignatureQueue();
+            }, 320);
+        }, 80);
   }
 
   private async _processSignatureQueue() {
@@ -52,8 +52,8 @@ export class PumpAmmListener implements IPoolListener {
       return;
     }
 
-    // Reduce batch size to test if smaller batches help with rate limiting
-    const maxBatchSize = 3;
+    // Process one transaction at a time for maximum Chainstack compatibility
+    const maxBatchSize = 1;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {

@@ -41,8 +41,8 @@ export class MeteoraDbcListener implements IPoolListener {
         setTimeout(() => {
             setInterval(() => {
                 this._processSignatureQueue();
-            }, 350);
-        }, 450);
+            }, 360);
+        }, 240);
   }
 
   private async _processSignatureQueue() {
@@ -50,8 +50,8 @@ export class MeteoraDbcListener implements IPoolListener {
       return;
     }
 
-    // Limit batch size to reduce RPC load and avoid rate limits
-    const maxBatchSize = 10;
+    // No batching - process one transaction at a time to avoid Chainstack rate limits
+    const maxBatchSize = 1;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {

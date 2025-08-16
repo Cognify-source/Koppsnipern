@@ -269,11 +269,10 @@ class ConnectionManager {
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const url = typeof input === 'string' ? input : input.toString();
       
-      // Track all requests to our Chainstack endpoint
+      // Track all requests to our Chainstack endpoint (silent tracking)
       if (url.includes('chainstack.com')) {
         const now = Date.now();
         this._allRpcCalls.push(now);
-        console.log(`[GLOBAL_RPC_TRACKING] FETCH call to Chainstack detected: ${url.substring(0, 100)}...`);
         
         // Keep only calls from last 10 seconds
         this._allRpcCalls = this._allRpcCalls.filter(time => now - time <= 10000);
