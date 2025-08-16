@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Metaplex } from '@metaplex-foundation/js';
 import { getTokenMetadataWarnings } from '../utils/tokenMetadataUtils';
+import { ConnectionManager } from '../utils/connectionManager';
 
 dotenv.config({ debug: false });
 
@@ -55,8 +56,7 @@ export interface SafetyResult {
 
 const DEBUG_RUG_CHECKS = process.env.DEBUG_RUG_CHECKS === 'true';
 
-// Import ConnectionManager for shared connection
-import { ConnectionManager } from '../utils/connectionManager';
+// Use ConnectionManager for SafetyService to respect global RPC rate limiting
 const connection = ConnectionManager.getHttpConnection();
 
 function isValidPublicKey(key: string | undefined | null): boolean {
@@ -160,7 +160,7 @@ async function runAdvancedChecks(pool: PoolData): Promise<{ extraReasons: string
 
   const startRpc = performance.now();
   rpcCalls++;
-  const accounts = await ConnectionManager.getMultipleAccountsInfo(accountsToFetch, 'SafetyService-Advanced');
+  const accounts = await ConnectionManager.getMultipleAccountsInfo(accountsToFetch, 'SafetyService');
   if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
 
   /*
@@ -215,8 +215,8 @@ function failsCreatorWalletRisk(creator?: string): boolean {
 async function measureRttLatency(): Promise<number> {
   const startTime = performance.now();
   try {
-    // Simple ping-like request to measure RTT using global queue
-    await ConnectionManager.getSlot('SafetyService-RTT');
+    // Simple ping-like request to measure RTT using ConnectionManager
+    await ConnectionManager.getSlot('SafetyService');
     return Math.round(performance.now() - startTime);
   } catch (error) {
     if (DEBUG_RUG_CHECKS) console.error('RTT measurement failed:', error);
@@ -232,9 +232,9 @@ async function simulateSellTransaction(pool: PoolData): Promise<boolean> {
     // 2. Then simulate selling those tokens back
     // 3. Check if both simulations succeed
     
-    // For now, we'll do a basic check by trying to get the pool account info using global queue
+    // For now, we'll do a basic check by trying to get the pool account info using ConnectionManager
     const poolPk = new PublicKey(pool.address);
-    const accountInfo = await ConnectionManager.getAccountInfo(poolPk, 'SafetyService-SellSim');
+    const accountInfo = await ConnectionManager.getAccountInfo(poolPk, 'SafetyService');
     
     if (!accountInfo) {
       if (DEBUG_RUG_CHECKS) console.log('Sell simulation: Pool account not found');

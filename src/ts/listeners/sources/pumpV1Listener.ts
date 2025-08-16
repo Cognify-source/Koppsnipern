@@ -36,10 +36,15 @@ export class PumpV1Listener implements IPoolListener {
     this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
-        // Process signatures immediately when they come in (via global queue)
-        this._processSignatureQueue();
+        // Don't process immediately - let timer handle batching to prevent queue overflow
       }
     });
+    
+    // Process queue every 200ms to balance speed vs queue growth
+    // This prevents WebSocket bursts from overwhelming the RPC queue
+    setInterval(() => {
+      this._processSignatureQueue();
+    }, 200);
   }
 
   private async _processSignatureQueue() {
@@ -47,7 +52,8 @@ export class PumpV1Listener implements IPoolListener {
       return;
     }
 
-    const batchStartTime = Date.now();
+    const queueSizeBefore = this._signatureQueue.length;
+    console.log(`[PUMP_V1_QUEUE] Processing ${queueSizeBefore} signatures in queue`);
     
     // Limit batch size to reduce RPC load and avoid rate limits
     const maxBatchSize = 10;
@@ -89,10 +95,6 @@ export class PumpV1Listener implements IPoolListener {
       if (isNewPumpV1Pool && isPumpV1Program) {
         const accountKeys = tx.transaction.message.accountKeys;
         
-        // Debug: Log account keys to understand the transaction structure
-        console.log(`[PUMP_V1_DEBUG] Transaction ${signature} account keys:`, 
-          accountKeys.map((key, index) => `${index}: ${key.pubkey.toBase58()}`));
-        
         // Find the actual bonding curve and mint addresses by looking for the right patterns
         // Skip system programs and look for actual accounts
         let bondingCurveAddress = '';
@@ -120,11 +122,8 @@ export class PumpV1Listener implements IPoolListener {
         }
         
         if (!bondingCurveAddress || !tokenMintAddress) {
-          console.log(`[PUMP_V1_DEBUG] Could not find bonding curve or mint in transaction ${signature}`);
           return null;
         }
-        
-        console.log(`[PUMP_V1_DEBUG] Found bonding curve: ${bondingCurveAddress}, mint: ${tokenMintAddress}`);
 
         let mintAuthorityRevoked = false;
         let freezeAuthorityRevoked = false;

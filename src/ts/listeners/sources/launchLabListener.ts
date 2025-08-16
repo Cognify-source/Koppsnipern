@@ -37,10 +37,14 @@ export class LaunchLabListener implements IPoolListener {
     this._wsConnection.onLogs(this._programId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
-        // Process signatures immediately when they come in (via global queue)
-        this._processSignatureQueue();
+        // Don't process immediately - let timer handle it to avoid overwhelming the queue
       }
     });
+    
+    // Process queue every 300ms for faster pool detection while respecting global RPC queue
+    setInterval(() => {
+      this._processSignatureQueue();
+    }, 300);
   }
 
   private async _processSignatureQueue() {

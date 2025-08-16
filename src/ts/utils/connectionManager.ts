@@ -201,11 +201,13 @@ class ConnectionManager {
     const now = Date.now();
     this._requestTimes.push(now);
     
-    // Keep only requests from the last 60 seconds for RPS calculation
-    this._requestTimes = this._requestTimes.filter(time => now - time <= 60000);
+    // Keep only requests from the last 10 seconds for accurate RPS calculation
+    this._requestTimes = this._requestTimes.filter(time => now - time <= 10000);
     
-    // Update last report time (silent tracking)
-    if (now - this._lastRpsReport >= 30000) {
+    // Report RPS every 5 seconds to monitor activity
+    if (now - this._lastRpsReport >= 5000) {
+      const stats = this.getRpsStats();
+      console.log(`[RPC_STATS] Current RPS: ${stats.currentRps.toFixed(1)}, Total: ${stats.totalRequests}, Queue: ${stats.queueLength}`);
       this._lastRpsReport = now;
     }
   }
@@ -215,9 +217,9 @@ class ConnectionManager {
    */
   public static getRpsStats(): { currentRps: number; totalRequests: number; queueLength: number } {
     const now = Date.now();
-    const recentRequests = this._requestTimes.filter(time => now - time <= 60000);
+    const recentRequests = this._requestTimes.filter(time => now - time <= 10000);
     return {
-      currentRps: recentRequests.length / 60,
+      currentRps: recentRequests.length / 10, // requests in last 10 seconds divided by 10 = RPS
       totalRequests: this._requestCount,
       queueLength: this._rpcQueue.length
     };

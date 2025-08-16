@@ -15,15 +15,14 @@ export class DexPoolListener {
   private listeners: IPoolListener[] = [];
 
   constructor(newPoolCallback: NewPoolCallback) {
-    // Instantiate all the different DEX listeners and add them to the array.
-    // This makes it easy to add or remove sources in the future.
-    // All listeners now optimized with shared connections and clean logging
+    // TESTING: Only PumpV1Listener for debugging RPC rate limiting issues
+    // Other listeners disabled until we solve the fundamental problems
     this.listeners.push(new PumpV1Listener(newPoolCallback));
-    this.listeners.push(new PumpAmmListener(newPoolCallback));
-    this.listeners.push(new LaunchLabListener(newPoolCallback));
-    this.listeners.push(new MeteoraDbcListener(newPoolCallback));
-    // Example for the future:
-    // this.listeners.push(new MeteoraListener(newPoolCallback));
+    
+    // Disabled for testing:
+    // this.listeners.push(new PumpAmmListener(newPoolCallback));
+    // this.listeners.push(new LaunchLabListener(newPoolCallback));
+    // this.listeners.push(new MeteoraDbcListener(newPoolCallback));
   }
 
   /**
