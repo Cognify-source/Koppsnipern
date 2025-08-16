@@ -69,7 +69,13 @@ async function checkActualAuthorities(mintAccount: PublicKey): Promise<Authority
 
     const data = accountInfo.data;
     
-    // Parse mint account structure
+    // Check if buffer is large enough for mint account structure (should be 82 bytes)
+    if (data.length < 82) {
+      console.warn(`Mint account data too small: ${data.length} bytes, expected 82`);
+      return { actualMintAuthority: 'UNKNOWN', actualFreezeAuthority: 'UNKNOWN' };
+    }
+    
+    // Parse mint account structure with bounds checking
     // Bytes 0-3: mint authority option (0 = none, 1 = some)
     // Bytes 4-35: mint authority pubkey (if option = 1)
     // Bytes 36-39: supply (8 bytes, but we skip)
@@ -78,20 +84,25 @@ async function checkActualAuthorities(mintAccount: PublicKey): Promise<Authority
     // Bytes 46-49: freeze authority option (0 = none, 1 = some)
     // Bytes 50-81: freeze authority pubkey (if option = 1)
     
-    const mintAuthorityOption = data.readUInt32LE(0);
-    const freezeAuthorityOption = data.readUInt32LE(46);
-    
     let actualMintAuthority: string | null = null;
     let actualFreezeAuthority: string | null = null;
     
-    if (mintAuthorityOption === 1) {
-      const mintAuthorityBytes = data.slice(4, 36);
-      actualMintAuthority = new PublicKey(mintAuthorityBytes).toString();
+    // Check mint authority with bounds checking
+    if (data.length >= 4) {
+      const mintAuthorityOption = data.readUInt32LE(0);
+      if (mintAuthorityOption === 1 && data.length >= 36) {
+        const mintAuthorityBytes = data.slice(4, 36);
+        actualMintAuthority = new PublicKey(mintAuthorityBytes).toString();
+      }
     }
     
-    if (freezeAuthorityOption === 1) {
-      const freezeAuthorityBytes = data.slice(50, 82);
-      actualFreezeAuthority = new PublicKey(freezeAuthorityBytes).toString();
+    // Check freeze authority with bounds checking
+    if (data.length >= 50) {
+      const freezeAuthorityOption = data.readUInt32LE(46);
+      if (freezeAuthorityOption === 1 && data.length >= 82) {
+        const freezeAuthorityBytes = data.slice(50, 82);
+        actualFreezeAuthority = new PublicKey(freezeAuthorityBytes).toString();
+      }
     }
     
     return { actualMintAuthority, actualFreezeAuthority };

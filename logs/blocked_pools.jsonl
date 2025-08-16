@@ -545,3 +545,12 @@
 {"timestamp":"2025-08-16T16:02:17.848Z","pool":"5pXP1gzp28MmK4XQCPRWFoZi1YR38i8BYNHDboLFt2nA","mint":"4UWepr4QWtktKs9VC3P8ufrEV4eXjWe3AtUdcQojoFTW","reasons":["LP too low (0.060557095 SOL)"],"source":"PumpV1"}
 {"timestamp":"2025-08-16T16:02:26.010Z","pool":"DVskMeH81LyeZHDg5MnMKG8wxUt8e9KrXdNu6Lg2uwGr","mint":"8j2SnZ8eEJnNK5J1vi2LcngSoNfSqxLm7VbQzPQ8BAGS","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
 {"timestamp":"2025-08-16T16:02:38.486Z","pool":"7iM4vzqtd2CTSy8vUy4nHq9n6A5AB1qSkE7Bye2mtnHN","mint":"5qaGmFaQbcUyk9UPraQkvdfstfTKyszcbGLLak3KbMaw","reasons":["LP too low (0.020046811 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:04:15.079Z","pool":"EGBguaA192FvDGA4k7M67LeYwSqZuS2XE8MSeFamJjBK","mint":"7yYRDqUuqks48VLYt1Sn6RoSRqMCSUU8Q6UYhsUkBAGS","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
+{"timestamp":"2025-08-16T16:04:18.823Z","pool":"2C2Z6DS2nwCuS3AeHVcTFpvJ1oV8W8A9SFEEqh2EhWTB","mint":"8dZq4Pgea6kUi4BLggm5LuC8j7G3WDjjmKN8TRUCpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:04:24.147Z","pool":"3q5EUVrvbKbJNLVx63bJFLE2tMAxaeyDhJ4mQASjbiTX","mint":"CkSiqihXKQUrWfgzQzLxPYu4J9J6bKj67XxNAh3Kpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:04:25.958Z","pool":"GiJrPHDaVs71nsFymTUvxwXqk3qWFTCWyH6FSWiuoEq3","mint":"A3F2Z8TzMo6DrnvcJxiNR9Fg1s1GkWyaiSLsnT2Wmoon","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
+{"timestamp":"2025-08-16T16:05:12.973Z","pool":"BHecAJpXQ2QbSpShqd4trZTC2Fp6rSADBtUuGx1ib3KZ","mint":"5xH8mFpWux8Hy7pGmYwtN3TArJ6v8G2gJ9eWmMu4pump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:05:16.668Z","pool":"8CkV6XFkx5E3KiW7SoqyrgPW1UPbGniq1EcfEFKDogYd","mint":"4igzNvGEYQjY8fwPEKW2AjgTjHLy5LCavj6vEiEtfair","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
+{"timestamp":"2025-08-16T16:05:17.577Z","pool":"39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg","mint":"Dy6D8Lv6XjFaE2jRswG6fyCwEaYpdPT56EVL3P7B2rRQ","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:05:18.112Z","pool":"AatzdbzmaGWmRbEEXzo6DvsjA3MMWF2qhvmP8hivxBrz","mint":"HFCtvXaX9WdhfC54jYDFywE1nGhGyD3rhVfDJJyMpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T16:05:26.118Z","pool":"13c3RGoXhithXkC1UADHWpmo2sFUGxr5iUfX4hX1FbyE","mint":"2CchmBRWpGuLe7Rusp1gczTdaWxAbvp2VzeethVtpump","reasons":["LP too low (0 SOL)"],"source":"PumpV1"}
