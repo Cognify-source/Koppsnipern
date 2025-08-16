@@ -86,7 +86,12 @@ export class PumpV1Listener implements IPoolListener {
               safetyStatus += ` (${reasons})`;
             }
             
-            console.log(`[${timestamp}] PumpV1 | \x1b[32mCA:${poolData.address}\x1b[0m | LP:${poolData.lpSol} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
+            // Format with proper column alignment
+            const source = 'PumpV1'.padEnd(12);
+            const address = poolData.address.padEnd(44);
+            const lp = `LP:${poolData.lpSol}`.padEnd(12);
+            
+            console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
             
             // Log to files
             if (safetyResult.status === 'SAFE') {

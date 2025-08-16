@@ -42,6 +42,21 @@ const FREEZE_AUTHORITY_POLICY = {
   MAX_RTT_WITH_FREEZE_AUTHORITY: 150 // ms
 };
 
+// RTT filter configuration - more lenient for copy-trading
+const RTT_POLICY = {
+  // Enable/disable RTT filtering entirely
+  ENABLE_RTT_FILTER: process.env.ENABLE_RTT_FILTER !== 'false', // Default enabled, can disable
+  
+  // Standard RTT limit (conservative for arbitrage)
+  STANDARD_MAX_RTT: 150, // ms
+  
+  // Copy-trading RTT limit (more lenient since speed is less critical)
+  COPY_TRADING_MAX_RTT: 500, // ms - allows for network variations
+  
+  // Use copy-trading limits when freeze authority is allowed
+  USE_COPY_TRADING_LIMITS: process.env.ALLOW_FREEZE_AUTHORITY_COPY_TRADING === 'true'
+};
+
 async function checkActualAuthorities(mintAccount: PublicKey): Promise<AuthorityCheckResult> {
   try {
     const httpRpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -128,15 +143,25 @@ export async function evaluatePoolSafety(pool: Pool): Promise<SafetyResult> {
       reasons.push(`LP too low (${pool.lpSol} SOL)`);
     }
     
-    // Check latency
+    // Check latency with new RTT policy
     const latency = Date.now() - startTime;
-    const maxRtt = actualFreezeAuthority && FREEZE_AUTHORITY_POLICY.ALLOW_FREEZE_AUTHORITY_FOR_COPY_TRADING 
-      ? FREEZE_AUTHORITY_POLICY.MAX_RTT_WITH_FREEZE_AUTHORITY 
-      : 150;
+    
+    if (RTT_POLICY.ENABLE_RTT_FILTER) {
+      let maxRtt: number;
       
-    if (latency > maxRtt) {
-      reasons.push(`RTT too high (${latency}ms)`);
+      if (RTT_POLICY.USE_COPY_TRADING_LIMITS) {
+        // Copy-trading mode: more lenient RTT limits
+        maxRtt = RTT_POLICY.COPY_TRADING_MAX_RTT;
+      } else {
+        // Standard mode: conservative RTT limits
+        maxRtt = RTT_POLICY.STANDARD_MAX_RTT;
+      }
+      
+      if (latency > maxRtt) {
+        reasons.push(`RTT too high (${latency}ms, max: ${maxRtt}ms)`);
+      }
     }
+    // If RTT filter is disabled, skip RTT check entirely
     
     // Determine final status
     const isBlocked = reasons.length > 0 || 
