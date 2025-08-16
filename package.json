@@ -12,7 +12,6 @@
     "test:integration": "npm run build && jest tests/integration --passWithNoTests"
   },
   "dependencies": {
-    "@metaplex-foundation/js": "^0.19.5",
     "@raydium-io/raydium-sdk-v2": "^0.2.12-alpha",
     "@solana/spl-token": "^0.2.0",
     "@solana/web3.js": "^1.98.4",
@@ -27,6 +26,7 @@
     "node-fetch": "2.6.7"
   },
   "devDependencies": {
+    "@metaplex-foundation/js": "^0.20.1",
     "@types/axios": "^0.9.36",
     "@types/bn.js": "^5.2.0",
     "@types/cli-progress": "^3.11.6",
