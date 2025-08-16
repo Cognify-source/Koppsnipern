@@ -3,6 +3,7 @@ import { PoolData, SafetyService } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
 import { ConnectionManager } from '../../utils/connectionManager';
 import { logSafePool, logBlockedPool } from '../../services/notifyService';
+import { delayedLpChecker } from '../../services/delayedLpChecker';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -67,37 +68,13 @@ export class PumpV1Listener implements IPoolListener {
           const poolData = await this._extractPoolDataFromLog(tx);
           
           if (poolData) {
-            // Run safety check and get result
-            const safetyResult = await this._safetyService.isPoolSafe(poolData);
-            
-            const now = new Date();
-            const timestamp = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-            // Color code safety status and add reasons if blocked
-            let safetyStatus = safetyResult.status === 'SAFE' 
-              ? '\x1b[32mSAFE\x1b[0m' 
-              : '\x1b[31mBLOCKED\x1b[0m';
-            
-            // Add blocking reasons if pool is blocked
-            if (safetyResult.status === 'BLOCKED' && safetyResult.reasons.length > 0) {
-              const reasons = safetyResult.reasons.join(', ');
-              safetyStatus += ` (${reasons})`;
-            }
-            
-            // Format with proper column alignment
-            const source = 'PumpV1'.padEnd(12);
-            const address = poolData.address.padEnd(44);
-            const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
-            const mintAuth = (poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m').padEnd(17); // 17 to account for ANSI codes
-            const freezeAuth = (poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m').padEnd(19); // 19 to account for ANSI codes
-            
-            console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
-            
-            // Log to files
-            if (safetyResult.status === 'SAFE') {
-              await logSafePool(safetyResult);
-              this._onNewPool(poolData);
+            // Check if this pool has very low LP and should be scheduled for delayed checking
+            if (poolData.lpSol < 0.1) {
+              // Run safety check immediately in parallel while monitoring LP
+              this._processParallelSafetyAndLpCheck(poolData);
             } else {
-              await logBlockedPool(safetyResult, poolData);
+              // Pool has sufficient LP, process immediately
+              await this._processSafetyCheck(poolData);
             }
           }
         }
@@ -199,5 +176,98 @@ export class PumpV1Listener implements IPoolListener {
     }
 
     return null;
+  }
+
+  /**
+   * Process safety check and LP monitoring in parallel for low-LP pools
+   */
+  private async _processParallelSafetyAndLpCheck(poolData: PoolData): Promise<void> {
+    let safetyResult: any = null;
+    let isPoolSafe = false;
+    let lpFound = false;
+    let finalPoolData = poolData;
+    let processed = false; // Prevent double processing
+
+    try {
+      // Start safety check immediately (don't await yet)
+      const safetyCheckPromise = this._safetyService.isPoolSafe(poolData);
+      
+      // Schedule LP monitoring with callback
+      delayedLpChecker.scheduleCheck(poolData, async (updatedPoolData) => {
+        if (processed) return; // Prevent double processing
+        
+        lpFound = true;
+        finalPoolData = updatedPoolData;
+        
+        // If safety check is already done and pool is safe, process immediately
+        if (safetyResult && isPoolSafe) {
+          processed = true;
+          await this._processSafetyCheck(updatedPoolData);
+        }
+      });
+      
+      // Wait for safety check to complete
+      safetyResult = await safetyCheckPromise;
+      isPoolSafe = safetyResult.status === 'SAFE';
+      
+      if (isPoolSafe) {
+        // If LP was already found while we were doing safety check, process immediately
+        if (lpFound && !processed) {
+          processed = true;
+          await this._processSafetyCheck(finalPoolData);
+        }
+        // Otherwise, the LP callback will handle processing when LP is found
+      } else {
+        // Pool is not safe, log it as blocked immediately
+        processed = true;
+        await this._processSafetyCheck(poolData); // This will handle the blocked logging
+      }
+      
+    } catch (error) {
+      console.error(`[PumpV1] Error in parallel processing for pool ${poolData.address}:`, error);
+    }
+  }
+
+  /**
+   * Process safety check and handle logging/callbacks
+   */
+  private async _processSafetyCheck(poolData: PoolData): Promise<void> {
+    try {
+      // Run safety check and get result
+      const safetyResult = await this._safetyService.isPoolSafe(poolData);
+      
+      const now = new Date();
+      const timestamp = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+      
+      // Color code safety status and add reasons if blocked
+      let safetyStatus = safetyResult.status === 'SAFE' 
+        ? '\x1b[32mSAFE\x1b[0m' 
+        : '\x1b[31mBLOCKED\x1b[0m';
+      
+      // Add blocking reasons if pool is blocked
+      if (safetyResult.status === 'BLOCKED' && safetyResult.reasons.length > 0) {
+        const reasons = safetyResult.reasons.join(', ');
+        safetyStatus += ` (${reasons})`;
+      }
+      
+      // Format with proper column alignment
+      const source = 'PumpV1'.padEnd(12);
+      const address = poolData.address.padEnd(44);
+      const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
+      const mintAuth = (poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m').padEnd(17); // 17 to account for ANSI codes
+      const freezeAuth = (poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m').padEnd(19); // 19 to account for ANSI codes
+      
+      console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
+      
+      // Log to files
+      if (safetyResult.status === 'SAFE') {
+        await logSafePool(safetyResult);
+        this._onNewPool(poolData);
+      } else {
+        await logBlockedPool(safetyResult, poolData);
+      }
+    } catch (error) {
+      console.error(`[PumpV1] Error processing safety check for pool ${poolData.address}:`, error);
+    }
   }
 }

@@ -10,6 +10,7 @@ import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/trade/tradePlanner";
 import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
+// import "./services/statusMonitor"; // Disabled - too much logging
 import { Keypair } from "@solana/web3.js";
 import { ConnectionManager } from "./utils/connectionManager";
 
