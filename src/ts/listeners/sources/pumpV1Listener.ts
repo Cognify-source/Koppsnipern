@@ -33,6 +33,7 @@ export class PumpV1Listener implements IPoolListener {
       throw new Error('WebSocket connection is not available for live mode.');
     }
     const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+    
     this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
@@ -199,10 +200,11 @@ export class PumpV1Listener implements IPoolListener {
         lpFound = true;
         finalPoolData = updatedPoolData;
         
-        // If safety check is already done and pool is safe, process immediately
-        if (safetyResult && isPoolSafe) {
+        // If safety check is already done, process with updated LP data regardless of safety status
+        if (safetyResult) {
           processed = true;
-          await this._processSafetyCheck(updatedPoolData);
+          // Re-run safety check with updated LP data to get correct result
+          await this._processSafetyCheck(updatedPoolData, true);
         }
       });
       
@@ -210,18 +212,13 @@ export class PumpV1Listener implements IPoolListener {
       safetyResult = await safetyCheckPromise;
       isPoolSafe = safetyResult.status === 'SAFE';
       
-      if (isPoolSafe) {
-        // If LP was already found while we were doing safety check, process immediately
-        if (lpFound && !processed) {
-          processed = true;
-          await this._processSafetyCheck(finalPoolData);
-        }
-        // Otherwise, the LP callback will handle processing when LP is found
-      } else {
-        // Pool is not safe, log it as blocked immediately
+      // Always wait for LP result for low LP pools, regardless of safety status
+      // If LP was already found while we were doing safety check, process immediately
+      if (lpFound && !processed) {
         processed = true;
-        await this._processSafetyCheck(poolData); // This will handle the blocked logging
+        await this._processSafetyCheck(finalPoolData, true);
       }
+      // Otherwise, the LP callback will handle processing when LP is found (or timeout)
       
     } catch (error) {
       console.error(`[PumpV1] Error in parallel processing for pool ${poolData.address}:`, error);
@@ -231,7 +228,7 @@ export class PumpV1Listener implements IPoolListener {
   /**
    * Process safety check and handle logging/callbacks
    */
-  private async _processSafetyCheck(poolData: PoolData): Promise<void> {
+  private async _processSafetyCheck(poolData: PoolData, wasDelayedLpCheck: boolean = false): Promise<void> {
     try {
       // Run safety check and get result
       const safetyResult = await this._safetyService.isPoolSafe(poolData);
@@ -256,8 +253,9 @@ export class PumpV1Listener implements IPoolListener {
       const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
       const mintAuth = (poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m').padEnd(17); // 17 to account for ANSI codes
       const freezeAuth = (poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m').padEnd(19); // 19 to account for ANSI codes
+      const delayedIndicator = wasDelayedLpCheck ? '\x1b[33mDELAYED_LP\x1b[0m' : 'IMMEDIATE';
       
-      console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
+      console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus} | ${delayedIndicator}`);
       
       // Log to files
       if (safetyResult.status === 'SAFE') {
