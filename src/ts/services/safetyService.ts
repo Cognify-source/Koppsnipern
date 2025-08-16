@@ -2,13 +2,12 @@
 // Modular safety checks, batched RPC calls, latency tracking, and logging.
 
 import fs from 'fs';
-import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Metaplex } from '@metaplex-foundation/js';
-import { getTokenMetadataWarnings } from '@utils/tokenMetadataUtils';
+import { getTokenMetadataWarnings } from '../utils/tokenMetadataUtils';
 
-dotenv.config({ override: true, debug: false });
+dotenv.config({ debug: false });
 
 const SAFE_LOG_FILE = './logs/safe_pools.json';
 const BLOCK_LOG_FILE = './logs/blocked_pools.jsonl';

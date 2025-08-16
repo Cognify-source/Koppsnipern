@@ -3,7 +3,7 @@ import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
 import * as dotenv from 'dotenv';
 
-dotenv.config({ override: true });
+dotenv.config();
 
 export class PumpV1Listener implements IPoolListener {
   private _httpConnection: Connection;
