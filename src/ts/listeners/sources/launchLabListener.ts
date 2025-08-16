@@ -41,7 +41,7 @@ export class LaunchLabListener implements IPoolListener {
         setTimeout(() => {
             setInterval(() => {
                 this._processSignatureQueue();
-            }, 500);
+            }, 680);
         }, 160);
   }
 

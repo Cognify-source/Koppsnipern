@@ -504,3 +504,5 @@
 {"timestamp":"2025-08-16T14:03:26.952Z","pool":"D3sovmjANgA8V27e5rnQft8kV3mocSH8gw9zwth3Ba9g","mint":"6SrJyikUkaFKfmdiW7fg9jysakbJAxTKqr37hKWrtwf7","reasons":["Freeze authority present","LP too low (0 SOL)","RTT too high (830ms)"],"source":"PumpV1"}
 {"timestamp":"2025-08-16T14:06:09.552Z","pool":"6D8ftcLjzgebfqmoGcxNrT1sZ6vEpXqNwE5XDNhVBQra","mint":"ymCRT6TabFWVPD3j3eZEUNZUEnHj3NbqTeo4YL1pump","reasons":["Freeze authority present","LP too low (0 SOL)","RTT too high (1403ms)"],"source":"PumpV1"}
 {"timestamp":"2025-08-16T14:06:16.296Z","pool":"EHyi9efoaRreCVT6YF3wkU8CcN3UAWLKzS4ajJ8jEHEJ","mint":"5RE42Wtr1sLD5xNAXKGkh4JA2d9dW8N7yNzAq1dNpump","reasons":["Freeze authority present","LP too low (0 SOL)","RTT too high (1788ms)"],"source":"PumpV1"}
+{"timestamp":"2025-08-16T14:23:24.515Z","pool":"11111111111111111111111111111111","mint":"So11111111111111111111111111111111111111112","reasons":["LP too low (0 SOL)"],"source":"MeteoraDBC"}
+{"timestamp":"2025-08-16T14:23:25.593Z","pool":"4KfH2N6w3oFk6BAZWqAPAiwe3diFbyMXJmiRnc75dXqs","mint":"7E7yWF7nSFqE2JAv4eMcmMdcbEpzbEBNs5YAgvCepump","reasons":["Freeze authority present","LP too low (0 SOL)"],"source":"PumpV1"}
