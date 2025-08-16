@@ -73,6 +73,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   const reasons: string[] = [];
   const startAll = performance.now();
   const metaplex = Metaplex.make(connection);
+  let rpcCallCount = 0;
 
   if (!isValidPublicKey(pool.mint)) reasons.push('Invalid mint public key');
   if (!isValidPublicKey(pool.address)) reasons.push('Invalid LP address');
@@ -94,6 +95,8 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 
   // RTT Latency check
   const startRtt = performance.now();
+  ConnectionManager.trackRequest();
+  rpcCallCount++;
   const rttLatency = await measureRttLatency();
   const maxRttMs = Number(process.env.FILTER_MAX_RTT_MS) || 150;
   if (rttLatency > maxRttMs) reasons.push(`RTT too high (${rttLatency}ms)`);
@@ -109,14 +112,17 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 
   if (reasons.length === 0) {
     const startBatch = performance.now();
-    const extraReasons = await runAdvancedChecks(pool);
+    const { extraReasons, rpcCalls } = await runAdvancedChecks(pool);
     reasons.push(...extraReasons);
+    rpcCallCount += rpcCalls;
     if (DEBUG_RUG_CHECKS) console.log(`⏱ Advanced checks (batch RPC): ${(performance.now() - startBatch).toFixed(1)} ms`);
   }
 
   // Sell simulation check - only if all other checks pass
   if (reasons.length === 0) {
     const startSell = performance.now();
+    ConnectionManager.trackRequest();
+    rpcCallCount++;
     const sellSimulationPassed = await simulateSellTransaction(pool);
     if (!sellSimulationPassed) reasons.push('Sell simulation failed');
     if (DEBUG_RUG_CHECKS) console.log(`⏱ Sell simulation: ${(performance.now() - startSell).toFixed(1)} ms`);
@@ -124,6 +130,7 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
 
   const status: 'SAFE' | 'BLOCKED' = reasons.length === 0 ? 'SAFE' : 'BLOCKED';
   const latency = Math.round(performance.now() - startAll);
+
 
   // The final result object, without the logging side-effects.
   const result: SafetyResult = {
@@ -141,10 +148,11 @@ export async function checkPoolSafety(pool: PoolData): Promise<SafetyResult> {
   return result;
 }
 
-async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
+async function runAdvancedChecks(pool: PoolData): Promise<{ extraReasons: string[]; rpcCalls: number }> {
   const reasons: string[] = [];
   const mintPk = new PublicKey(pool.mint);
   const accountsToFetch: PublicKey[] = [mintPk];
+  let rpcCalls = 0;
 
   let poolPk: PublicKey | null = null;
   if (LP_LOCKERS.length > 0) {
@@ -153,6 +161,8 @@ async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
   }
 
   const startRpc = performance.now();
+  ConnectionManager.trackRequest();
+  rpcCalls++;
   const accounts = await connection.getMultipleAccountsInfo(accountsToFetch);
   if (DEBUG_RUG_CHECKS) console.log(`⏱ RPC fetch: ${(performance.now() - startRpc).toFixed(1)} ms`);
 
@@ -184,7 +194,7 @@ async function runAdvancedChecks(pool: PoolData): Promise<string[]> {
     if (DEBUG_RUG_CHECKS) console.log(`⏱ Liquidity lock: ${(performance.now() - startLock).toFixed(1)} ms`);
   }
 
-  return reasons;
+  return { extraReasons: reasons, rpcCalls };
 }
 /*
 async function failsHolderDistribution(mintPk: PublicKey): Promise<boolean> {

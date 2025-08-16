@@ -47,24 +47,34 @@ export class PumpV1Listener implements IPoolListener {
       return;
     }
 
+    const batchStartTime = Date.now();
+    
     // Limit batch size to reduce RPC load and avoid rate limits
     const maxBatchSize = 10;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {
+      // Track RPC request
+      ConnectionManager.trackRequest();
+      
+      const rpcStartTime = Date.now();
       const txs = await this._httpConnection.getParsedTransactions(signatures, {
         maxSupportedTransactionVersion: 0,
       });
+      const rpcEndTime = Date.now();
+      const rpcDuration = rpcEndTime - rpcStartTime;
 
       for (const tx of txs) {
         if (tx) {
           const poolData = await this._extractPoolDataFromLog(tx);
+          
           if (poolData) {
             console.log(`[PUMP_V1_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
             this._onNewPool(poolData);
           }
         }
       }
+      
     } catch (error) {
       console.error('[QUEUE] Error fetching or processing transactions in batch:', error);
     }

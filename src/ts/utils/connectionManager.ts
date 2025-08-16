@@ -7,6 +7,9 @@ import { Connection, clusterApiUrl } from '@solana/web3.js';
 class ConnectionManager {
   private static _httpConnection: Connection | null = null;
   private static _wsConnection: Connection | null = null;
+  private static _requestCount: number = 0;
+  private static _requestTimes: number[] = [];
+  private static _lastRpsReport: number = Date.now();
 
   public static getHttpConnection(): Connection {
     if (!this._httpConnection) {
@@ -18,6 +21,35 @@ class ConnectionManager {
       console.log(`[CONNECTION_MANAGER] Created shared HTTP connection to: ${httpRpcUrl}`);
     }
     return this._httpConnection;
+  }
+
+  /**
+   * Track RPC request for performance monitoring
+   */
+  public static trackRequest(): void {
+    this._requestCount++;
+    const now = Date.now();
+    this._requestTimes.push(now);
+    
+    // Keep only requests from the last 60 seconds for RPS calculation
+    this._requestTimes = this._requestTimes.filter(time => now - time <= 60000);
+    
+    // Update last report time (silent tracking)
+    if (now - this._lastRpsReport >= 30000) {
+      this._lastRpsReport = now;
+    }
+  }
+
+  /**
+   * Get current RPS statistics
+   */
+  public static getRpsStats(): { currentRps: number; totalRequests: number } {
+    const now = Date.now();
+    const recentRequests = this._requestTimes.filter(time => now - time <= 60000);
+    return {
+      currentRps: recentRequests.length / 60,
+      totalRequests: this._requestCount
+    };
   }
 
   public static getWsConnection(): Connection {
