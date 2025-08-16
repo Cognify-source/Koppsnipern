@@ -36,10 +36,13 @@ export class MeteoraDbcListener implements IPoolListener {
       }
     });
     
-    // Optimized 50ms intervals for fastest pool detection
-    setInterval(() => {
-      this._processSignatureQueue();
-    }, 50);
+    // Staggered execution: MeteoraDBC starts with 150ms offset
+    // Conservative 80ms intervals - lower volume source, sustainable rate
+        setTimeout(() => {
+            setInterval(() => {
+                this._processSignatureQueue();
+            }, 350);
+        }, 300);
   }
 
   private async _processSignatureQueue() {

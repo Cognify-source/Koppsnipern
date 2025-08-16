@@ -37,12 +37,12 @@ export async function notifyDiscord(message: string): Promise<void> {
  * @param result The safety check result for the pool.
  */
 export async function logSafePool(result: SafetyResult): Promise<void> {
-  // 1. Log to console
-  console.log(
-    `[RESULT] ✅ SAFE: Pool ${result.pool}. Source: ${result.source}, LP: ${result.lp.toFixed(
-      2
-    )} SOL, Fee: ${result.creator_fee.toFixed(2)}%`
-  );
+  // 1. Log to console - temporarily silenced for cleaner RPS monitoring
+  // console.log(
+  //   `[RESULT] ✅ SAFE: Pool ${result.pool}. Source: ${result.source}, LP: ${result.lp.toFixed(
+  //     2
+  //   )} SOL, Fee: ${result.creator_fee.toFixed(2)}%`
+  // );
 
   // 2. Log to file
   try {
@@ -78,8 +78,8 @@ export async function logSafePool(result: SafetyResult): Promise<void> {
  */
 export async function logBlockedPool(result: SafetyResult, pool: PoolData): Promise<void> {
   const reasons = result.reasons.join(', ');
-  // 1. Log to console
-  console.log(`[RESULT] ❌ BLOCKED: Pool ${result.pool}. Reasons: ${reasons}`);
+  // 1. Log to console - temporarily silenced for cleaner RPS monitoring
+  // console.log(`[RESULT] ❌ BLOCKED: Pool ${result.pool}. Reasons: ${reasons}`);
 
   // 2. Log to file
   try {

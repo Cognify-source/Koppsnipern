@@ -207,21 +207,32 @@ class ConnectionManager {
     // Report TOTAL RPS every 5 seconds to monitor all system activity
     if (now - this._lastRpsReport >= 5000) {
       const stats = this.getRpsStats();
-      console.log(`[SYSTEM_RPS] TOTAL RPS: ${stats.currentRps.toFixed(1)} | Total Requests: ${stats.totalRequests} | Queue: ${stats.queueLength}`);
+      const queueBreakdownStr = Object.entries(stats.queueBreakdown)
+        .map(([source, count]) => `${source}:${count}`)
+        .join(', ');
+      console.log(`[SYSTEM_RPS] TOTAL RPS: ${stats.currentRps.toFixed(1)} | Total Requests: ${stats.totalRequests} | Queue: ${stats.queueLength} [${queueBreakdownStr}]`);
       this._lastRpsReport = now;
     }
   }
 
   /**
-   * Get current RPS statistics
+   * Get current RPS statistics with queue breakdown by source
    */
-  public static getRpsStats(): { currentRps: number; totalRequests: number; queueLength: number } {
+  public static getRpsStats(): { currentRps: number; totalRequests: number; queueLength: number; queueBreakdown: Record<string, number> } {
     const now = Date.now();
     const recentRequests = this._requestTimes.filter(time => now - time <= 10000);
+    
+    // Count queue items by source
+    const queueBreakdown: Record<string, number> = {};
+    this._rpcQueue.forEach(request => {
+      queueBreakdown[request.source] = (queueBreakdown[request.source] || 0) + 1;
+    });
+    
     return {
       currentRps: recentRequests.length / 10, // requests in last 10 seconds divided by 10 = RPS
       totalRequests: this._requestCount,
-      queueLength: this._rpcQueue.length
+      queueLength: this._rpcQueue.length,
+      queueBreakdown
     };
   }
 }

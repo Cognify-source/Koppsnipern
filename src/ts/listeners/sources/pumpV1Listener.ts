@@ -36,11 +36,11 @@ export class PumpV1Listener implements IPoolListener {
       }
     });
     
-    // Process queue every 50ms for ultra-fast pool detection
-    // Testing maximum speed while maintaining RPC stability
-    setInterval(() => {
-      this._processSignatureQueue();
-    }, 50);
+    // Staggered execution: PumpV1 starts immediately (0ms offset)
+    // Balanced 60ms intervals - important source but sustainable rate
+        setInterval(() => {
+            this._processSignatureQueue();
+        }, 480);
   }
 
   private async _processSignatureQueue() {

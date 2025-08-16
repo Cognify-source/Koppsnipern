@@ -36,10 +36,13 @@ export class LaunchLabListener implements IPoolListener {
       }
     });
     
-    // Optimized 50ms intervals for fastest pool detection
-    setInterval(() => {
-      this._processSignatureQueue();
-    }, 50);
+    // Staggered execution: LaunchLab starts with 100ms offset
+    // Conservative 80ms intervals - lower volume source, sustainable rate
+        setTimeout(() => {
+            setInterval(() => {
+                this._processSignatureQueue();
+            }, 415);
+        }, 200);
   }
 
   private async _processSignatureQueue() {

@@ -38,10 +38,13 @@ export class PumpAmmListener implements IPoolListener {
       }
     });
     
-    // Optimized 50ms intervals for fastest pool detection
-    setInterval(() => {
-      this._processSignatureQueue();
-    }, 50);
+    // Staggered execution: PumpAMM starts with 50ms offset
+    // Better separation to reduce RPC burst conflicts
+    setTimeout(() => {
+      setInterval(() => {
+        this._processSignatureQueue();
+      }, 550);
+    }, 100);
   }
 
   private async _processSignatureQueue() {
