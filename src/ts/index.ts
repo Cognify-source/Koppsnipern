@@ -10,7 +10,8 @@ import { BundleSender } from "./services/bundleSender";
 import { TradePlanner } from "./services/trade/tradePlanner";
 import { SafetyService, PoolData } from "./services/safetyService";
 import { notifyDiscord, logSafePool, logBlockedPool } from "./services/notifyService";
-import { Connection, Keypair } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
+import { ConnectionManager } from "./utils/connectionManager";
 
 const isStub = process.env.USE_STUB_LISTENER === "true";
 
@@ -59,8 +60,8 @@ async function main(): Promise<void> {
   console.log("🚀 Orchestrator starting", isStub ? "(stub-mode)" : "");
   await notifyDiscord("🤖 Koppsnipern bot is online.");
 
-  const rpcUrl = process.env.SOLANA_HTTP_RPC_URL || "https://api.devnet.solana.com";
-  const connection = new Connection(rpcUrl, { commitment: "confirmed" });
+  // Use shared connection from ConnectionManager to respect rate limiting
+  const connection = ConnectionManager.getHttpConnection();
 
   const keyJson = process.env.PAYER_SECRET_KEY;
   if (!keyJson) throw new Error("PAYER_SECRET_KEY must be set in .env");

@@ -42,7 +42,7 @@ export class MeteoraDbcListener implements IPoolListener {
             setInterval(() => {
                 this._processSignatureQueue();
             }, 350);
-        }, 300);
+        }, 450);
   }
 
   private async _processSignatureQueue() {

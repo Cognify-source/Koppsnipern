@@ -44,7 +44,7 @@ export class PumpAmmListener implements IPoolListener {
       setInterval(() => {
         this._processSignatureQueue();
       }, 550);
-    }, 100);
+    }, 150);
   }
 
   private async _processSignatureQueue() {
@@ -52,8 +52,8 @@ export class PumpAmmListener implements IPoolListener {
       return;
     }
 
-    // Limit batch size to reduce RPC load and avoid rate limits
-    const maxBatchSize = 10;
+    // Reduce batch size to test if smaller batches help with rate limiting
+    const maxBatchSize = 3;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {

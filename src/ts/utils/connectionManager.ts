@@ -1,4 +1,5 @@
 import { Connection, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/web3.js';
+import * as https from 'https';
 
 // Global RPC request queue types
 interface RpcRequest {
@@ -25,6 +26,18 @@ class ConnectionManager {
   private static _rpcQueue: RpcRequest[] = [];
   private static _isProcessingQueue: boolean = false;
   private static _queueProcessor: NodeJS.Timeout | null = null;
+  
+  // Adaptive rate limiting
+  private static _currentDelayMs: number = 100;
+  private static _rateLimitErrors: number = 0;
+  private static _lastRateLimitTime: number = 0;
+  
+  // Global RPC tracking - intercept ALL RPC calls system-wide
+  private static _allRpcCalls: number[] = [];
+  private static _originalFetch: typeof fetch | null = null;
+  
+  // Persistent HTTP connection pool
+  private static _httpsAgent: https.Agent | null = null;
 
   public static getHttpConnection(): Connection {
     if (!this._httpConnection) {
@@ -32,11 +45,23 @@ class ConnectionManager {
         ? process.env.SOLANA_HTTP_RPC_URL
         : clusterApiUrl('mainnet-beta');
       
-      this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
-      console.log(`[CONNECTION_MANAGER] Created shared HTTP connection to: ${httpRpcUrl}`);
+      // Create persistent HTTPS agent for connection pooling
+      this._createHttpsAgent();
+      
+      // Configure Connection with persistent agent
+      this._httpConnection = new Connection(httpRpcUrl, {
+        commitment: 'confirmed',
+        httpAgent: this._httpsAgent,
+        fetch: this._createOptimizedFetch()
+      } as any);
+      
+      console.log(`[CONNECTION_MANAGER] Created shared HTTP connection with persistent agent to: ${httpRpcUrl}`);
       
       // Start the global RPC queue processor
       this._startQueueProcessor();
+      
+      // Initialize global RPC tracking
+      this._initializeGlobalRpcTracking();
     }
     return this._httpConnection;
   }
@@ -55,12 +80,14 @@ class ConnectionManager {
         throw new Error('SOLANA_WSS_RPC_URL must be set in .env for WebSocket connection.');
       }
 
+      // Create WebSocket connection with proper configuration
+      // Use HTTP endpoint for RPC calls and WSS endpoint for subscriptions
       this._wsConnection = new Connection(httpRpcUrl, {
         commitment: 'confirmed',
         wsEndpoint: wssRpcUrl,
-      } as any);
+      });
       
-      console.log(`[CONNECTION_MANAGER] Created shared WebSocket connection to: ${wssRpcUrl}`);
+      console.log(`[CONNECTION_MANAGER] Created shared WebSocket connection - HTTP: ${httpRpcUrl}, WSS: ${wssRpcUrl}`);
     }
     return this._wsConnection;
   }
@@ -207,11 +234,79 @@ class ConnectionManager {
     // Report TOTAL RPS every 5 seconds to monitor all system activity
     if (now - this._lastRpsReport >= 5000) {
       const stats = this.getRpsStats();
+      const totalSystemRps = this.getTotalSystemRps();
       const queueBreakdownStr = Object.entries(stats.queueBreakdown)
         .map(([source, count]) => `${source}:${count}`)
         .join(', ');
-      console.log(`[SYSTEM_RPS] TOTAL RPS: ${stats.currentRps.toFixed(1)} | Total Requests: ${stats.totalRequests} | Queue: ${stats.queueLength} [${queueBreakdownStr}]`);
+      
+      // Calculate capacity utilization (assuming 250 RPS limit from Chainstack)
+      const rpsLimit = 250;
+      const queueUtilization = (stats.currentRps / rpsLimit * 100).toFixed(1);
+      const totalUtilization = (totalSystemRps / rpsLimit * 100).toFixed(1);
+      const headroom = rpsLimit - totalSystemRps;
+      
+      console.log(`[SYSTEM_RPS] Queue: ${stats.currentRps.toFixed(1)} RPS | TOTAL SYSTEM: ${totalSystemRps.toFixed(1)}/${rpsLimit} RPS (${totalUtilization}% capacity) | Headroom: ${headroom.toFixed(1)} RPS | Queue: ${stats.queueLength} [${queueBreakdownStr}]`);
       this._lastRpsReport = now;
+    }
+  }
+
+  /**
+   * Initialize global RPC tracking by intercepting all HTTP calls to Chainstack
+   */
+  private static _initializeGlobalRpcTracking(): void {
+    if (this._originalFetch) return; // Already initialized
+    
+    const chainstackUrl = process.env.SOLANA_HTTP_RPC_URL || '';
+    if (!chainstackUrl.includes('chainstack.com')) {
+      console.log('[GLOBAL_RPC_TRACKING] Not a Chainstack URL, skipping global tracking');
+      return;
+    }
+    
+    // Store original fetch
+    this._originalFetch = global.fetch;
+    
+    // Override global fetch to track all HTTP requests to Chainstack
+    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input.toString();
+      
+      // Track all requests to our Chainstack endpoint
+      if (url.includes('chainstack.com')) {
+        const now = Date.now();
+        this._allRpcCalls.push(now);
+        console.log(`[GLOBAL_RPC_TRACKING] FETCH call to Chainstack detected: ${url.substring(0, 100)}...`);
+        
+        // Keep only calls from last 10 seconds
+        this._allRpcCalls = this._allRpcCalls.filter(time => now - time <= 10000);
+      }
+      
+      // Call original fetch
+      return this._originalFetch!(input, init);
+    };
+    
+    // Intercept Node.js HTTP/HTTPS modules which Solana Web3.js likely uses
+    try {
+      const https = require('https');
+      const originalHttpsRequest = https.request;
+      
+      https.request = function(options: any, callback?: any) {
+        const url = typeof options === 'string' ? options : 
+                   (options.hostname || options.host) + (options.path || '');
+        
+        if (url.includes('chainstack.com')) {
+          const now = Date.now();
+          ConnectionManager._allRpcCalls.push(now);
+          console.log(`[GLOBAL_RPC_TRACKING] HTTPS request to Chainstack detected: ${url.substring(0, 100)}...`);
+          
+          // Keep only calls from last 10 seconds
+          ConnectionManager._allRpcCalls = ConnectionManager._allRpcCalls.filter(time => now - time <= 10000);
+        }
+        
+        return originalHttpsRequest.call(this, options, callback);
+      };
+      
+      console.log('[GLOBAL_RPC_TRACKING] Initialized global HTTP interception (fetch + Node.js HTTPS) for Chainstack RPC tracking');
+    } catch (error) {
+      console.log('[GLOBAL_RPC_TRACKING] Could not intercept Node.js HTTPS module:', error);
     }
   }
 
@@ -233,6 +328,46 @@ class ConnectionManager {
       totalRequests: this._requestCount,
       queueLength: this._rpcQueue.length,
       queueBreakdown
+    };
+  }
+
+  /**
+   * Get TOTAL system RPS including all HTTP calls to Chainstack
+   */
+  public static getTotalSystemRps(): number {
+    const now = Date.now();
+    const recentCalls = this._allRpcCalls.filter(time => now - time <= 10000);
+    return recentCalls.length / 10; // RPS over last 10 seconds
+  }
+
+  /**
+   * Create persistent HTTPS agent for connection pooling
+   */
+  private static _createHttpsAgent(): void {
+    if (this._httpsAgent) return;
+    
+    this._httpsAgent = new https.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000, // Keep connections alive for 30 seconds
+      maxSockets: 5, // Limit concurrent connections
+      maxFreeSockets: 2, // Keep some connections in pool
+      timeout: 10000, // 10 second timeout
+    });
+    
+    console.log('[CONNECTION_MANAGER] Created persistent HTTPS agent with connection pooling');
+  }
+
+  /**
+   * Create optimized fetch function that uses our persistent agent
+   */
+  private static _createOptimizedFetch(): typeof fetch {
+    return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      // Use our global fetch which has tracking
+      return global.fetch(input, {
+        ...init,
+        // Add agent for Node.js environments
+        agent: this._httpsAgent,
+      } as any);
     };
   }
 }
