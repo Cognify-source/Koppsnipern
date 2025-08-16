@@ -27,6 +27,7 @@
     "@types/axios": "^0.9.36",
     "@types/bn.js": "^5.2.0",
     "@types/cli-progress": "^3.11.6",
+    "@types/dotenv": "^6.1.1",
     "@types/jest": "^29.4.0",
     "@types/node": "^18.19.122",
     "@types/node-fetch": "2.6.2",
