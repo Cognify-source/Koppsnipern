@@ -21,10 +21,7 @@ export class PumpV1Listener implements IPoolListener {
   }
 
   public async start() {
-    console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    console.log(`[PUMP_V1] Using global RPC queue - no individual timer needed`);
-    // No individual timer - process signatures immediately via global queue
   }
 
   private _startLiveListener() {
@@ -32,7 +29,6 @@ export class PumpV1Listener implements IPoolListener {
       throw new Error('WebSocket connection is not available for live mode.');
     }
     const pumpV1ProgramId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-    console.log(`[PUMP_V1_LIVE] Listening for logs from Pump.fun V1 program: ${pumpV1ProgramId.toBase58()}`);
     this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
@@ -40,11 +36,11 @@ export class PumpV1Listener implements IPoolListener {
       }
     });
     
-    // Process queue every 200ms to balance speed vs queue growth
-    // This prevents WebSocket bursts from overwhelming the RPC queue
+    // Process queue every 50ms for ultra-fast pool detection
+    // Testing maximum speed while maintaining RPC stability
     setInterval(() => {
       this._processSignatureQueue();
-    }, 200);
+    }, 50);
   }
 
   private async _processSignatureQueue() {
@@ -52,9 +48,6 @@ export class PumpV1Listener implements IPoolListener {
       return;
     }
 
-    const queueSizeBefore = this._signatureQueue.length;
-    console.log(`[PUMP_V1_QUEUE] Processing ${queueSizeBefore} signatures in queue`);
-    
     // Limit batch size to reduce RPC load and avoid rate limits
     const maxBatchSize = 10;
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
@@ -71,14 +64,13 @@ export class PumpV1Listener implements IPoolListener {
           const poolData = await this._extractPoolDataFromLog(tx);
           
           if (poolData) {
-            console.log(`[PUMP_V1_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
             this._onNewPool(poolData);
           }
         }
       }
       
     } catch (error) {
-      console.error('[QUEUE] Error fetching or processing transactions in batch:', error);
+      // Silent error handling - only global RPS logging allowed
     }
   }
 

@@ -23,28 +23,23 @@ export class MeteoraDbcListener implements IPoolListener {
   }
 
   public async start() {
-    console.log(`[METEORA_DBC] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    console.log(`[METEORA_DBC] Using global RPC queue - no individual timer needed`);
-    // No individual timer - process signatures immediately via global queue
   }
 
   private _startLiveListener() {
     if (!this._wsConnection) {
       throw new Error('WebSocket connection is not available for live mode.');
     }
-    console.log(`[METEORA_DBC_LIVE] Listening for logs from MeteoraDBC program: ${this._programId.toBase58()}`);
     this._wsConnection.onLogs(this._programId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
-        // Don't process immediately - let timer handle it to avoid overwhelming the queue
       }
     });
     
-    // Process queue every 300ms for faster pool detection while respecting global RPC queue
+    // Optimized 50ms intervals for fastest pool detection
     setInterval(() => {
       this._processSignatureQueue();
-    }, 300);
+    }, 50);
   }
 
   private async _processSignatureQueue() {
@@ -67,13 +62,12 @@ export class MeteoraDbcListener implements IPoolListener {
         if (tx) {
           const poolData = await this._extractPoolDataFromTransaction(tx);
           if (poolData) {
-            console.log(`[METEORA_DBC_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
             this._onNewPool(poolData);
           }
         }
       }
     } catch (error) {
-      console.error('[METEORA_DBC_QUEUE] Error fetching or processing transactions in batch:', error);
+      // Silent error handling - only global RPS logging allowed
     }
   }
 

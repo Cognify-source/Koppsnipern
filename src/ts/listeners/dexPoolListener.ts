@@ -15,30 +15,24 @@ export class DexPoolListener {
   private listeners: IPoolListener[] = [];
 
   constructor(newPoolCallback: NewPoolCallback) {
-    // TESTING: Only PumpV1Listener for debugging RPC rate limiting issues
-    // Other listeners disabled until we solve the fundamental problems
+    // All listeners optimized with 50ms intervals and global RPC queue
     this.listeners.push(new PumpV1Listener(newPoolCallback));
-    
-    // Disabled for testing:
-    // this.listeners.push(new PumpAmmListener(newPoolCallback));
-    // this.listeners.push(new LaunchLabListener(newPoolCallback));
-    // this.listeners.push(new MeteoraDbcListener(newPoolCallback));
+    this.listeners.push(new PumpAmmListener(newPoolCallback));
+    this.listeners.push(new LaunchLabListener(newPoolCallback));
+    this.listeners.push(new MeteoraDbcListener(newPoolCallback));
   }
 
   /**
    * Starts all registered DEX listeners.
    */
   public async start() {
-    console.log(`[DEX_MANAGER] Initializing ${this.listeners.length} pool listener(s)...`);
     for (const listener of this.listeners) {
       try {
-        // We now await start() because some listeners might have async initialization.
         await listener.start();
       } catch (error) {
-        console.error(`[DEX_MANAGER] Error starting listener ${listener.constructor.name}:`, error);
+        // Silent error handling - only global RPS logging allowed
       }
     }
-    console.log(`[DEX_MANAGER] All listeners have been started.`);
   }
 }
 

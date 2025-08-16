@@ -204,10 +204,10 @@ class ConnectionManager {
     // Keep only requests from the last 10 seconds for accurate RPS calculation
     this._requestTimes = this._requestTimes.filter(time => now - time <= 10000);
     
-    // Report RPS every 5 seconds to monitor activity
+    // Report TOTAL RPS every 5 seconds to monitor all system activity
     if (now - this._lastRpsReport >= 5000) {
       const stats = this.getRpsStats();
-      console.log(`[RPC_STATS] Current RPS: ${stats.currentRps.toFixed(1)}, Total: ${stats.totalRequests}, Queue: ${stats.queueLength}`);
+      console.log(`[SYSTEM_RPS] TOTAL RPS: ${stats.currentRps.toFixed(1)} | Total Requests: ${stats.totalRequests} | Queue: ${stats.queueLength}`);
       this._lastRpsReport = now;
     }
   }
