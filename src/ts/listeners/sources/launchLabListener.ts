@@ -1,70 +1,98 @@
 import { Connection, PublicKey, Logs, clusterApiUrl, ParsedInstruction } from '@solana/web3.js';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
+import { ConnectionManager } from '../../utils/connectionManager';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
 
 export class LaunchLabListener implements IPoolListener {
-  private _connection: Connection;
-  private _wsConnection: Connection | null = null;
+  private _httpConnection: Connection;
+  private _wsConnection: Connection;
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
+  private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
     this._programId = new PublicKey('LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj');
-
-    const httpRpcUrl = process.env.SOLANA_HTTP_RPC_URL || clusterApiUrl('mainnet-beta');
-    this._connection = new Connection(httpRpcUrl, 'confirmed');
-    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL;
-
-    if (process.env.USE_STUB_LISTENER !== 'true' && wssRpcUrl) {
-      this._wsConnection = new Connection(httpRpcUrl, {
-        commitment: 'confirmed',
-        wsEndpoint: wssRpcUrl,
-      });
-    }
+    
+    // Use shared connections to reduce RPC overhead
+    this._httpConnection = ConnectionManager.getHttpConnection();
+    this._wsConnection = ConnectionManager.getWsConnection();
   }
 
-  public start(): void {
-    if (process.env.USE_STUB_LISTENER === 'true') {
-      // Stub mode is not implemented for this listener yet.
-      return;
-    }
+  public async start() {
+    console.log(`[LAUNCHLAB] Starting listener... (live-mode only)`);
+    this._startLiveListener();
+    // Use configurable delay from environment variable
+    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
+    console.log(`[LAUNCHLAB] Using RPC delay: ${rpcDelayMs}ms`);
+    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
+  }
 
+  private _startLiveListener() {
     if (!this._wsConnection) {
-      console.log('[LAUNCHLAB] Not started, WebSocket connection is missing.');
+      throw new Error('WebSocket connection is not available for live mode.');
+    }
+    console.log(`[LAUNCHLAB_LIVE] Listening for logs from LaunchLab program: ${this._programId.toBase58()}`);
+    this._wsConnection.onLogs(this._programId, (log) => {
+      if (!log.err) {
+        this._signatureQueue.push(log.signature);
+      }
+    });
+  }
+
+  private async _processSignatureQueue() {
+    if (this._signatureQueue.length === 0) {
       return;
     }
 
-    console.log(`[LAUNCHLAB] Listening for logs from program: ${this._programId.toBase58()}`);
-    this._wsConnection.onLogs(this._programId, (log) => this._processLog(log), 'confirmed');
+    // Limit batch size to reduce RPC load and avoid rate limits
+    const maxBatchSize = 10;
+    const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
+
+    try {
+      // Track RPC request
+      ConnectionManager.trackRequest();
+      
+      const txs = await this._httpConnection.getParsedTransactions(signatures, {
+        maxSupportedTransactionVersion: 0,
+      });
+
+      for (const tx of txs) {
+        if (tx) {
+          const poolData = await this._extractPoolDataFromTransaction(tx);
+          if (poolData) {
+            console.log(`[LAUNCHLAB_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+            this._onNewPool(poolData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[LAUNCHLAB_QUEUE] Error fetching or processing transactions in batch:', error);
+    }
   }
 
-  private async _processLog(log: Logs) {
-    // Check for the specific event string in the logs
-    const eventSignature = 'Program log: Instruction: CreatePool';
-    const hasEvent = log.logs.some(l => l.includes(eventSignature));
+  private async _extractPoolDataFromTransaction(tx: any): Promise<PoolData | null> {
+    const signature = tx.transaction.signatures[0];
+    if (!signature) return null;
 
-    if (hasEvent) {
-      console.log(`[LAUNCHLAB] Detected PoolCreateEvent in transaction: ${log.signature}`);
-      try {
-        const tx = await this._connection.getParsedTransaction(log.signature, {
-          maxSupportedTransactionVersion: 0,
-        });
+    try {
+      if (!tx.meta) return null;
 
-        if (!tx || !tx.meta) {
-          return;
-        }
+      // Check for the specific event string in the logs
+      const eventSignature = 'Program log: Instruction: CreatePool';
+      const hasEvent = tx.meta.logMessages?.some((l: string) => l.includes(eventSignature));
 
+      if (hasEvent) {
         // Find the instruction sent to our program
         const createInstruction = tx.transaction.message.instructions.find(
-          ix => ix.programId.toBase58() === this._programId.toBase58()
+          (ix: any) => ix.programId.toBase58() === this._programId.toBase58()
         );
 
         if (!createInstruction || !('accounts' in createInstruction)) {
-          return;
+          return null;
         }
 
         // From the user's data: #6 is Pool State, #7 is Base Mint
@@ -73,7 +101,7 @@ export class LaunchLabListener implements IPoolListener {
         const creatorAccount = createInstruction.accounts[1];
 
         if (!poolStateAccount || !baseMintAccount || !creatorAccount) {
-            return;
+          return null;
         }
 
         const poolData: PoolData = {
@@ -89,11 +117,12 @@ export class LaunchLabListener implements IPoolListener {
           estimatedSlippage: 0,
         };
 
-        this._onNewPool(poolData);
-
-      } catch (error) {
-        console.error(`[LAUNCHLAB] Error processing transaction ${log.signature}:`, error);
+        return poolData;
       }
+    } catch (error) {
+      console.error(`[LAUNCHLAB_EXTRACT] Error processing transaction ${signature}:`, error);
     }
+
+    return null;
   }
 }

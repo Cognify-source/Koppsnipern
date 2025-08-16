@@ -2,6 +2,7 @@ import { Connection, PublicKey, Logs, clusterApiUrl, ParsedTransactionWithMeta }
 import { Buffer } from 'buffer';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
+import { ConnectionManager } from '../../utils/connectionManager';
 import * as mockPoolEvents from '../../../../tests/integration/data/mock-pump-amm-events.json';
 import * as dotenv from 'dotenv';
 
@@ -9,35 +10,18 @@ dotenv.config();
 
 export class PumpAmmListener implements IPoolListener {
   private _httpConnection: Connection;
-  private _wsConnection: Connection | null = null;
+  private _wsConnection: Connection;
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
-  private _useStubListener: boolean;
   private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
     this._programId = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
-    // Force live mode for PumpAMM regardless of USE_STUB_LISTENER setting
-    this._useStubListener = false;
-
-    const httpRpcUrl =
-      process.env.SOLANA_HTTP_RPC_URL?.startsWith('http')
-        ? process.env.SOLANA_HTTP_RPC_URL
-        : clusterApiUrl('mainnet-beta');
-    this._httpConnection = new Connection(httpRpcUrl, 'confirmed');
-
-    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL?.startsWith('ws')
-      ? process.env.SOLANA_WSS_RPC_URL
-      : undefined;
-
-    if (!wssRpcUrl) {
-      throw new Error('SOLANA_WSS_RPC_URL must be set in .env for live mode.');
-    }
-    this._wsConnection = new Connection(httpRpcUrl, {
-      commitment: 'confirmed',
-      wsEndpoint: wssRpcUrl,
-    } as any);
+    
+    // Use shared connections to reduce RPC overhead
+    this._httpConnection = ConnectionManager.getHttpConnection();
+    this._wsConnection = ConnectionManager.getWsConnection();
   }
 
   public async start() {
@@ -71,6 +55,9 @@ export class PumpAmmListener implements IPoolListener {
     const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
 
     try {
+      // Track RPC request
+      ConnectionManager.trackRequest();
+      
       const txs = await this._httpConnection.getParsedTransactions(signatures, {
         maxSupportedTransactionVersion: 0,
       });

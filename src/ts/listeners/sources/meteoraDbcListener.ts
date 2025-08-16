@@ -1,69 +1,97 @@
 import { Connection, PublicKey, Logs, clusterApiUrl } from '@solana/web3.js';
 import { PoolData } from '../../services/safetyService';
 import { IPoolListener, NewPoolCallback } from '../iPoolListener';
+import { ConnectionManager } from '../../utils/connectionManager';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
 
 export class MeteoraDbcListener implements IPoolListener {
-  private _connection: Connection;
-  private _wsConnection: Connection | null = null;
+  private _httpConnection: Connection;
+  private _wsConnection: Connection;
   private _onNewPool: NewPoolCallback;
   private _programId: PublicKey;
+  private _signatureQueue: string[] = [];
 
   constructor(callback: NewPoolCallback) {
     this._onNewPool = callback;
     this._programId = new PublicKey('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN');
-
-    const httpRpcUrl = process.env.SOLANA_HTTP_RPC_URL || clusterApiUrl('mainnet-beta');
-    this._connection = new Connection(httpRpcUrl, 'confirmed');
-    const wssRpcUrl = process.env.SOLANA_WSS_RPC_URL;
-
-    if (process.env.USE_STUB_LISTENER !== 'true' && wssRpcUrl) {
-      this._wsConnection = new Connection(httpRpcUrl, {
-        commitment: 'confirmed',
-        wsEndpoint: wssRpcUrl,
-      });
-    }
+    
+    // Use shared connections to reduce RPC overhead
+    this._httpConnection = ConnectionManager.getHttpConnection();
+    this._wsConnection = ConnectionManager.getWsConnection();
   }
 
-  public start(): void {
-    if (process.env.USE_STUB_LISTENER === 'true') {
-      // Stub mode is not implemented for this listener yet.
-      return;
-    }
+  public async start() {
+    console.log(`[METEORA_DBC] Starting listener... (live-mode only)`);
+    this._startLiveListener();
+    // Use configurable delay from environment variable
+    const rpcDelayMs = parseInt(process.env.RPC_DELAY_MS || '1500', 10);
+    console.log(`[METEORA_DBC] Using RPC delay: ${rpcDelayMs}ms`);
+    setInterval(() => this._processSignatureQueue(), rpcDelayMs);
+  }
 
+  private _startLiveListener() {
     if (!this._wsConnection) {
-      console.log('[METEORA_DBC] Not started, WebSocket connection is missing.');
+      throw new Error('WebSocket connection is not available for live mode.');
+    }
+    console.log(`[METEORA_DBC_LIVE] Listening for logs from MeteoraDBC program: ${this._programId.toBase58()}`);
+    this._wsConnection.onLogs(this._programId, (log) => {
+      if (!log.err) {
+        this._signatureQueue.push(log.signature);
+      }
+    });
+  }
+
+  private async _processSignatureQueue() {
+    if (this._signatureQueue.length === 0) {
       return;
     }
 
-    console.log(`[METEORA_DBC] Listening for logs from program: ${this._programId.toBase58()}`);
-    this._wsConnection.onLogs(this._programId, (log) => this._processLog(log), 'confirmed');
+    // Limit batch size to reduce RPC load and avoid rate limits
+    const maxBatchSize = 10;
+    const signatures = this._signatureQueue.splice(0, Math.min(maxBatchSize, this._signatureQueue.length));
+
+    try {
+      // Track RPC request
+      ConnectionManager.trackRequest();
+      
+      const txs = await this._httpConnection.getParsedTransactions(signatures, {
+        maxSupportedTransactionVersion: 0,
+      });
+
+      for (const tx of txs) {
+        if (tx) {
+          const poolData = await this._extractPoolDataFromTransaction(tx);
+          if (poolData) {
+            console.log(`[METEORA_DBC_LISTENER] New potential pool found: ${poolData.address}. Passing to orchestrator.`);
+            this._onNewPool(poolData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[METEORA_DBC_QUEUE] Error fetching or processing transactions in batch:', error);
+    }
   }
 
-  private async _processLog(log: Logs) {
-    // Check for the specific instruction log
-    const instructionSignature = 'Instruction: InitializeVirtualPoolWithSplToken';
-    const hasInstruction = log.logs.some(l => l.includes(instructionSignature));
+  private async _extractPoolDataFromTransaction(tx: any): Promise<PoolData | null> {
+    const signature = tx.transaction.signatures[0];
+    if (!signature) return null;
 
-    if (hasInstruction) {
-      console.log(`[METEORA_DBC] Detected Initialize instruction in transaction: ${log.signature}`);
-      try {
-        const tx = await this._connection.getParsedTransaction(log.signature, {
-          maxSupportedTransactionVersion: 0,
-        });
+    try {
+      if (!tx.meta) return null;
 
-        if (!tx || !tx.meta) {
-          return;
-        }
+      // Check for the specific instruction log
+      const instructionSignature = 'Instruction: InitializeVirtualPoolWithSplToken';
+      const hasInstruction = tx.meta.logMessages?.some((l: string) => l.includes(instructionSignature));
 
+      if (hasInstruction) {
         const createInstruction = tx.transaction.message.instructions.find(
-          ix => ix.programId.toBase58() === this._programId.toBase58()
+          (ix: any) => ix.programId.toBase58() === this._programId.toBase58()
         );
 
         if (!createInstruction || !('accounts' in createInstruction)) {
-          return;
+          return null;
         }
 
         // From the user's IDL: #2=creator, #3=base_mint, #5=pool
@@ -72,7 +100,7 @@ export class MeteoraDbcListener implements IPoolListener {
         const poolStateAccount = createInstruction.accounts[5];
 
         if (!poolStateAccount || !baseMintAccount || !creatorAccount) {
-            return;
+          return null;
         }
 
         const poolData: PoolData = {
@@ -88,11 +116,12 @@ export class MeteoraDbcListener implements IPoolListener {
           estimatedSlippage: 0,
         };
 
-        this._onNewPool(poolData);
-
-      } catch (error) {
-        console.error(`[METEORA_DBC] Error processing transaction ${log.signature}:`, error);
+        return poolData;
       }
+    } catch (error) {
+      console.error(`[METEORA_DBC_EXTRACT] Error processing transaction ${signature}:`, error);
     }
+
+    return null;
   }
 }
