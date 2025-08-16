@@ -27,9 +27,8 @@ export class PumpAmmListener implements IPoolListener {
   public async start() {
     console.log(`[PUMP_AMM] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    console.log(`[PUMP_AMM] Using global RPC queue for rate limiting`);
-    // Process queue every 500ms, but actual RPC calls go through global queue
-    setInterval(() => this._processSignatureQueue(), 500);
+    console.log(`[PUMP_AMM] Using global RPC queue - no individual timer needed`);
+    // No individual timer - the global RPC queue will process signatures as they come in
   }
 
   private _startLiveListener() {
@@ -40,6 +39,8 @@ export class PumpAmmListener implements IPoolListener {
     this._wsConnection.onLogs(this._programId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
+        // Process signatures immediately when they come in (via global queue)
+        this._processSignatureQueue();
       }
     });
   }

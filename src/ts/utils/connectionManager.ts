@@ -3,7 +3,7 @@ import { Connection, clusterApiUrl, ParsedTransactionWithMeta } from '@solana/we
 // Global RPC request queue types
 interface RpcRequest {
   id: string;
-  type: 'getParsedTransactions' | 'getSlot' | 'getMultipleAccountsInfo' | 'getAccountInfo';
+  type: 'getParsedTransactions' | 'getSlot' | 'getMultipleAccountsInfo' | 'getAccountInfo' | 'getLatestBlockhash' | 'confirmTransaction';
   params: any[];
   resolve: (result: any) => void;
   reject: (error: any) => void;
@@ -108,6 +108,12 @@ class ConnectionManager {
         case 'getAccountInfo':
           result = await connection.getAccountInfo(request.params[0]);
           break;
+        case 'getLatestBlockhash':
+          result = await connection.getLatestBlockhash(request.params[0]);
+          break;
+        case 'confirmTransaction':
+          result = await connection.confirmTransaction(request.params[0], request.params[1]);
+          break;
         default:
           throw new Error(`Unknown RPC request type: ${request.type}`);
       }
@@ -170,6 +176,21 @@ class ConnectionManager {
     source: string
   ): Promise<any> {
     return this.queueRpcRequest('getAccountInfo', [publicKey], source);
+  }
+
+  public static async getLatestBlockhash(
+    commitment: any,
+    source: string
+  ): Promise<any> {
+    return this.queueRpcRequest('getLatestBlockhash', [commitment], source);
+  }
+
+  public static async confirmTransaction(
+    strategy: any,
+    commitment: any,
+    source: string
+  ): Promise<any> {
+    return this.queueRpcRequest('confirmTransaction', [strategy, commitment], source);
   }
 
   /**

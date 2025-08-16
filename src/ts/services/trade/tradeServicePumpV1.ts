@@ -13,6 +13,7 @@ import { NATIVE_MINT, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solan
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
 import { PoolData } from "../safetyService";
+import { ConnectionManager } from "../../utils/connectionManager";
 import * as borsh from 'borsh';
 import BN from 'bn.js';
 import { createHash } from 'crypto';
@@ -109,8 +110,8 @@ export class TradeServicePumpV1 {
       }
     }
 
-    const { lastValidBlockHeight, blockhash } = await this.connection.getLatestBlockhash({ commitment: 'finalized' });
-    await this.connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature: lastTxId }, 'finalized');
+    const { lastValidBlockHeight, blockhash } = await ConnectionManager.getLatestBlockhash({ commitment: 'finalized' }, 'TradeServicePumpV1-Confirm');
+    await ConnectionManager.confirmTransaction({ blockhash, lastValidBlockHeight, signature: lastTxId }, 'finalized', 'TradeServicePumpV1-Confirm');
     return lastTxId;
   }
 
@@ -120,7 +121,7 @@ export class TradeServicePumpV1 {
     }
 
     const bondingCurveAddress = new PublicKey(poolData.address);
-    const bondingCurveAccountInfo = await this.connection.getAccountInfo(bondingCurveAddress);
+    const bondingCurveAccountInfo = await ConnectionManager.getAccountInfo(bondingCurveAddress, 'TradeServicePumpV1-BondingCurve');
     if (!bondingCurveAccountInfo) throw new Error('Failed to fetch bonding curve account info.');
 
     const decodedBondingCurve = borsh.deserialize(

@@ -25,9 +25,8 @@ export class LaunchLabListener implements IPoolListener {
   public async start() {
     console.log(`[LAUNCHLAB] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    console.log(`[LAUNCHLAB] Using global RPC queue for rate limiting`);
-    // Process queue every 500ms, but actual RPC calls go through global queue
-    setInterval(() => this._processSignatureQueue(), 500);
+    console.log(`[LAUNCHLAB] Using global RPC queue - no individual timer needed`);
+    // No individual timer - process signatures immediately via global queue
   }
 
   private _startLiveListener() {
@@ -38,6 +37,8 @@ export class LaunchLabListener implements IPoolListener {
     this._wsConnection.onLogs(this._programId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
+        // Process signatures immediately when they come in (via global queue)
+        this._processSignatureQueue();
       }
     });
   }

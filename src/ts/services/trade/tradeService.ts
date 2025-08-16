@@ -14,6 +14,7 @@ import { NATIVE_MINT, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solan
 import axios from 'axios';
 import { API_URLS } from '@raydium-io/raydium-sdk-v2';
 import { PoolData } from "../safetyService";
+import { ConnectionManager } from "../../utils/connectionManager";
 import * as borsh from 'borsh';
 import BN from 'bn.js';
 import { createHash } from 'crypto';
@@ -112,8 +113,8 @@ export class TradeService {
     }
 
     // We can only confirm the last transaction easily with this setup
-    const { lastValidBlockHeight, blockhash } = await this.connection.getLatestBlockhash({ commitment: 'finalized' });
-    await this.connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature: lastTxId }, 'confirmed');
+    const { lastValidBlockHeight, blockhash } = await ConnectionManager.getLatestBlockhash({ commitment: 'finalized' }, 'TradeService-Confirm');
+    await ConnectionManager.confirmTransaction({ blockhash, lastValidBlockHeight, signature: lastTxId }, 'confirmed', 'TradeService-Confirm');
     console.log(`[TRADE_SERVICE_V2] Swap confirmed for last transaction.`);
 
     return lastTxId;
@@ -132,7 +133,7 @@ export class TradeService {
 
     // 1. Fetch the bonding curve account to calculate the price
     const bondingCurveAddress = new PublicKey(poolData.address);
-    const bondingCurveAccountInfo = await this.connection.getAccountInfo(bondingCurveAddress);
+    const bondingCurveAccountInfo = await ConnectionManager.getAccountInfo(bondingCurveAddress, 'TradeService-BondingCurve');
     if (!bondingCurveAccountInfo) {
       throw new Error('Failed to fetch bonding curve account info.');
     }

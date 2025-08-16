@@ -23,9 +23,8 @@ export class PumpV1Listener implements IPoolListener {
   public async start() {
     console.log(`[PUMP_V1] Starting listener... (live-mode only)`);
     this._startLiveListener();
-    console.log(`[PUMP_V1] Using global RPC queue for rate limiting`);
-    // Process queue every 500ms, but actual RPC calls go through global queue
-    setInterval(() => this._processSignatureQueue(), 500);
+    console.log(`[PUMP_V1] Using global RPC queue - no individual timer needed`);
+    // No individual timer - process signatures immediately via global queue
   }
 
   private _startLiveListener() {
@@ -37,6 +36,8 @@ export class PumpV1Listener implements IPoolListener {
     this._wsConnection.onLogs(pumpV1ProgramId, (log) => {
       if (!log.err) {
         this._signatureQueue.push(log.signature);
+        // Process signatures immediately when they come in (via global queue)
+        this._processSignatureQueue();
       }
     });
   }
@@ -87,8 +88,43 @@ export class PumpV1Listener implements IPoolListener {
 
       if (isNewPumpV1Pool && isPumpV1Program) {
         const accountKeys = tx.transaction.message.accountKeys;
-        const bondingCurveAddress = accountKeys[2].pubkey.toBase58();
-        const tokenMintAddress = accountKeys[1].pubkey.toBase58();
+        
+        // Debug: Log account keys to understand the transaction structure
+        console.log(`[PUMP_V1_DEBUG] Transaction ${signature} account keys:`, 
+          accountKeys.map((key, index) => `${index}: ${key.pubkey.toBase58()}`));
+        
+        // Find the actual bonding curve and mint addresses by looking for the right patterns
+        // Skip system programs and look for actual accounts
+        let bondingCurveAddress = '';
+        let tokenMintAddress = '';
+        
+        for (let i = 0; i < accountKeys.length; i++) {
+          const address = accountKeys[i].pubkey.toBase58();
+          // Skip known system programs
+          if (address === '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P' || // Pump program
+              address === 'ComputeBudget111111111111111111111111111111' || // ComputeBudget
+              address === '11111111111111111111111111111111' || // System program
+              address === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' || // Token program
+              address === 'SysvarRent111111111111111111111111111111111' || // Rent sysvar
+              address.startsWith('So1111111111111111111111111111111111111111')) { // WSOL
+            continue;
+          }
+          
+          // The first non-system account should be the bonding curve
+          if (!bondingCurveAddress) {
+            bondingCurveAddress = address;
+          } else if (!tokenMintAddress) {
+            tokenMintAddress = address;
+            break;
+          }
+        }
+        
+        if (!bondingCurveAddress || !tokenMintAddress) {
+          console.log(`[PUMP_V1_DEBUG] Could not find bonding curve or mint in transaction ${signature}`);
+          return null;
+        }
+        
+        console.log(`[PUMP_V1_DEBUG] Found bonding curve: ${bondingCurveAddress}, mint: ${tokenMintAddress}`);
 
         let mintAuthorityRevoked = false;
         let freezeAuthorityRevoked = false;
