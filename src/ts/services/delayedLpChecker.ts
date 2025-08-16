@@ -12,10 +12,11 @@ interface DelayedPoolCheck {
 export class DelayedLpChecker {
   private pendingChecks: Map<string, DelayedPoolCheck> = new Map();
   private connection: Connection;
-  private readonly INITIAL_DELAY = 1000; // 1 second - much faster for copy trading
-  private readonly MAX_RETRIES = 15; // More retries with shorter intervals
-  private readonly RETRY_INTERVAL = 200; // 0.2 seconds between retries for better resolution
+  private readonly INITIAL_DELAY = 300; // 300ms - ultra-aggressive timing for immediate LP detection
+  private readonly MAX_RETRIES = 35; // More retries with ultra-tight intervals
+  private readonly RETRY_INTERVAL = 100; // 0.1 seconds between retries - ultra-tight timing
   private readonly MAX_PENDING_TIME = 4000; // 4 seconds max total time
+  private readonly MAX_CONCURRENT_CHECKS = 5; // Limit concurrent LP checks to control RPS
   
   // Statistics tracking
   private lpFoundTimes: number[] = []; // Track timing for successful LP discoveries
@@ -29,15 +30,9 @@ export class DelayedLpChecker {
   }
 
   /**
-   * Schedule a pool for delayed LP checking (PumpV1 only for now)
+   * Schedule a pool for delayed LP checking (supports all pool types)
    */
   public scheduleCheck(poolData: PoolData, callback: (updatedPoolData: PoolData) => void): void {
-    // Only handle PumpV1 for now
-    if (poolData.source !== 'PumpV1') {
-      callback(poolData);
-      return;
-    }
-
     // Only schedule if LP is currently 0 or very low
     if (poolData.lpSol >= 0.1) {
       callback(poolData);
@@ -95,8 +90,9 @@ export class DelayedLpChecker {
         this.pendingChecks.delete(checkId);
       }
 
-      // Process ready checks
-      for (const checkId of toProcess) {
+      // Process ready checks with concurrency limit to control RPS
+      const checksToProcess = toProcess.slice(0, this.MAX_CONCURRENT_CHECKS);
+      for (const checkId of checksToProcess) {
         await this.processCheck(checkId);
       }
     }, 100); // Check every 100ms for high resolution timing
@@ -110,12 +106,38 @@ export class DelayedLpChecker {
     if (!check) return;
 
     try {
-      const updatedLp = await this.checkPumpV1Liquidity(check.poolData);
+      let updatedLp = 0;
+      
+      // Check LP based on pool source type
+      switch (check.poolData.source) {
+        case 'PumpV1':
+          updatedLp = await this.checkPumpV1Liquidity(check.poolData);
+          break;
+        case 'PumpAMM':
+          updatedLp = await this.checkPumpAmmLiquidity(check.poolData);
+          break;
+        case 'LaunchLab':
+          updatedLp = await this.checkLaunchLabLiquidity(check.poolData);
+          break;
+        case 'MeteoraDBC':
+          updatedLp = await this.checkMeteoraDbcLiquidity(check.poolData);
+          break;
+        default:
+          console.error(`[DELAYED_LP] Unknown pool source: ${check.poolData.source}`);
+          updatedLp = 0;
+      }
       
       if (updatedLp > 0) {
         // Found liquidity! Calculate timing and update pool data
         const timeTaken = Date.now() - check.timestamp;
-        const updatedPoolData = { ...check.poolData, lpSol: updatedLp };
+        // Also check current mint/freeze authorities when LP is found
+        const authorities = await this.checkTokenAuthorities(check.poolData.mint);
+        const updatedPoolData = { 
+          ...check.poolData, 
+          lpSol: updatedLp,
+          mintAuthority: authorities.mintAuthority,
+          freezeAuthority: authorities.freezeAuthority
+        };
         
         // Silent LP found - let the callback handle logging
         
@@ -151,7 +173,7 @@ export class DelayedLpChecker {
   }
 
   /**
-   * Check PumpV1 bonding curve liquidity by reading the account balance
+   * Check PumpV1 bonding curve liquidity and mint/freeze authorities
    */
   private async checkPumpV1Liquidity(poolData: PoolData): Promise<number> {
     try {
@@ -171,6 +193,95 @@ export class DelayedLpChecker {
     } catch (error) {
       console.error(`[DELAYED_LP] Error checking PumpV1 liquidity:`, error);
       return 0;
+    }
+  }
+
+  /**
+   * Check PumpAMM pool liquidity by reading pool account balance
+   */
+  private async checkPumpAmmLiquidity(poolData: PoolData): Promise<number> {
+    try {
+      const poolAccount = new PublicKey(poolData.address);
+      const accountInfo = await this.connection.getAccountInfo(poolAccount);
+      
+      if (!accountInfo) {
+        return 0;
+      }
+
+      // For PumpAMM, check SOL balance of the pool account
+      const solBalance = accountInfo.lamports / 1e9;
+      return solBalance;
+    } catch (error) {
+      console.error(`[DELAYED_LP] Error checking PumpAMM liquidity:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check LaunchLab pool liquidity by reading pool account balance
+   */
+  private async checkLaunchLabLiquidity(poolData: PoolData): Promise<number> {
+    try {
+      const poolAccount = new PublicKey(poolData.address);
+      const accountInfo = await this.connection.getAccountInfo(poolAccount);
+      
+      if (!accountInfo) {
+        return 0;
+      }
+
+      // For LaunchLab, check SOL balance of the pool account
+      const solBalance = accountInfo.lamports / 1e9;
+      return solBalance;
+    } catch (error) {
+      console.error(`[DELAYED_LP] Error checking LaunchLab liquidity:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check MeteoraDBC pool liquidity by reading pool account balance
+   */
+  private async checkMeteoraDbcLiquidity(poolData: PoolData): Promise<number> {
+    try {
+      const poolAccount = new PublicKey(poolData.address);
+      const accountInfo = await this.connection.getAccountInfo(poolAccount);
+      
+      if (!accountInfo) {
+        return 0;
+      }
+
+      // For MeteoraDBC, check SOL balance of the pool account
+      const solBalance = accountInfo.lamports / 1e9;
+      return solBalance;
+    } catch (error) {
+      console.error(`[DELAYED_LP] Error checking MeteoraDBC liquidity:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check current mint and freeze authorities for a token
+   */
+  private async checkTokenAuthorities(mintAddress: string): Promise<{mintAuthority: string | null, freezeAuthority: string | null}> {
+    try {
+      const mintAccount = new PublicKey(mintAddress);
+      const mintInfo = await this.connection.getParsedAccountInfo(mintAccount);
+      
+      if (!mintInfo.value || !mintInfo.value.data || typeof mintInfo.value.data !== 'object' || !('parsed' in mintInfo.value.data)) {
+        return { mintAuthority: 'UNKNOWN', freezeAuthority: 'UNKNOWN' };
+      }
+
+      const parsedData = mintInfo.value.data.parsed;
+      const mintAuthority = parsedData.info.mintAuthority;
+      const freezeAuthority = parsedData.info.freezeAuthority;
+
+      return {
+        mintAuthority: mintAuthority,
+        freezeAuthority: freezeAuthority
+      };
+    } catch (error) {
+      console.error(`[DELAYED_LP] Error checking token authorities:`, error);
+      return { mintAuthority: 'UNKNOWN', freezeAuthority: 'UNKNOWN' };
     }
   }
 

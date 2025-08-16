@@ -188,6 +188,8 @@ export class PumpV1Listener implements IPoolListener {
     let lpFound = false;
     let finalPoolData = poolData;
     let processed = false; // Prevent double processing
+    let lpFoundTime = 0; // Track timing
+    const startTime = Date.now();
 
     try {
       // Start safety check immediately (don't await yet)
@@ -199,12 +201,13 @@ export class PumpV1Listener implements IPoolListener {
         
         lpFound = true;
         finalPoolData = updatedPoolData;
+        lpFoundTime = Date.now() - startTime; // Calculate timing
         
-        // If safety check is already done, process with updated LP data regardless of safety status
+        // If safety check is already done, process with updated LP data
         if (safetyResult) {
           processed = true;
-          // Re-run safety check with updated LP data to get correct result
-          await this._processSafetyCheck(updatedPoolData, true);
+          // Process with updated LP data (this will run a fresh safety check)
+          await this._processSafetyCheck(updatedPoolData, true, lpFoundTime);
         }
       });
       
@@ -216,7 +219,7 @@ export class PumpV1Listener implements IPoolListener {
       // If LP was already found while we were doing safety check, process immediately
       if (lpFound && !processed) {
         processed = true;
-        await this._processSafetyCheck(finalPoolData, true);
+        await this._processSafetyCheck(finalPoolData, true, lpFoundTime);
       }
       // Otherwise, the LP callback will handle processing when LP is found (or timeout)
       
@@ -228,7 +231,7 @@ export class PumpV1Listener implements IPoolListener {
   /**
    * Process safety check and handle logging/callbacks
    */
-  private async _processSafetyCheck(poolData: PoolData, wasDelayedLpCheck: boolean = false): Promise<void> {
+  private async _processSafetyCheck(poolData: PoolData, wasDelayedLpCheck: boolean = false, lpFoundTimeMs: number = 0): Promise<void> {
     try {
       // Run safety check and get result
       const safetyResult = await this._safetyService.isPoolSafe(poolData);
@@ -253,7 +256,12 @@ export class PumpV1Listener implements IPoolListener {
       const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
       const mintAuth = (poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m').padEnd(17); // 17 to account for ANSI codes
       const freezeAuth = (poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m').padEnd(19); // 19 to account for ANSI codes
-      const delayedIndicator = wasDelayedLpCheck ? '\x1b[33mDELAYED_LP\x1b[0m' : 'IMMEDIATE';
+      
+      // Add timing info for delayed LP checks
+      let delayedIndicator = wasDelayedLpCheck ? '\x1b[33mDELAYED_LP\x1b[0m' : 'IMMEDIATE';
+      if (wasDelayedLpCheck && lpFoundTimeMs > 0) {
+        delayedIndicator += ` \x1b[36m(${lpFoundTimeMs}ms)\x1b[0m`;
+      }
       
       console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus} | ${delayedIndicator}`);
       

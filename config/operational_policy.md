@@ -138,6 +138,27 @@ Boten består av följande logiska moduler:
 - **Intern processering (prediktion & signering):** < 10 ms
 - **Trigger-detektion → Skickad bundle:** < 50 ms
 
+### Delayed LP Detection System
+*För pooler som initialt har låg eller ingen LP (<0.1 SOL), används ett parallellt system för att detektera när LP läggs till.*
+
+**Timing-parametrar:**
+- **Initial delay:** 300ms (ultra-aggressiv timing för omedelbar LP-detektion)
+- **Retry intervall:** 100ms (ultra-tight timing för maximal responsivitet)
+- **Max timeout:** 4000ms (4s total tid)
+- **Processing loop:** 100ms (snabb respons)
+
+**Prestanda-mål för copy trading:**
+- **LP-detektion:** 500-2000ms (baserat på verklig data)
+- **Safety checks:** 100-300ms parallellt
+- **Trade preparation:** 200-500ms
+- **Total tid:** 800-2800ms (inom Cupsyy's 2-5s fönster)
+
+**Optimeringsstrategier:**
+1. **Pre-compute safety checks:** Cachea vanliga pool-patterns för snabbare validering
+2. **Pre-build Jito bundles:** Förbered bundles med placeholder-värden som kan uppdateras snabbt
+3. **Parallel processing:** Kör safety checks samtidigt som LP-monitoring
+4. **Timing analytics:** Logga exakt timing för varje LP-detektion för kontinuerlig optimering
+
 ---
 
 ## Loggning & Övervakning
