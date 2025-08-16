@@ -75,9 +75,6 @@ export class PumpAmmListener implements IPoolListener {
             
             const now = new Date();
             const timestamp = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-            const mintAuth = poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m';
-            const freezeAuth = poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m';
-            
             // Color code safety status and add reasons if blocked
             let safetyStatus = safetyResult.status === 'SAFE' 
               ? '\x1b[32mSAFE\x1b[0m' 
@@ -93,6 +90,8 @@ export class PumpAmmListener implements IPoolListener {
             const source = 'PumpAMM'.padEnd(12);
             const address = poolData.address.padEnd(44);
             const lp = `LP:${poolData.lpSol.toFixed(3)}`.padEnd(12);
+            const mintAuth = (poolData.mintAuthority ? '\x1b[31mMINT\x1b[0m' : '\x1b[32mNO_MINT\x1b[0m').padEnd(17); // 17 to account for ANSI codes
+            const freezeAuth = (poolData.freezeAuthority ? '\x1b[31mFREEZE\x1b[0m' : '\x1b[32mNO_FREEZE\x1b[0m').padEnd(19); // 19 to account for ANSI codes
             
             console.log(`[${timestamp}] ${source} | \x1b[32m${address}\x1b[0m | ${lp} | ${mintAuth} | ${freezeAuth} | ${safetyStatus}`);
             
