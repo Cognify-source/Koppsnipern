@@ -1,4 +1,4 @@
-# Koppsnipern — Operativ policy (version 1.9)
+# Koppsnipern — Operativ policy (version 2.0)
 
 **Syfte:**
 Denna policy styr utveckling och drift av Koppsnipern, som är en sniper-bot vars syfte är att snipa nyskapade solana pools. 
@@ -109,13 +109,29 @@ Strategin exekveras i fem steg:
 
 ### Modulär design
 Boten består av följande logiska moduler:
-- **dexPoolListener:    Tar emot och avkodar data från Geyser.
-- **safetyService:      Utför rug-checks och validerar säkerhet.
-- **notifyService:      Loggar resultat i terminal, Discord och loggfiler.
-- **tradePlanner:       Förbered och signerar transaktioner via Jito.
-- **bundleSender:       ??????????
-- **tradeService:       Genomför trade. TradeServiceBase är basen, och den kallar på olika underservices (tradeServicePumpv1.ts, tradeServicePumpAmm.ts, tradeServiceLaunchlab.ts och tradeServiceMeteoradbc.ts)
-- **riskManager:        Applicerar globala och trade-specifika riskregler.
+
+**Kärnmoduler:**
+- **connectionManager:** Centraliserad RPC-hantering med global kö och rate limiting (100ms delay). Hanterar både HTTP och WebSocket-anslutningar med persistent connection pooling.
+- **dexPoolListener:** Koordinerar alla DEX-specifika listeners och distribuerar pool-upptäckter.
+- **safetyService:** Utför rug-checks och validerar säkerhet. Integrerad i alla listeners för realtids-säkerhetsbedömning.
+- **notifyService:** Hanterar all loggning - terminal (färgkodad), Discord-notifikationer och filloggning (safe_pools.json, blocked_pools.jsonl).
+
+**DEX-specifika listeners:**
+- **pumpV1Listener:** Lyssnar på Pump.fun V1 (6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P) via WebSocket, detekterar nya pooler genom tomma preTokenBalances.
+- **pumpAmmListener:** Parsar CreatePoolEvent från Pump.fun AMM (pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA).
+- **launchLabListener:** Detekterar CreatePool-instruktioner från LaunchLab (LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj).
+- **meteoraDbcListener:** Lyssnar på InitializeVirtualPoolWithSplToken från Meteora DBC (dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN).
+
+**Trading & Risk:**
+- **tradePlanner:** Förbered och signerar transaktioner via Jito.
+- **bundleSender:** Skickar Jito-bundles för snabb exekvering.
+- **tradeService:** Genomför trades. TradeServiceBase är basen, med specialiserade underservices för varje DEX.
+- **riskManager:** Applicerar globala och trade-specifika riskregler.
+
+**Arkitektur-principer:**
+- Staggered execution: Varje listener har unika intervaller (600-720ms) för att undvika RPC-konflikter.
+- No-batching approach: En transaktion per RPC-anrop för maximal Chainstack-kompatibilitet.
+- Ultra-stable queue management: Håller RPC-kön på 0-2 requests för optimal stabilitet.
 
 ### Latensbudget (end-to-end)
 *Målet är att gå från pool-upptäckt till skickad bundle på **under 100 ms**.*
@@ -127,10 +143,31 @@ Boten består av följande logiska moduler:
 
 ## Loggning & Övervakning
 
-### Logg-nivåer och syfte
+### Realtids Pool Detection Logging
+**Format:** `[YYMMDD-HH:MM:SS] SOURCE | CA:ADDRESS | LP:VALUE | MINT_STATUS | FREEZE_STATUS | SAFETY_STATUS`
+
+**Exempel:**
+```
+[250816-17:00:12] PumpV1 | CA:51KQraATtk22MQj4wHC24wzn4iQVBJszQABoZmfbGzqX | LP:0 | NO_MINT | FREEZE | BLOCKED
+[250816-17:00:15] PumpAMM | CA:7MHpvp3tGizWNFxmTukxf4dCY64kjWjKCpJ9MM8r79Dz | LP:2.5 | NO_MINT | NO_FREEZE | SAFE
+```
+
+**Färgkodning (terminal):**
+- Timestamp: Vit
+- Källa (PumpV1/PumpAMM/LaunchLab/MeteoraDBC): Vit
+- CA text + adress: Grön
+- LP text + värde: Vit
+- Mint/Freeze authorities: Röd=dåligt (har authority), Grön=bra (ingen authority)
+- Safety status: Röd=BLOCKED, Grön=SAFE
+
+### Automatisk filloggning
+- **SAFE pools:** `logs/safe_pools.json` - Strukturerad JSON för säkra pooler
+- **BLOCKED pools:** `logs/blocked_pools.jsonl` - JSONL-format med blockningsorsaker
+
+### Traditionella logg-nivåer
 - **Interna loggar (DEBUG):** Detaljerad information om varje steg i processen, inklusive prediktionslogik, "staged" trades och trigger-events. Används för felsökning. Mål: `logs/internal_debug.log`.
 - **Transaktionsloggar (INFO):** En post för varje slutförd, misslyckad eller skippad trade. Används för prestanda-analys. Mål: `logs/trades.json`.
-- **Publika notiser (NOTIFY):** Lättlästa notiser till Discord för realtidsövervakning av viktiga händelser (t.ex. lyckad trade, aktivering av skyddsregel) samt till terminal och loggfiler.
+- **Publika notiser (NOTIFY):** Lättlästa notiser till Discord för realtidsövervakning av viktiga händelser (t.ex. lyckad trade, aktivering av skyddsregel).
 
 ### JSON-schema för transaktionslogg (`trades.json`)
 *Alla fält är obligatoriska.*
@@ -180,16 +217,28 @@ Vid minsta osäkerhet gällande en pools säkerhet, data-integritet eller ett tr
 ## Roadmap: Prioriterade utvecklingsfaser
 *Boten utvecklas iterativt med fokus på testbarhet, säkerhet och hastighet för att framgångsrikt kunna agera "lead-trader".*
 
-**Fas 1: Infrastruktur & Validering**
-1.  **Backtesting-ramverk:** Bygg ett system för att köra och validera vår prediktionsmodell och handelsstrategi mot historisk data. *Mål: Riskfri finjustering av strategin.*
-2.  **CI & Devnet-tester:** Sätt upp en automatiserad test-pipeline (Continuous Integration) mot Devnet. *Mål: Garantera kodkvalitet och tillförlitlighet kontinuerligt.*
+**✅ Fas 1: Pool Detection & Logging (SLUTFÖRD - Aug 2025)**
+1.  **✅ DEX Listeners:** Implementerat alla fyra DEX-listeners (PumpV1, PumpAMM, LaunchLab, MeteoraDBC) med WebSocket-baserad pool-detektion.
+2.  **✅ RPC Optimization:** Centraliserad RPC-hantering med global kö, rate limiting (100ms), och ultra-stabil queue management.
+3.  **✅ Safety Integration:** SafetyService integrerat i alla listeners för realtids-säkerhetsbedömning.
+4.  **✅ Professional Logging:** Färgkodad terminal-loggning och automatisk filloggning (safe_pools.json, blocked_pools.jsonl).
 
-**Fas 2: Kärnlogik & Exekvering**
-3.  **Kärnmoduler (Prediction & Safety):** Utveckla `dexPoolListener` och `safetyService` för att identifiera och säkerhetsgranska potentiella målpooler enligt vår strategi. *Validering: Testas löpande mot backtesting-ramverket.*
-4.  **Exekvering (Jito):** Integrera `tradeService` för att hantera "staging" av transaktioner och omedelbar exekvering via Jito när triggern (`suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK`) detekteras. *Validering: Testas mot Devnet via CI-pipelinen.*
+**🔄 Fas 2: Trading Infrastructure (PÅGÅENDE)**
+5.  **Cupsyy Trigger Detection:** Implementera realtids-övervakning av Cupsyy's wallet för att detektera köp-signaler.
+6.  **Transaction Staging:** Pre-signering och staging av transaktioner för omedelbar exekvering vid trigger.
+7.  **Jito Integration:** Komplett integration med Jito för snabb bundle-exekvering.
 
-**Fas 3: Drift & Övervakning**
-5.  **Metrics & Health Checks:** Implementera detaljerad realtidsövervakning av prestanda (latens, P&L) och systemhälsa. *Mål: Full insyn under live-drift.*
+**📋 Fas 3: Risk Management & Optimization**
+8.  **Risk Controls:** Implementera alla globala skyddsregler (precision, P&L, latens-trösklar).
+9.  **Exit Strategy:** Trailing take-profit och stop-loss logik enligt policy.
+10. **Performance Monitoring:** Detaljerad realtidsövervakning av prestanda (latens, P&L) och systemhälsa.
+
+**🔮 Fas 4: Advanced Features**
+11. **Backtesting Framework:** System för att validera strategier mot historisk data.
+12. **CI/CD Pipeline:** Automatiserad test-pipeline mot Devnet.
+13. **Multi-Wallet Support:** Stöd för flera wallets och position management.
+
+**Aktuell status:** Pool detection och logging är komplett och stabil. Systemet detekterar framgångsrikt nya pooler från alla fyra DEX-källor med professionell loggning och säkerhetsbedömning.
 
 ---
 
