@@ -1,40 +1,67 @@
-// tests/unit/ts/streamListener.test.ts
+// tests/unit/ts/dexPoolListener.test.ts
 
-import { StreamListener } from "../../../src/ts/services/streamListener";
-import { Connection } from "@solana/web3.js";
+import { DexPoolListener, NewPoolCallback, PoolData } from "../../../src/ts/listeners/dexPoolListener";
 
-// Mocka Connection så att onSlotChange registrerar callback
-const mockOnSlotChange = jest.fn();
+// Mock för newPoolCallback
+const mockNewPoolCallback = jest.fn();
 
-jest.mock("@solana/web3.js", () => {
+// Mock för PumpV1Listener
+jest.mock("../../../src/ts/listeners/sources/pumpV1Listener", () => {
   return {
-    Connection: jest.fn().mockImplementation(() => ({
-      onSlotChange: mockOnSlotChange
-    })),
-    // om du använder SlotInfo-typ, exportera den som tom interface
-    SlotInfo: class {}
+    PumpV1Listener: jest.fn().mockImplementation((callback: NewPoolCallback) => ({
+      start: jest.fn().mockResolvedValue(undefined),
+      constructor: { name: 'PumpV1Listener' }
+    }))
   };
 });
 
-describe("StreamListener (WebSocket)", () => {
-  it("ska registrera onSlotChange och anropa callback vid nytt slot", async () => {
-    const received: number[] = [];
-    const listener = new StreamListener("https://example.com", (slot) => {
-      received.push(slot);
-    });
+describe("DexPoolListener", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
+  it("ska skapa en DexPoolListener med callback", () => {
+    const listener = new DexPoolListener(mockNewPoolCallback);
+    expect(listener).toBeInstanceOf(DexPoolListener);
+  });
+
+  it("ska starta alla registrerade listeners", async () => {
+    const listener = new DexPoolListener(mockNewPoolCallback);
+    
+    // Mock console.log för att undvika output under test
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    
     await listener.start();
+    
+    // Kontrollera att console.log anropades för att visa att listeners startades
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[DEX_MANAGER] Initializing'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[DEX_MANAGER] All listeners have been started.'));
+    
+    consoleSpy.mockRestore();
+  });
 
-    // Kontrollera att vi prenumererade
-    expect(mockOnSlotChange).toHaveBeenCalledTimes(1);
+  it("ska hantera fel när en listener misslyckas att starta", async () => {
+    // Mock en listener som kastar fel
+    const { PumpV1Listener } = require("../../../src/ts/listeners/sources/pumpV1Listener");
+    PumpV1Listener.mockImplementation((callback: NewPoolCallback) => ({
+      start: jest.fn().mockRejectedValue(new Error("Test error")),
+      constructor: { name: 'PumpV1Listener' }
+    }));
 
-    // Hämta den registrerade callbacken
-    const cb = mockOnSlotChange.mock.calls[0][0] as (info: number) => void;
-
-    // Simulera ett inkommande slot
-    cb(42);
-    cb({ slot: 100 } as any);
-
-    expect(received).toEqual([42, 100]);
+    const listener = new DexPoolListener(mockNewPoolCallback);
+    
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    await listener.start();
+    
+    // Kontrollera att fel loggades
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[DEX_MANAGER] Error starting listener'),
+      expect.any(Error)
+    );
+    
+    consoleSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 });
